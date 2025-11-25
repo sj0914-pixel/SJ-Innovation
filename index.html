@@ -3,504 +3,322 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰</title>
+    <title>SJ Innovation 파트너스 몰</title>
     
-    <!-- React & ReactDOM (CDN) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Babel (JSX 변환용) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Lucide Icons (CDN) -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- 다음 우편번호 서비스 -->
-    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 
-    <style>
-        /* 스크롤바 숨김 유틸리티 */
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        /* 하단 안전 영역 (모바일 아이폰 등 대응) */
-        .safe-area-bottom {
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-    </style>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        // 사장님의 파이어베이스 설정값 (이미지에서 추출함)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqcYceZwUtI",
+            authDomain: "sj-innovation-a8f6b.firebaseapp.com",
+            projectId: "sj-innovation-a8f6b",
+            storageBucket: "sj-innovation-a8f6b.firebasestorage.app",
+            messagingSenderId: "449389360798",
+            appId: "1:449389360798:web:d1b490aa9c75807903ed8f",
+            measurementId: "G-NED86350PH"
+        };
+
+        // 파이어베이스 초기화
+        const app = initializeApp(firebaseConfig);
+        window.auth = getAuth(app); // React에서 쓰기 위해 전역 변수로 등록
+        window.createUser = createUserWithEmailAndPassword;
+        window.signInUser = signInWithEmailAndPassword;
+        window.logOut = signOut;
+    </script>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans">
+<body class="bg-slate-50">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-        
-        // Lucide 아이콘 컴포넌트 생성 헬퍼
-        const Icon = ({ name, ...props }) => {
-            const iconName = name.charAt(0).toLowerCase() + name.slice(1);
-            return <i data-lucide={iconName} {...props}></i>;
-        };
+        const { useState, useEffect } = React;
 
-        // --- Mock Data ---
-        const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
-
-        const PRODUCTS = [
-            { id: 1, name: "캐치티니핑 하츄핑 방한용품 모음전 (장갑/목도리)", category: "유아동의류", price: 11900, originPrice: 23000, rating: 4.9, image: "🧣", description: "겨울 시즌 필수 아이템! 아이들이 좋아하는 하츄핑 캐릭터가 그려진 따뜻한 방한 장갑과 목도리 세트입니다. 부드러운 털 안감으로 보온성을 높였습니다." },
-            { id: 2, name: "티니핑 마스크 시즌3 새부리형 소형 (20매)", category: "생활/건강", price: 12900, originPrice: 15900, rating: 4.8, image: "😷", description: "숨쉬기 편한 새부리형 구조의 어린이용 마스크입니다. 3중 구조 필터로 안전하며, 귀가 아프지 않은 부드러운 이어밴드를 사용했습니다." },
-            { id: 3, name: "슈팅스타 캐치티니핑 시즌5 하츄핑 유아 털목도리", category: "유아동의류", price: 12900, originPrice: 21900, rating: 4.9, image: "🧣", description: "포근한 감촉의 유아용 털목도리입니다. 착용이 간편한 고리형 디자인으로 활동량이 많은 아이들도 흘러내림 없이 착용 가능합니다." },
-            { id: 4, name: "슈팅스타 캐치티니핑 패딩 벙어리 장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수 기능이 있는 패딩 소재의 벙어리 장갑입니다. 눈싸움이나 스키장에서도 손 젖을 걱정 없이 따뜻하게 놀 수 있습니다." },
-            { id: 5, name: "슈팅스타 캐치티니핑 모자목도리 세트", category: "유아동의류", price: 16900, originPrice: 29900, rating: 5.0, image: "🧢", description: "모자와 목도리가 하나로! 귀까지 따뜻하게 덮어주는 일체형 방한 모자입니다. 귀여운 캐릭터 귀 장식이 포인트입니다." },
-            { id: 6, name: "이탈리안 브레인롯 랜덤 딱지 (25팩)", category: "완구/교구", price: 22900, originPrice: 39900, rating: 4.8, image: "🎲", description: "요즘 초등학생들 사이에서 대유행! 다양한 캐릭터 딱지를 모을 수 있는 랜덤 팩 세트입니다. 한 박스 25팩 구성으로 낱개 판매하기 좋습니다." },
-            { id: 7, name: "슈팅스타 캐치티니핑 시즌5 자석 글자 한글플러스", category: "완구/교구", price: 39900, originPrice: 49900, rating: 4.9, image: "🧲", description: "놀면서 배우는 한글 공부! 냉장고나 자석 칠판에 붙이며 글자를 익힐 수 있는 자석 교구 세트입니다." },
-            { id: 8, name: "캐치티니핑 올인원 교정 젓가락 스푼 포크 세트", category: "주방/식기", price: 13900, originPrice: 17500, rating: 4.8, image: "🥢", description: "올바른 젓가락질 습관을 길러주는 교정 젓가락과 스푼, 포크, 케이스까지 포함된 올인원 세트입니다. 어린이집 준비물로 강력 추천합니다." },
-            { id: 9, name: "슈팅스타 캐치티니핑 논슬립 스텐컵 (왕자핑)", category: "주방/식기", price: 9900, originPrice: 15000, rating: 4.7, image: "🥛", description: "바닥에 미끄럼 방지 처리가 되어 있어 쏟을 걱정이 적은 스테인리스 컵입니다. 위생적이고 내구성이 뛰어납니다." },
-            { id: 10, name: "위시캣 유아 어린이 안심락 스트랩 보틀", category: "주방/식기", price: 8900, originPrice: 12500, rating: 4.6, image: "🍼", description: "원터치 오픈 방식과 잠금 장치(안심락)가 있어 가방 속에서도 샐 염려가 없는 유아용 물병입니다. 어깨 스트랩이 포함되어 있습니다." },
-            { id: 11, name: "새콤달콤 캐치티니핑 시즌4 플레이팅 자석 소꿉놀이", category: "완구/교구", price: 23500, originPrice: 27000, rating: 4.8, image: "🏰", description: "예쁜 디저트를 자석으로 붙였다 떼었다 할 수 있는 소꿉놀이 세트입니다. 역할 놀이를 통해 아이들의 상상력을 키워줍니다." },
-            { id: 12, name: "아산제약 hCG 임신테스트기 진단 키트 (25회분)", category: "생활/건강", price: 23900, originPrice: 47000, rating: 4.9, image: "⚕️", description: "약국 및 편의점 판매용 임신 진단 키트입니다. 정확도가 높고 사용이 간편하여 꾸준히 판매되는 스테디셀러입니다." },
-            { id: 13, name: "참존 KF94 톤업핏 블랙라벨 마스크 중형", category: "생활/건강", price: 10900, originPrice: 20000, rating: 4.5, image: "😷", description: "스타일리시한 핏과 편안한 호흡을 동시에 만족시키는 KF94 마스크입니다. 얼굴 라인을 살려주는 디자인으로 성인 여성 및 청소년에게 인기입니다." },
-            { id: 14, name: "젠바디 코로나 자가 진단 키트 (10회분)", category: "생활/건강", price: 9350, originPrice: 13500, rating: 4.6, image: "🩺", description: "빠르고 간편하게 코로나 감염 여부를 확인할 수 있는 자가 검사 키트입니다. 비상용으로 구비해두기 좋은 10회분 대용량 구성입니다." },
-            { id: 15, name: "헬로카봇 시즌15 무소음 교정젓가락 케이스 세트", category: "주방/식기", price: 14900, originPrice: 19000, rating: 4.7, image: "🤖", description: "달그락거리는 소리를 줄인 무소음 케이스가 포함된 헬로카봇 젓가락 세트입니다. 남자아이들에게 인기 만점인 선물입니다." },
-            { id: 16, name: "위시캣 하트 손잡이 휴대용 보틀 380ml", category: "주방/식기", price: 8950, originPrice: 11000, rating: 4.5, image: "🥤", description: "사랑스러운 하트 모양 손잡이가 달린 휴대용 물병입니다. 가볍고 투명한 소재로 내용물 확인이 쉽습니다." },
-            { id: 17, name: "반짝핑 수저세트 교정 젓가락 (어린이집용)", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.7, image: "✨", description: "블링블링 반짝핑 캐릭터가 들어간 수저 세트입니다. 아이들이 식사 시간을 즐거워하도록 도와줍니다." },
-            { id: 18, name: "빛나핑 수저세트 교정 젓가락 (유치원용)", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.8, image: "🌟", description: "유치원생에게 딱 맞는 사이즈의 교정 젓가락 세트입니다. 스테인리스 소재로 위생적으로 사용할 수 있습니다." },
-            { id: 19, name: "초롱핑 수저세트 교정 젓가락 올인원", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.6, image: "🎋", description: "초롱초롱한 눈망울의 초롱핑 캐릭터 수저 세트입니다. 케이스가 포함되어 있어 휴대하기 편리합니다." },
-            { id: 20, name: "새콤달콤 캐치티니핑 디저트샵 자석 소꿉놀이", category: "완구/교구", price: 27000, originPrice: 35000, rating: 4.9, image: "🍰", description: "디저트 가게 놀이를 할 수 있는 풍성한 구성의 소꿉놀이 세트입니다. 자석으로 되어 있어 정리 정돈도 쉽습니다." },
-        ];
-
-        // --- Product Detail Component ---
-        const ProductDetailPage = ({ product, onBack, onAddToCart }) => {
-            const [quantity, setQuantity] = useState(1);
-
-            const handleQuantityChange = (delta) => {
-                const newQuantity = quantity + delta;
-                if (newQuantity >= 1) {
-                    setQuantity(newQuantity);
-                }
-            };
-
-            const handleAddToCart = () => {
-                onAddToCart(product, quantity);
-                onBack(); 
-            };
-
-            useEffect(() => {
-                lucide.createIcons();
-            }, []);
-
+        // 아이콘 컴포넌트
+        const Icon = ({ name, className }) => {
+            const lucide = window.lucide;
+            if (!lucide) return null;
+            const iconNode = lucide.icons[name];
+            if (!iconNode) return null;
+            
+            // SVG 생성
             return (
-                <div className="animate-in slide-in-from-right duration-300 bg-white min-h-screen flex flex-col pb-[80px]">
-                    <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center gap-4">
-                        <button onClick={onBack} className="p-2 -ml-2 hover:bg-slate-100 rounded-full active:bg-slate-200 transition-colors">
-                            <Icon name="ArrowLeft" className="w-6 h-6 text-slate-600" />
-                        </button>
-                        <h2 className="font-bold text-lg text-slate-800 truncate pr-4 flex-1">{product.name}</h2>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto">
-                        <div className="max-w-3xl mx-auto">
-                            <div className="bg-slate-50 aspect-square w-full flex items-center justify-center mb-6">
-                                <span className="text-[8rem] sm:text-[10rem] drop-shadow-2xl transform hover:scale-110 transition-transform duration-500">{product.image}</span>
-                            </div>
-
-                            <div className="px-5 pb-8">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">{product.category}</span>
-                                    <div className="flex items-center gap-1 text-yellow-500">
-                                        <Icon name="Star" className="w-3 h-3 fill-current" />
-                                        <span className="text-xs font-bold">{product.rating}</span>
-                                    </div>
-                                </div>
-                                
-                                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4 leading-snug">{product.name}</h1>
-                                
-                                <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100">
-                                    <span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{new Intl.NumberFormat('ko-KR').format(product.price)}</span>
-                                    <span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{new Intl.NumberFormat('ko-KR').format(product.originPrice)}</span>
-                                    <span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">
-                                        {Math.round((1 - product.price / product.originPrice) * 100)}% OFF
-                                    </span>
-                                </div>
-
-                                <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100">
-                                    <Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" />
-                                    <div>
-                                        <span className="font-bold block text-sm">최소 1카톤 발주 가능</span>
-                                        <span className="text-xs text-indigo-700 mt-1 block">본 상품은 도매 전용 상품으로 낱개 발주가 불가능하며, 카톤(박스) 단위로만 출고됩니다.</span>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-8">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3>
-                                        <p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">
-                                            {product.description}
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900 mb-3">상품 상세 정보</h3>
-                                        <div className="w-full bg-slate-100 rounded-xl min-h-[400px] sm:min-h-[600px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 p-4 text-center">
-                                            <Icon name="FileText" className="w-12 h-12 sm:w-16 sm:h-16 mb-4 opacity-30" />
-                                            <span className="font-medium">상세 페이지 이미지 영역</span>
-                                            <span className="text-xs sm:text-sm mt-2 text-slate-400">제품 상세 설명 이미지가 이곳에 로드됩니다.</span>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900 mb-3">배송 정보</h3>
-                                        <div className="bg-slate-50 p-5 rounded-xl space-y-3 text-sm text-slate-600 border border-slate-100">
-                                            <div className="flex gap-3 items-center">
-                                                <Icon name="Truck" className="w-5 h-5 text-slate-400" />
-                                                <span>평일 14시 이전 주문 시 당일 출고</span>
-                                            </div>
-                                            <div className="flex gap-3 items-center">
-                                                <Icon name="Boxes" className="w-5 h-5 text-slate-400" />
-                                                <span>박스 단위 발주 가능 (혼합 가능)</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 sm:p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30 safe-area-bottom">
-                        <div className="max-w-3xl mx-auto flex flex-col sm:flex-row gap-3 sm:gap-4">
-                            <div className="flex items-center justify-between sm:justify-start sm:gap-6">
-                                <span className="font-bold text-slate-900 text-sm sm:text-base">수량 (카톤)</span>
-                                <div className="flex items-center gap-3 sm:gap-4 bg-slate-100 rounded-lg p-1">
-                                    <button onClick={() => handleQuantityChange(-1)} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-white rounded shadow-sm hover:bg-slate-50 disabled:opacity-50 active:scale-95 transition-transform" disabled={quantity <= 1}>
-                                        <Icon name="Minus" className="w-4 h-4" />
-                                    </button>
-                                    <span className="font-bold w-8 text-center text-sm sm:text-base">{quantity}</span>
-                                    <button onClick={() => handleQuantityChange(1)} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-white rounded shadow-sm hover:bg-slate-50 active:scale-95 transition-transform">
-                                        <Icon name="Plus" className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 items-center flex-1">
-                                <div className="flex-1 sm:hidden">
-                                    <div className="text-[10px] text-slate-500">총 금액</div>
-                                    <div className="text-lg font-bold text-indigo-600">₩{new Intl.NumberFormat('ko-KR').format(product.price * quantity)}</div>
-                                </div>
-                                <div className="hidden sm:block flex-1 text-right pr-4">
-                                    <div className="text-xs text-slate-500">총 발주 금액</div>
-                                    <div className="text-xl font-bold text-indigo-600">₩{new Intl.NumberFormat('ko-KR').format(product.price * quantity)}</div>
-                                </div>
-                                <button 
-                                    onClick={handleAddToCart}
-                                    className="flex-[2] sm:flex-1 bg-slate-800 hover:bg-slate-900 active:bg-slate-950 text-white font-bold py-3 sm:py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
-                                >
-                                    <Icon name="ShoppingBag" className="w-4 h-4 sm:w-5 sm:h-5" />
-                                    담기
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width="24" 
+                    height="24" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className={className}
+                    dangerouslySetInnerHTML={{ __html: iconNode.toSvg({ class: '', width: '', height: '' }).match(/>(.*)<\/svg>/)[1] }} 
+                />
             );
         };
 
-        // --- Login Page Component ---
-        const LoginPage = ({ onLogin }) => {
-            const [isLoginMode, setIsLoginMode] = useState(true);
-            const [isAddrOpen, setIsAddrOpen] = useState(false);
-            const [isScriptLoaded, setIsScriptLoaded] = useState(false); 
-            const addrWrapRef = useRef(null);
+        // [로그인 화면 컴포넌트]
+        const LoginScreen = ({ onLoginSuccess }) => {
+            const [email, setEmail] = useState("");
+            const [password, setPassword] = useState("");
+            const [isSignUp, setIsSignUp] = useState(false); // 회원가입 모드인지 확인
+            const [error, setError] = useState("");
+            const [loading, setLoading] = useState(false);
 
-            const [formData, setFormData] = useState({
-                username: '', password: '', confirmPassword: '', name: '', phone: '', mobile: '', email: '',
-                zipcode: '', address: '', addressDetail: '',
-                businessType: '문구/팬시점', storeName: '', repName: '', businessNumber: '', businessCategory: '', businessItem: '', taxEmail: '', taxType: '발행함'
-            });
-
-            useEffect(() => {
-                lucide.createIcons();
-                
-                // Daum Postcode script is already in head, just check if loaded
-                if(window.daum && window.daum.Postcode) {
-                    setIsScriptLoaded(true);
-                } else {
-                    // Fallback check
-                    const interval = setInterval(() => {
-                        if(window.daum && window.daum.Postcode) {
-                            setIsScriptLoaded(true);
-                            clearInterval(interval);
-                        }
-                    }, 100);
-                }
-            }, []);
-
-            useEffect(() => {
-                if (isAddrOpen && isScriptLoaded && addrWrapRef.current && window.daum && window.daum.Postcode) {
-                    addrWrapRef.current.innerHTML = '';
-                    new window.daum.Postcode({
-                        oncomplete: function(data) {
-                            let addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
-                            let extraAddr = '';
-                            if(data.userSelectedType === 'R'){
-                                if(data.bname !== '' && /[동|로|가]$/g.test(data.bname)) extraAddr += data.bname;
-                                if(data.buildingName !== '' && data.apartment === 'Y') extraAddr += (extraAddr !== '' ? ', ' + data.buildingName : data.buildingName);
-                                if(extraAddr !== '') extraAddr = ' (' + extraAddr + ')';
-                            }
-                            setFormData(prev => ({ ...prev, zipcode: data.zonecode, address: addr + extraAddr }));
-                            setIsAddrOpen(false); 
-                        },
-                        width: '100%', height: '100%'
-                    }).embed(addrWrapRef.current);
-                }
-            }, [isAddrOpen, isScriptLoaded]);
-
-            const handleSubmit = (e) => {
+            const handleAuth = async (e) => {
                 e.preventDefault();
-                if (isLoginMode) {
-                    onLogin(formData.storeName || "티니핑월드 남대문점"); 
-                } else {
-                    if (formData.password !== formData.confirmPassword) {
-                        alert("비밀번호가 일치하지 않습니다."); return;
+                setError("");
+                setLoading(true);
+
+                try {
+                    if (isSignUp) {
+                        // 회원가입 시도
+                        await window.createUser(window.auth, email, password);
+                        alert("회원가입 성공! 자동 로그인됩니다.");
+                    } else {
+                        // 로그인 시도
+                        await window.signInUser(window.auth, email, password);
                     }
-                    alert("사업자 회원가입 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.");
-                    setIsLoginMode(true);
+                    // 성공하면 App 컴포넌트의 onAuthStateChanged가 감지해서 화면을 넘겨줌
+                } catch (err) {
+                    console.error(err);
+                    if(err.code === 'auth/email-already-in-use') setError("이미 가입된 이메일입니다.");
+                    else if(err.code === 'auth/invalid-credential') setError("이메일이나 비밀번호가 틀렸습니다.");
+                    else if(err.code === 'auth/weak-password') setError("비밀번호는 6자리 이상이어야 합니다.");
+                    else setError("오류가 발생했습니다: " + err.message);
+                } finally {
+                    setLoading(false);
                 }
             };
 
-            const handleChange = (e) => {
-                const { name, value } = e.target;
-                setFormData(prev => ({ ...prev, [name]: value }));
-            };
-
             return (
-                <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8 sm:px-6 lg:px-8 transition-all duration-500">
-                    <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all duration-500 ${isLoginMode ? 'max-w-md p-6 sm:p-8' : 'max-w-3xl p-6 sm:p-8'}`}>
+                <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+                    <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
                         <div className="text-center mb-8">
-                            <div className="bg-slate-800 w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center mx-auto mb-4 text-white text-2xl sm:text-3xl font-bold shadow-lg">S</div>
-                            <h1 className="text-2xl font-bold text-slate-800">{isLoginMode ? "SJ 파트너 로그인" : "사업자 회원등록"}</h1>
-                            <p className="text-slate-500 mt-2 text-sm font-semibold">SJ Innovation</p>
-                        </div>
-                        
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            {isLoginMode && (
-                                <div className="space-y-4">
-                                    <div><label className="block text-sm font-medium text-slate-700 mb-1">아이디</label><input name="username" type="text" placeholder="아이디를 입력하세요" className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-slate-500 outline-none" onChange={handleChange} required /></div>
-                                    <div><label className="block text-sm font-medium text-slate-700 mb-1">비밀번호</label><input name="password" type="password" placeholder="비밀번호를 입력하세요" className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-slate-500 outline-none" onChange={handleChange} required /></div>
-                                </div>
-                            )}
-
-                            {!isLoginMode && (
-                                <div className="space-y-8 animate-in fade-in duration-500">
-                                    <section className="bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200">
-                                        <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">필수정보 <span className="text-red-500 text-sm">*</span></h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">이름(실명)</label><input name="name" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">아이디</label><div className="flex gap-2"><input name="username" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /><button type="button" className="bg-slate-600 text-white text-xs px-3 rounded hover:bg-slate-700 whitespace-nowrap">중복확인</button></div></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">비밀번호</label><input name="password" type="password" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">비밀번호 확인</label><input name="confirmPassword" type="password" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">휴대폰 번호</label><input name="mobile" type="tel" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">이메일</label><input name="email" type="email" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                        </div>
-                                        <div className="mt-4">
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">기본 배송지 주소</label>
-                                            <div className="flex gap-2 mb-2"><input name="zipcode" type="text" value={formData.zipcode} readOnly className="w-24 px-3 py-2 rounded border border-slate-300 bg-slate-100 text-sm" placeholder="우편번호" /><button type="button" onClick={() => setIsAddrOpen(true)} className="bg-slate-600 text-white text-xs px-3 rounded hover:bg-slate-700">주소검색</button></div>
-                                            <input name="address" type="text" value={formData.address} readOnly className="w-full px-3 py-2 rounded border border-slate-300 bg-slate-100 mb-2" placeholder="기본 주소" />
-                                            <input name="addressDetail" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" placeholder="나머지 주소 (상세주소)" onChange={handleChange} />
-                                        </div>
-                                    </section>
-
-                                    <section className="bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200">
-                                        <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">사업자 필수정보 <span className="text-red-500 text-sm">*</span></h3>
-                                        <div className="mb-4">
-                                            <label className="block text-sm font-medium text-slate-700 mb-2">사업 형태</label>
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                                {['문구/팬시점', '과자/아이스크림', '편의점', '키즈카페', '기타업종'].map((type) => (
-                                                    <label key={type} className="flex items-center gap-2 text-sm cursor-pointer p-2 border rounded hover:bg-white transition-colors">
-                                                        <input type="radio" name="businessType" value={type} checked={formData.businessType === type} onChange={handleChange} className="text-slate-600 focus:ring-slate-500" />{type}
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">상호명(법인명)</label><input name="storeName" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">대표자명</label><input name="repName" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">사업자 등록번호</label><input name="businessNumber" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">업태</label><input name="businessCategory" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">종목</label><input name="businessItem" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">세금계산서 이메일</label><input name="taxEmail" type="email" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                        </div>
-                                        <div className="mt-4 p-3 bg-slate-50 rounded-lg text-xs text-slate-700 flex items-start gap-2 border border-slate-200"><Icon name="Check" className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-500" /><span>허위 정보 기재 시 법적 문제가 발생할 수 있으며, 부정확한 정보 입력 시 정회원 승인이 거절될 수 있습니다.</span></div>
-                                    </section>
-                                </div>
-                            )}
-                            <button type="submit" className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 rounded-xl transition-colors shadow-lg hover:shadow-xl mt-4 text-lg">{isLoginMode ? "로그인하기" : "사업자 회원등록 신청"}</button>
-                        </form>
-                        <div className="mt-6 text-center border-t border-slate-100 pt-6"><p className="text-sm text-slate-600">{isLoginMode ? "아직 파트너 회원이 아니신가요?" : "이미 아이디가 있으신가요?"}<button onClick={() => { setIsLoginMode(!isLoginMode); window.scrollTo(0, 0); }} className="ml-2 font-bold text-slate-800 hover:underline focus:outline-none">{isLoginMode ? "사업자 회원가입" : "로그인하기"}</button></p></div>
-                        <p className="mt-8 text-center text-xs text-slate-400">copyright (c) SJ Innovation. All rights reserved.</p>
-                    </div>
-                    {isAddrOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                            <div className="bg-white w-full max-w-lg rounded-xl overflow-hidden shadow-2xl relative h-[500px] flex flex-col">
-                                <div className="p-4 border-b flex justify-between items-center bg-slate-50"><h3 className="font-bold text-lg">주소 검색</h3><button onClick={() => setIsAddrOpen(false)} className="p-1 hover:bg-slate-200 rounded-full"><Icon name="X" className="w-6 h-6 text-slate-500" /></button></div>
-                                <div ref={addrWrapRef} className="flex-1 w-full bg-slate-100 relative">{!isScriptLoaded && (<div className="absolute inset-0 flex items-center justify-center text-slate-500">주소 검색 로딩중...</div>)}</div>
+                            <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-white font-bold text-xl">SJ</span>
                             </div>
+                            <h2 className="text-2xl font-bold text-slate-800">
+                                {isSignUp ? "파트너 회원가입" : "파트너 로그인"}
+                            </h2>
+                            <p className="text-slate-500 text-sm mt-2">SJ Innovation 폐쇄형 몰에 오신 것을 환영합니다.</p>
                         </div>
-                    )}
+
+                        <form onSubmit={handleAuth} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">이메일</label>
+                                <input 
+                                    type="email" 
+                                    required
+                                    className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:outline-none"
+                                    placeholder="example@sj.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">비밀번호</label>
+                                <input 
+                                    type="password" 
+                                    required
+                                    className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:outline-none"
+                                    placeholder="6자리 이상 입력"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                            </div>
+
+                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+                            <button 
+                                type="submit" 
+                                disabled={loading}
+                                className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition-colors disabled:bg-slate-400"
+                            >
+                                {loading ? "처리중..." : (isSignUp ? "가입하기" : "로그인")}
+                            </button>
+                        </form>
+
+                        <div className="mt-6 text-center">
+                            <button 
+                                onClick={() => setIsSignUp(!isSignUp)}
+                                className="text-sm text-slate-600 hover:text-slate-900 underline"
+                            >
+                                {isSignUp ? "이미 계정이 있으신가요? 로그인" : "계정이 없으신가요? 회원가입"}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             );
         };
 
-        const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
-
-        // --- Main App Component ---
-        const App = () => {
-            const [isLoggedIn, setIsLoggedIn] = useState(false);
-            const [storeName, setStoreName] = useState("");
-            const [selectedCategory, setSelectedCategory] = useState("전체");
+        // [메인 쇼핑몰 컴포넌트]
+        const ShoppingMall = ({ user }) => {
             const [cart, setCart] = useState([]);
             const [isCartOpen, setIsCartOpen] = useState(false);
-            const [searchTerm, setSearchTerm] = useState("");
-            const [selectedProduct, setSelectedProduct] = useState(null);
+            const [selectedCategory, setSelectedCategory] = useState('전체');
+            const [searchTerm, setSearchTerm] = useState('');
 
-            useEffect(() => {
-                lucide.createIcons();
-            }, [isLoggedIn, cart, isCartOpen, selectedProduct]);
+            // 상품 데이터 (나중에 DB연동 가능)
+            const products = [
+                { id: 1, name: "고급 게이밍 마우스 G1", price: 45000, category: "전자기기", image: "🖱️" },
+                { id: 2, name: "기계식 키보드 K2", price: 89000, category: "전자기기", image: "⌨️" },
+                { id: 3, name: "무선 노이즈캔슬링 헤드셋", price: 120000, category: "음향기기", image: "🎧" },
+                { id: 4, name: "대용량 보조배터리 20000mAh", price: 35000, category: "액세서리", image: "🔋" },
+                { id: 5, name: "스마트워치 스트랩 (가죽)", price: 15000, category: "액세서리", image: "⌚" },
+                { id: 6, name: "USB-C 고속 충전 케이블", price: 8000, category: "액세서리", image: "🔌" },
+                { id: 7, name: "노트북 거치대 (알루미늄)", price: 25000, category: "오피스", image: "💻" },
+                { id: 8, name: "블루투스 스피커 Mini", price: 32000, category: "음향기기", image: "🔈" }
+            ];
 
-            const addToCart = (product, quantity = 1) => {
-                const existingItemIndex = cart.findIndex(item => item.id === product.id);
-                
-                if (existingItemIndex > -1) {
-                    const newCart = [...cart];
-                    newCart[existingItemIndex].quantity += quantity;
-                    setCart(newCart);
-                    alert(`${product.name} 수량이 ${quantity}개 추가되었습니다.`);
+            const categories = ["전체", ...new Set(products.map(p => p.category))];
+
+            const addToCart = (product) => {
+                const existingItem = cart.find(item => item.id === product.id);
+                if (existingItem) {
+                    setCart(cart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
                 } else {
-                    setCart([...cart, { ...product, quantity }]);
-                    alert(`${product.name}이(가) 장바구니에 ${quantity}개 담겼습니다.`);
+                    setCart([...cart, { ...product, quantity: 1 }]);
                 }
+                alert(`${product.name}이(가) 장바구니에 담겼습니다.`);
             };
 
-            const filteredProducts = PRODUCTS.filter(product => {
-                const matchesCategory = selectedCategory === "전체" || product.category === selectedCategory;
-                const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const filteredProducts = products.filter(item => {
+                const matchesCategory = selectedCategory === '전체' || item.category === selectedCategory;
+                const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
                 return matchesCategory && matchesSearch;
             });
 
-            const handleLogin = (name) => {
-                setStoreName(name || "티니핑월드 남대문점");
-                setIsLoggedIn(true);
+            const formatPrice = (price) => price.toLocaleString('ko-KR');
+            const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+            const handleLogout = async () => {
+                if(confirm("로그아웃 하시겠습니까?")) {
+                    await window.logOut(window.auth);
+                }
             };
 
-            if (!isLoggedIn) {
-                return <LoginPage onLogin={handleLogin} />;
-            }
-
-            if (selectedProduct) {
-                return (
-                    <ProductDetailPage 
-                        product={selectedProduct} 
-                        onBack={() => setSelectedProduct(null)} 
-                        onAddToCart={addToCart} 
-                    />
-                );
-            }
-
             return (
-                <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
-                    <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100">
-                        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setSelectedCategory("전체")}>
-                                <div className="bg-slate-800 w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-lg">S</div>
-                                <div className="flex flex-col"><span className="font-bold text-lg leading-none text-slate-800 hidden sm:block">SJ Innovation</span><span className="font-bold text-lg leading-none text-slate-800 sm:hidden">SJ</span></div>
-                            </div>
-                            
-                            <div className="flex-1 max-w-lg mx-4 relative hidden sm:block">
-                                <input type="text" placeholder="상품 검색 (캐릭터, 품명)" className="w-full bg-slate-100 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-slate-500 focus:bg-white transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                                <Icon name="Search" className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
-                            </div>
-
-                            <div className="flex items-center gap-3 sm:gap-4">
-                                <div className="sm:hidden relative">
-                                    <Icon name="Search" className="w-6 h-6 text-slate-600" />
+                <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 relative">
+                    {/* 네비게이션 */}
+                    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex justify-between items-center h-16">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-xs">SJ</div>
+                                    <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600">
+                                        SJ Innovation
+                                    </h1>
                                 </div>
-                                <button className="p-2 -mr-2 sm:mr-0 text-slate-600 hover:text-slate-900 relative" onClick={() => setIsCartOpen(true)}>
-                                    <Icon name="Boxes" className="w-6 h-6" />
-                                    {cart.length > 0 && (<span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{cart.length}</span>)}
-                                </button>
-                                <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
-                                <button className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hidden sm:flex">
-                                    <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center"><Icon name="User" className="w-4 h-4 text-slate-600" /></div>
-                                    <span className="hidden sm:block">{storeName} 사장님</span>
-                                </button>
-                                <button onClick={() => setIsLoggedIn(false)} className="text-slate-400 hover:text-slate-600 ml-2"><Icon name="LogOut" className="w-5 h-5" /></button>
+                                <div className="flex items-center gap-4">
+                                    <span className="text-sm text-slate-500 hidden sm:inline">{user.email}님</span>
+                                    <button onClick={() => setIsCartOpen(true)} className="relative p-2 text-slate-600 hover:text-slate-900 transition-colors">
+                                        <Icon name="ShoppingCart" className="w-6 h-6" />
+                                        {cart.length > 0 && (
+                                            <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full animate-bounce">
+                                                {cart.length}
+                                            </span>
+                                        )}
+                                    </button>
+                                    <button onClick={handleLogout} className="text-sm bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded-full">
+                                        로그아웃
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div className="sm:hidden px-4 pb-3">
-                            <div className="relative">
-                                <input type="text" placeholder="상품 검색..." className="w-full bg-slate-100 border-none rounded-lg py-2 pl-9 pr-4 text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                                <Icon name="Search" className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
-                            </div>
-                        </div>
-                    </header>
+                    </nav>
 
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-                        <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-6 sm:p-8 mb-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
-                            <div className="text-center md:text-left">
-                                <span className="bg-white/20 text-white px-3 py-1 rounded-full text-xs font-semibold mb-3 inline-block border border-white/30">SJ Innovation 파트너</span>
-                                <h2 className="text-2xl sm:text-3xl font-bold mb-2">겨울 시즌 신상 입고!</h2>
-                                <p className="text-slate-300 text-sm sm:text-base max-w-lg">티니핑 시즌5 굿즈 & 방한 용품 대량 입고.</p>
+                    {/* 메인 컨텐츠 */}
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        {/* 검색 및 필터 */}
+                        <div className="flex flex-col sm:flex-row gap-4 mb-8 items-center justify-between">
+                            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 w-full sm:w-auto scrollbar-hide">
+                                {categories.map(cat => (
+                                    <button 
+                                        key={cat}
+                                        onClick={() => setSelectedCategory(cat)}
+                                        className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                                            selectedCategory === cat 
+                                            ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' 
+                                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                                        }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
                             </div>
-                            <div className="flex gap-3 w-full md:w-auto justify-center">
-                                <div className="bg-white/10 backdrop-blur-sm p-3 sm:p-4 rounded-xl border border-white/20 text-center min-w-[80px] sm:min-w-[100px] flex-1 md:flex-none"><div className="text-xl sm:text-2xl font-bold">NEW</div><div className="text-[10px] sm:text-xs text-slate-300">신규 캐릭터</div></div>
-                                <div className="bg-white/10 backdrop-blur-sm p-3 sm:p-4 rounded-xl border border-white/20 text-center min-w-[80px] sm:min-w-[100px] flex-1 md:flex-none"><div className="text-xl sm:text-2xl font-bold">40%</div><div className="text-[10px] sm:text-xs text-slate-300">추가 할인</div></div>
+                            <div className="relative w-full sm:w-64">
+                                <Icon name="Search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input 
+                                    type="text" 
+                                    placeholder="상품 검색..." 
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 shadow-sm"
+                                />
                             </div>
                         </div>
 
-                        <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-                            {CATEGORIES.map((cat) => (
-                                <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 sm:px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${selectedCategory === cat ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:bg-slate-50"}`}>{cat}</button>
-                            ))}
-                        </div>
-
+                        {/* 상품 목록 */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-                            {filteredProducts.map((product) => (
-                                <div key={product.id} onClick={() => setSelectedProduct(product)} className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden flex flex-col cursor-pointer active:scale-[0.98]">
-                                    <div className="aspect-[4/3] bg-slate-100 relative flex items-center justify-center overflow-hidden">
-                                        <span className="text-5xl sm:text-6xl transform group-hover:scale-110 transition-transform duration-500">{product.image}</span>
-                                        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-slate-800 text-white text-[10px] sm:text-xs font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md shadow-sm">인기</div>
+                            {filteredProducts.map(item => (
+                                <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
+                                    <div className="aspect-square bg-slate-50 rounded-xl mb-4 flex items-center justify-center text-6xl group-hover:scale-105 transition-transform duration-300">
+                                        {item.image}
                                     </div>
-                                    <div className="p-3 sm:p-5 flex flex-col flex-grow">
-                                        <div className="text-[10px] sm:text-xs text-slate-400 mb-1 font-medium">{product.category}</div>
-                                        <h3 className="font-bold text-slate-800 mb-1 sm:mb-2 text-sm sm:text-lg leading-tight line-clamp-2">{product.name}</h3>
-                                        <div className="flex items-center gap-1 mb-2 sm:mb-4"><Icon name="Store" className="w-3 h-3 sm:w-4 sm:h-4 text-slate-400" /><span className="text-xs sm:text-sm font-medium text-slate-600">{product.rating}</span></div>
-                                        <div className="mt-auto">
-                                            <div className="flex justify-between items-center mb-0.5 sm:mb-1"><span className="text-[10px] sm:text-xs text-slate-400">권장가</span><span className="text-[10px] sm:text-xs text-slate-400 line-through">₩{formatPrice(product.originPrice)}</span></div>
-                                            <div className="flex justify-between items-baseline mb-2 sm:mb-3"><span className="text-xs sm:text-sm font-bold text-slate-700">공급가</span><span className="text-base sm:text-xl font-bold text-slate-800">₩{formatPrice(product.price)}</span></div>
-                                            <button className="w-full bg-slate-50 text-slate-700 border border-slate-200 group-hover:bg-slate-800 group-hover:text-white group-hover:border-transparent font-medium py-2 sm:py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                                                <Icon name="Search" className="w-3 h-3 sm:w-4 sm:h-4" />
-                                                상세
+                                    <div className="space-y-2">
+                                        <div className="text-xs text-slate-500 font-medium px-2 py-1 bg-slate-100 rounded-md inline-block">{item.category}</div>
+                                        <h3 className="font-bold text-slate-800 line-clamp-1">{item.name}</h3>
+                                        <div className="flex items-center justify-between pt-2">
+                                            <span className="font-bold text-lg text-slate-900">₩{formatPrice(item.price)}</span>
+                                            <button 
+                                                onClick={() => addToCart(item)}
+                                                className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-slate-700 transition-colors shadow-lg shadow-slate-900/30 active:scale-95"
+                                            >
+                                                <Icon name="Plus" className="w-5 h-5" />
                                             </button>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        {filteredProducts.length === 0 && (<div className="text-center py-20 text-slate-400">검색 결과가 없습니다.</div>)}
+
+                        {filteredProducts.length === 0 && (
+                            <div className="text-center py-20 text-slate-400">
+                                검색 결과가 없습니다.
+                            </div>
+                        )}
                     </main>
 
+                    {/* 장바구니 모달 */}
                     {isCartOpen && (
                         <div className="fixed inset-0 z-50 flex justify-end">
                             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setIsCartOpen(false)}></div>
                             <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-                                <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50"><h2 className="font-bold text-lg">발주 목록 ({cart.length})</h2><button onClick={() => setIsCartOpen(false)} className="p-2 hover:bg-slate-200 rounded-full"><Icon name="X" className="w-5 h-5 text-slate-500" /></button></div>
+                                <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                    <h2 className="font-bold text-xl">발주 목록 <span className="text-slate-500 text-sm font-normal">({cart.length})</span></h2>
+                                    <button onClick={() => setIsCartOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                                        <Icon name="X" className="w-6 h-6" />
+                                    </button>
+                                </div>
                                 <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
                                     {cart.length === 0 ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-slate-400"><Icon name="Boxes" className="w-12 h-12 mb-4 opacity-20" /><p>발주할 상품이 없습니다.</p></div>
+                                        <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                                            <Icon name="Boxes" className="w-12 h-12 mb-4 opacity-20" />
+                                            <p>발주할 상품이 없습니다.</p>
+                                        </div>
                                     ) : (
                                         cart.map((item, idx) => (
                                             <div key={idx} className="flex gap-4 items-center py-3 border-b border-slate-100 last:border-0">
@@ -512,33 +330,90 @@
                                                         <span className="text-slate-800 font-bold text-sm">₩{formatPrice(item.price * item.quantity)}</span>
                                                     </div>
                                                 </div>
-                                                <button onClick={() => { const newCart = [...cart]; newCart.splice(idx, 1); setCart(newCart); }} className="text-slate-400 hover:text-red-500 p-2"><Icon name="X" className="w-4 h-4" /></button>
+                                                <button 
+                                                    onClick={() => {
+                                                        const newCart = [...cart];
+                                                        newCart.splice(idx, 1);
+                                                        setCart(newCart);
+                                                    }} 
+                                                    className="text-slate-400 hover:text-red-500 p-2"
+                                                >
+                                                    <Icon name="X" className="w-4 h-4" />
+                                                </button>
                                             </div>
                                         ))
                                     )}
                                 </div>
                                 {cart.length > 0 && (
                                     <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50">
-                                        <div className="flex justify-between mb-4"><span className="text-slate-600">총 공급가액</span><span className="font-bold text-xl text-slate-800">₩{formatPrice(cart.reduce((sum, item) => sum + (item.price * item.quantity), 0))}</span></div>
-                                        <button className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg transition-colors flex justify-center items-center gap-2"><Icon name="Truck" className="w-5 h-5" />발주 신청하기</button>
+                                        <div className="flex justify-between mb-4">
+                                            <span className="text-slate-600">총 공급가액</span>
+                                            <span className="font-bold text-xl text-slate-800">₩{formatPrice(totalAmount)}</span>
+                                        </div>
+                                        <button className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg transition-colors flex justify-center items-center gap-2">
+                                            <Icon name="Truck" className="w-5 h-5" />
+                                            발주 신청하기
+                                        </button>
                                     </div>
                                 )}
                             </div>
                         </div>
                     )}
-                    
+
+                    {/* 푸터 */}
                     <footer className="bg-slate-600 text-white py-12 mt-10">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:text-left">
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 border-b border-slate-500 pb-10">
-                                <div className="flex flex-col items-center sm:items-start"><div className="flex items-center gap-3 mb-4"><div className="w-10 h-10 bg-white rounded-full"></div><div className="flex flex-col font-bold"><span>SJ INNOVATION</span></div></div></div>
-                                <div><h5 className="font-bold mb-4 text-slate-200">CONTACT</h5><p className="text-sm text-slate-300">070-7816-9999</p></div>
-                                <div className="md:col-span-1"><h5 className="font-bold mb-4 text-slate-200">ADDRESS</h5><div className="text-sm text-slate-300 space-y-1"><p>인천 광역시 갈산동 94 인천테크노밸리 U1센터</p><p>A동 S615호</p><p>사업자 번호 : 373-28-01764</p><p>대표 : 윤 병 민</p></div></div>
+                                <div className="flex flex-col items-center sm:items-start">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-10 h-10 bg-white rounded-full"></div>
+                                        <div className="flex flex-col font-bold"><span>SJ INNOVATION</span></div>
+                                    </div>
+                                    <h5 className="font-bold mb-4 text-slate-200">CONTACT</h5>
+                                    <p className="text-sm text-slate-300">070-7816-9999</p>
+                                </div>
+                                <div className="md:col-span-1">
+                                    <h5 className="font-bold mb-4 text-slate-200">ADDRESS</h5>
+                                    <div className="text-sm text-slate-300 space-y-1">
+                                        <p>인천 광역시 갈산동 94 인천테크노밸리 U1센터</p>
+                                        <p>A동 615호</p>
+                                        <p>사업자 번호 : 373-28-01764</p>
+                                        <p>대표 : 윤 병 민</p>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-300 gap-4"><div className="mb-0">Privacy Policy</div><div>copyright (c) SJ Innovation. All rights reserved.</div></div>
+                            <div className="pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-300 gap-4">
+                                <div className="mb-0">Privacy Policy</div>
+                                <div>copyright (c) SJ Innovation. All rights reserved.</div>
+                            </div>
                         </div>
                     </footer>
                 </div>
             );
+        };
+
+        // [최상위 앱 컴포넌트]
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                // 파이어베이스가 로그인 상태를 확인하는 동안 기다림
+                const unsubscribe = window.auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        setUser(user);
+                    } else {
+                        setUser(null);
+                    }
+                    setLoading(false);
+                });
+                return () => unsubscribe();
+            }, []);
+
+            if (loading) return <div className="flex items-center justify-center h-screen bg-slate-50">로딩중...</div>;
+
+            // 로그인이 안되어 있으면 로그인 화면, 되어 있으면 쇼핑몰 화면
+            return user ? <ShoppingMall user={user} /> : <LoginScreen />;
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
