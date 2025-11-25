@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (Final Update)</title>
+    <title>SJ 파트너스 몰 (Final)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -62,12 +62,12 @@
 
         // --- 초기 데이터 ---
         const INITIAL_PRODUCTS = [
-            { id: "p1", name: "캐치티니핑 하츄핑 방한용품 모음전", category: "유아동의류", price: 11900, originPrice: 23000, rating: 4.9, image: "🧣", description: "겨울 시즌 필수 아이템!", stock: 100 },
-            { id: "p2", name: "티니핑 마스크 시즌3 새부리형 소형 (20매)", category: "생활/건강", price: 12900, originPrice: 15900, rating: 4.8, image: "😷", description: "숨쉬기 편한 새부리형 구조.", stock: 500 },
-            { id: "p3", name: "슈팅스타 캐치티니핑 시즌5 하츄핑 유아 털목도리", category: "유아동의류", price: 12900, originPrice: 21900, rating: 4.9, image: "🧣", description: "포근한 감촉.", stock: 50 },
-            { id: "p4", name: "슈팅스타 캐치티니핑 패딩 벙어리 장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수 기능.", stock: 60 },
-            { id: "p5", name: "슈팅스타 캐치티니핑 모자목도리 세트", category: "유아동의류", price: 16900, originPrice: 29900, rating: 5.0, image: "🧢", description: "일체형 방한 모자.", stock: 40 },
-            { id: "p6", name: "이탈리안 브레인롯 랜덤 딱지 (25팩)", category: "완구/교구", price: 22900, originPrice: 39900, rating: 4.8, image: "🎲", description: "초등학생 대유행.", stock: 200 },
+            { id: "p1", name: "캐치티니핑 하츄핑 방한용품 모음전", category: "유아동의류", price: 11900, originPrice: 23000, rating: 4.9, image: "🧣", description: "겨울 시즌 필수 아이템! 아이들이 좋아하는 하츄핑 캐릭터가 그려진 따뜻한 방한 장갑과 목도리 세트입니다.", stock: 100 },
+            { id: "p2", name: "티니핑 마스크 시즌3 새부리형 소형 (20매)", category: "생활/건강", price: 12900, originPrice: 15900, rating: 4.8, image: "😷", description: "숨쉬기 편한 새부리형 구조의 어린이용 마스크입니다.", stock: 500 },
+            { id: "p3", name: "슈팅스타 캐치티니핑 시즌5 하츄핑 유아 털목도리", category: "유아동의류", price: 12900, originPrice: 21900, rating: 4.9, image: "🧣", description: "포근한 감촉의 유아용 털목도리입니다.", stock: 50 },
+            { id: "p4", name: "슈팅스타 캐치티니핑 패딩 벙어리 장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수 기능이 있는 패딩 소재의 벙어리 장갑입니다.", stock: 60 },
+            { id: "p5", name: "슈팅스타 캐치티니핑 모자목도리 세트", category: "유아동의류", price: 16900, originPrice: 29900, rating: 5.0, image: "🧢", description: "모자와 목도리가 하나로! 일체형 방한 모자입니다.", stock: 40 },
+            { id: "p6", name: "이탈리안 브레인롯 랜덤 딱지 (25팩)", category: "완구/교구", price: 22900, originPrice: 39900, rating: 4.8, image: "🎲", description: "초등학생 대유행! 랜덤 팩 세트.", stock: 200 },
             { id: "p7", name: "슈팅스타 자석 글자 한글플러스", category: "완구/교구", price: 39900, originPrice: 49900, rating: 4.9, image: "🧲", description: "자석 교구.", stock: 30 },
             { id: "p8", name: "캐치티니핑 올인원 교정 젓가락 스푼 포크 세트", category: "주방/식기", price: 13900, originPrice: 17500, rating: 4.8, image: "🥢", description: "교정 젓가락.", stock: 150 },
             { id: "p9", name: "슈팅스타 캐치티니핑 논슬립 스텐컵 (왕자핑)", category: "주방/식기", price: 9900, originPrice: 15000, rating: 4.7, image: "🥛", description: "미끄럼 방지.", stock: 80 },
@@ -91,22 +91,16 @@
         // --------------------------------------------------------
         const MyPage = ({ user, onClose }) => {
             const [myOrders, setMyOrders] = useState([]);
-            const [tab, setTab] = useState("info"); // info or orders
+            const [tab, setTab] = useState("info");
 
             useEffect(() => {
                 const fetchMyOrders = async () => {
-                    if(!window.fs) return;
-                    const { collection, query, where, orderBy, getDocs } = window.fs;
+                    if(!window.fs || !window.auth.currentUser) return;
+                    const { collection, query, where, getDocs } = window.fs;
                     try {
-                        // 내 주문만 가져오기
-                        const q = query(
-                            collection(window.db, "orders"),
-                            where("userId", "==", window.auth.currentUser.uid)
-                        );
+                        const q = query(collection(window.db, "orders"), where("userId", "==", window.auth.currentUser.uid));
                         const snap = await getDocs(q);
-                        // 클라이언트에서 정렬 (복합 색인 문제 방지)
-                        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-                                              .sort((a,b) => new Date(b.date) - new Date(a.date));
+                        const list = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.date) - new Date(a.date));
                         setMyOrders(list);
                     } catch(e) { console.error(e); }
                 };
@@ -115,24 +109,24 @@
             }, []);
 
             const handleCancelOrder = async (id) => {
-                if(!confirm("주문을 취소하시겠습니까?")) return;
+                if(!confirm("주문을 취소하시겠습니까? (접수대기 상태만 취소 가능)")) return;
                 try {
                     await window.fs.updateDoc(window.fs.doc(window.db, "orders", id), { status: "주문취소" });
                     setMyOrders(prev => prev.map(o => o.id === id ? { ...o, status: "주문취소" } : o));
-                    alert("취소되었습니다.");
+                    alert("주문이 취소되었습니다.");
                 } catch(e) { alert("취소 실패: " + e.message); }
             };
 
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300">
                     <div className="bg-white w-full max-w-2xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in duration-200">
                         <div className="p-4 border-b flex justify-between items-center bg-slate-50">
                             <h2 className="font-bold text-xl">마이페이지</h2>
-                            <button onClick={onClose}><Icon name="X" /></button>
+                            <button onClick={onClose} className="hover:bg-slate-200 p-2 rounded-full"><Icon name="X" className="w-6 h-6" /></button>
                         </div>
                         <div className="flex border-b">
-                            <button onClick={()=>setTab("info")} className={`flex-1 py-3 font-bold ${tab==="info"?"border-b-2 border-slate-800 text-slate-900":"text-slate-400"}`}>내 정보</button>
-                            <button onClick={()=>setTab("orders")} className={`flex-1 py-3 font-bold ${tab==="orders"?"border-b-2 border-slate-800 text-slate-900":"text-slate-400"}`}>주문 내역</button>
+                            <button onClick={()=>setTab("info")} className={`flex-1 py-3 font-bold transition-all ${tab==="info"?"border-b-2 border-slate-800 text-slate-900":"text-slate-400"}`}>내 정보</button>
+                            <button onClick={()=>setTab("orders")} className={`flex-1 py-3 font-bold transition-all ${tab==="orders"?"border-b-2 border-slate-800 text-slate-900":"text-slate-400"}`}>주문 내역</button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-6">
                             {tab === "info" ? (
@@ -151,7 +145,7 @@
                                 <div className="space-y-4">
                                     {myOrders.length === 0 ? <div className="text-center text-slate-400 py-10">주문 내역이 없습니다.</div> : 
                                     myOrders.map(order => (
-                                        <div key={order.id} className="border rounded-xl p-4 shadow-sm">
+                                        <div key={order.id} className="border rounded-xl p-4 shadow-sm transition-all hover:shadow-md">
                                             <div className="flex justify-between items-center mb-2 border-b pb-2">
                                                 <span className="text-xs text-slate-500">{new Date(order.date).toLocaleString()}</span>
                                                 <span className={`text-xs font-bold px-2 py-1 rounded ${order.status==='접수대기'?'bg-blue-100 text-blue-600':order.status==='주문취소'?'bg-red-100 text-red-600':'bg-green-100 text-green-600'}`}>{order.status}</span>
@@ -166,7 +160,7 @@
                                             </div>
                                             <div className="flex justify-between items-center pt-2 border-t">
                                                 <span className="font-bold">총 {formatPrice(order.totalAmount)}원</span>
-                                                {order.status === "접수대기" && <button onClick={()=>handleCancelOrder(order.id)} className="text-xs bg-slate-200 px-3 py-1 rounded hover:bg-slate-300">주문취소</button>}
+                                                {order.status === "접수대기" && <button onClick={()=>handleCancelOrder(order.id)} className="text-xs bg-slate-200 px-3 py-1 rounded hover:bg-slate-300 transition-colors">주문취소</button>}
                                             </div>
                                         </div>
                                     ))}
@@ -179,7 +173,7 @@
         };
 
         // --------------------------------------------------------
-        // [1] 관리자 페이지 (회원 상세 보기 추가)
+        // [1] 관리자 페이지 (회원 상세 보기 개선)
         // --------------------------------------------------------
         const AdminPage = ({ onLogout }) => {
             const [products, setProducts] = useState([]);
@@ -219,7 +213,7 @@
             };
 
             const handleDeleteUser = async (id) => {
-                if(!confirm("정말 삭제하시겠습니까?")) return;
+                if(!confirm("정말 이 회원을 삭제하시겠습니까?")) return;
                 try {
                     await window.fs.deleteDoc(window.fs.doc(window.db, "users", id));
                     setUsers(prev => prev.filter(u => u.id !== id));
@@ -240,30 +234,29 @@
                             <span className="bg-red-500 text-xs px-2 py-1 rounded font-bold">ADMIN</span>
                             <span className="font-bold text-lg">SJ 관리자 모드</span>
                         </div>
-                        <button onClick={onLogout} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold text-sm">로그아웃</button>
+                        <button onClick={onLogout} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold text-sm transition-colors">로그아웃</button>
                     </nav>
                     <div className="max-w-7xl mx-auto p-4 sm:p-6">
                         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                            <button onClick={()=>setTab("orders")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap ${tab==="orders"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>📦 주문 현황</button>
-                            <button onClick={()=>setTab("users")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap ${tab==="users"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>👥 회원 관리</button>
-                            <button onClick={()=>setTab("products")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap ${tab==="products"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>🏷️ 상품 관리</button>
+                            <button onClick={()=>setTab("orders")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all ${tab==="orders"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>📦 주문 현황</button>
+                            <button onClick={()=>setTab("users")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all ${tab==="users"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>👥 회원 관리</button>
+                            <button onClick={()=>setTab("products")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all ${tab==="products"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>🏷️ 상품 관리</button>
                         </div>
 
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
                             <div className="overflow-x-auto">
                                 {tab === "orders" && (
                                     <table className="w-full text-left text-sm whitespace-nowrap">
-                                        <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">주문일시</th><th className="p-4">주문자</th><th className="p-4">주문내역</th><th className="p-4">총금액</th><th className="p-4">상태</th></tr></thead>
+                                        <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">주문일시</th><th className="p-4">주문자</th><th className="p-4">내역</th><th className="p-4">금액</th><th className="p-4">상태</th></tr></thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {orders.length === 0 ? <tr><td colSpan="5" className="p-8 text-center text-slate-400">주문 내역이 없습니다.</td></tr> : 
-                                            orders.map(o => (
-                                                <tr key={o.id} className="hover:bg-slate-50">
+                                            {orders.length===0?<tr><td colSpan="5" className="p-8 text-center text-slate-400">주문이 없습니다.</td></tr> : orders.map(o=>(
+                                                <tr key={o.id} className="hover:bg-slate-50 transition-all">
                                                     <td className="p-4 text-slate-500">{new Date(o.date).toLocaleString()}</td>
                                                     <td className="p-4 font-bold">{o.userName}<div className="text-xs font-normal text-slate-400">{o.userEmail}</div></td>
                                                     <td className="p-4 max-w-xs truncate">{o.items.length}건: {o.items[0].name} 등</td>
                                                     <td className="p-4 font-bold text-indigo-600">₩{formatPrice(o.totalAmount)}</td>
                                                     <td className="p-4">
-                                                        <select value={o.status} onChange={(e)=>handleOrderStatus(o.id, e.target.value)} className={`p-1 rounded text-xs font-bold border ${o.status==='주문취소'?'text-red-500':''}`}>
+                                                        <select value={o.status} onChange={(e)=>handleOrderStatus(o.id, e.target.value)} className={`p-1 rounded text-xs font-bold border transition-colors ${o.status==='주문취소'?'text-red-500':''}`}>
                                                             <option value="접수대기">접수대기</option><option value="배송중">배송중</option><option value="배송완료">배송완료</option><option value="주문취소">주문취소</option>
                                                         </select>
                                                     </td>
@@ -274,17 +267,16 @@
                                 )}
                                 {tab === "users" && (
                                     <table className="w-full text-left text-sm whitespace-nowrap">
-                                        <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">연락처</th><th className="p-4">이메일</th><th className="p-4">관리</th></tr></thead>
+                                        <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">관리</th></tr></thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {users.map(u => (
-                                                <tr key={u.id} className="hover:bg-slate-50">
+                                                <tr key={u.id} className="hover:bg-slate-50 transition-all">
                                                     <td className="p-4 font-bold">{u.storeName}</td>
                                                     <td className="p-4">{u.repName}</td>
-                                                    <td className="p-4">{u.mobile}</td>
                                                     <td className="p-4 text-slate-500">{u.email}</td>
                                                     <td className="p-4 flex gap-2">
-                                                        <button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-2 py-1 rounded font-bold text-xs">상세</button>
-                                                        <button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-2 py-1 rounded font-bold text-xs">삭제</button>
+                                                        <button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs hover:bg-blue-200 transition-colors">상세</button>
+                                                        <button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs hover:bg-red-200 transition-colors">삭제</button>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -296,9 +288,9 @@
                                         <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">상품명</th><th className="p-4 w-32">재고</th></tr></thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {products.map(p => (
-                                                <tr key={p.id} className="hover:bg-slate-50">
+                                                <tr key={p.id} className="hover:bg-slate-50 transition-all">
                                                     <td className="p-4 font-medium">{p.name}</td>
-                                                    <td className="p-4"><input type="number" value={p.stock} onChange={(e) => handleStockUpdate(p.id, e.target.value)} className="w-20 border border-slate-300 rounded text-center p-1" /></td>
+                                                    <td className="p-4"><input type="number" value={p.stock} onChange={(e) => handleStockUpdate(p.id, e.target.value)} className="w-20 border border-slate-300 rounded text-center p-1 focus:ring-2 focus:ring-blue-500 outline-none transition-colors" /></td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -309,18 +301,16 @@
                     </div>
                     {/* 회원 상세 팝업 */}
                     {selectedUser && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                            <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative">
-                                <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4"><Icon name="X"/></button>
-                                <h3 className="font-bold text-lg mb-4">회원 상세 정보</h3>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300">
+                            <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative animate-in zoom-in duration-200">
+                                <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100"><Icon name="X" className="w-6 h-6" /></button>
+                                <h3 className="font-bold text-lg mb-4 border-b pb-2">회원 상세 정보</h3>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">상호명</span><span className="font-bold">{selectedUser.storeName}</span></div>
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">대표자</span><span>{selectedUser.repName}</span></div>
-                                    <div className="flex border-b pb-1"><span className="w-24 text-slate-500">아이디</span><span>{selectedUser.displayId}</span></div>
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">이메일</span><span>{selectedUser.email}</span></div>
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">연락처</span><span>{selectedUser.mobile}</span></div>
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">사업자번호</span><span>{selectedUser.businessNumber}</span></div>
-                                    <div className="flex border-b pb-1"><span className="w-24 text-slate-500">업태/종목</span><span>{selectedUser.businessCategory} / {selectedUser.businessItem}</span></div>
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">주소</span><span>{selectedUser.address}</span></div>
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">가입일</span><span>{new Date(selectedUser.joinedAt).toLocaleDateString()}</span></div>
                                 </div>
@@ -369,7 +359,8 @@
                         if(formData.password !== formData.confirmPassword) { alert("비밀번호 불일치"); setLoading(false); return; }
                         if(!formData.email.includes("@")) { alert("이메일 형식을 확인해주세요"); setLoading(false); return; }
                         const cred = await window.createUser(window.auth, formData.email, formData.password);
-                        await window.fs.setDoc(window.fs.doc(window.db, "users", cred.user.uid), {
+                        const { doc, setDoc } = window.fs;
+                        await setDoc(doc(window.db, "users", cred.user.uid), {
                             email: formData.email, displayId: formData.username, name: formData.name, mobile: formData.mobile,
                             address: `${formData.address} ${formData.addressDetail}`, businessType: formData.businessType,
                             storeName: formData.storeName, repName: formData.repName, businessNumber: formData.businessNumber,
@@ -389,13 +380,13 @@
 
             return (
                 <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8">
-                    <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all ${isLoginMode?'max-w-md p-8':'max-w-3xl p-8'}`}>
+                    <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all duration-300 ${isLoginMode?'max-w-md p-8':'max-w-3xl p-8'}`}>
                         <div className="text-center mb-8"><div className="bg-slate-800 w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4 text-white text-2xl font-bold">S</div><h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1><p className="text-slate-500 mt-2 text-sm">SJ Innovation</p></div>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {isLoginMode ? (
                                 <div className="space-y-4">
-                                    <div><label className="block text-sm font-bold mb-1 text-slate-700">아이디 (이메일)</label><input name="username" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none" onChange={handleChange} required placeholder="example@naver.com" /></div>
-                                    <div><label className="block text-sm font-bold mb-1 text-slate-700">비밀번호</label><input name="password" type="password" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none" onChange={handleChange} required /></div>
+                                    <div><label className="block text-sm font-bold mb-1 text-slate-700">아이디 (이메일)</label><input name="username" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none transition-all" onChange={handleChange} required placeholder="example@naver.com" /></div>
+                                    <div><label className="block text-sm font-bold mb-1 text-slate-700">비밀번호</label><input name="password" type="password" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none transition-all" onChange={handleChange} required /></div>
                                 </div>
                             ) : (
                                 <div className="space-y-6">
@@ -409,11 +400,11 @@
                                             <div><label className="block text-sm font-bold mb-1">연락처</label><input name="mobile" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
                                             <div><label className="block text-sm font-bold mb-1">이메일(로그인용)</label><input name="email" className="w-full p-2 border rounded" onChange={handleChange} required placeholder="example@naver.com" /></div>
                                         </div>
-                                        <div className="mt-4"><label className="block text-sm font-bold mb-1">주소</label><div className="flex gap-2 mb-2"><input value={formData.zipcode} readOnly className="w-24 p-2 border bg-slate-100 rounded" /><button type="button" onClick={()=>setIsAddrOpen(true)} className="bg-slate-600 text-white px-3 rounded text-sm">주소검색</button></div><input value={formData.address} readOnly className="w-full p-2 border bg-slate-100 rounded mb-2" /><input name="addressDetail" className="w-full p-2 border rounded" placeholder="상세주소" onChange={handleChange} /></div>
+                                        <div className="mt-4"><label className="block text-sm font-bold mb-1">주소</label><div className="flex gap-2 mb-2"><input value={formData.zipcode} readOnly className="w-24 p-2 border bg-slate-100 rounded" /><button type="button" onClick={()=>setIsAddrOpen(true)} className="bg-slate-600 text-white px-3 rounded text-sm hover:bg-slate-700 transition-colors">주소검색</button></div><input value={formData.address} readOnly className="w-full p-2 border bg-slate-100 rounded mb-2" /><input name="addressDetail" className="w-full p-2 border rounded" placeholder="상세주소" onChange={handleChange} /></div>
                                     </section>
                                     <section className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                         <h3 className="font-bold mb-4 border-b border-slate-200 pb-2 text-slate-700">사업자 정보 <span className="text-red-500">*</span></h3>
-                                        <div className="mb-4"><label className="block text-sm font-bold mb-2">사업 형태</label><div className="grid grid-cols-3 gap-3">{['문구/팬시점','과자/아이스크림','편의점','키즈카페','기타'].map(t=><label key={t} className="flex items-center gap-2 text-sm border p-2 rounded bg-white cursor-pointer"><input type="radio" name="businessType" value={t} checked={formData.businessType===t} onChange={handleChange} />{t}</label>)}</div></div>
+                                        <div className="mb-4"><label className="block text-sm font-bold mb-2">사업 형태</label><div className="grid grid-cols-3 gap-3">{['문구/팬시점','과자/아이스크림','편의점','키즈카페','기타'].map(t=><label key={t} className="flex items-center gap-2 text-sm border p-2 rounded bg-white cursor-pointer transition-colors"><input type="radio" name="businessType" value={t} checked={formData.businessType===t} onChange={handleChange} />{t}</label>)}</div></div>
                                         <div className="grid md:grid-cols-2 gap-4">
                                             <div><label className="block text-sm font-bold mb-1">상호명</label><input name="storeName" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
                                             <div><label className="block text-sm font-bold mb-1">대표자명</label><input name="repName" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
@@ -425,11 +416,11 @@
                                     </section>
                                 </div>
                             )}
-                            <button type="submit" disabled={loading} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-xl font-bold mt-6 transition-colors shadow-lg">{loading?"처리중...":(isLoginMode?"로그인하기":"회원가입 완료")}</button>
+                            <button type="submit" disabled={loading} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-xl font-bold mt-6 transition-all duration-300 shadow-lg">{loading?"처리중...":(isLoginMode?"로그인하기":"회원가입 완료")}</button>
                         </form>
-                        <div className="mt-6 text-center text-sm"><button onClick={()=>setIsLoginMode(!isLoginMode)} className="underline font-bold text-slate-600 hover:text-slate-900">{isLoginMode?"사업자 회원가입":"로그인하기"}</button></div>
+                        <div className="mt-6 text-center text-sm"><button onClick={()=>setIsLoginMode(!isLoginMode)} className="underline font-bold text-slate-600 hover:text-slate-900 transition-colors">{isLoginMode?"사업자 회원가입":"로그인하기"}</button></div>
                     </div>
-                    {isAddrOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative shadow-2xl flex flex-col"><div className="p-3 border-b flex justify-between font-bold bg-slate-50"><span>주소 검색</span><button onClick={()=>setIsAddrOpen(false)}><Icon name="X"/></button></div><div ref={addrWrapRef} className="flex-1 w-full bg-slate-100 relative"></div></div></div>}
+                    {isAddrOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300"><div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative shadow-2xl flex flex-col"><div className="p-3 border-b flex justify-between font-bold bg-slate-50"><span>주소 검색</span><button onClick={()=>setIsAddrOpen(false)} className="hover:bg-slate-100 p-1 rounded-full"><Icon name="X"/></button></div><div ref={addrWrapRef} className="flex-1 w-full bg-slate-100 relative"></div></div></div>}
                 </div>
             );
         };
@@ -441,7 +432,7 @@
             const [selectedCategory, setSelectedCategory] = useState("전체");
             const [searchTerm, setSearchTerm] = useState("");
             const [selectedProduct, setSelectedProduct] = useState(null);
-            const [showMyPage, setShowMyPage] = useState(false); // 마이페이지
+            const [showMyPage, setShowMyPage] = useState(false);
 
             useEffect(() => { lucide.createIcons(); }, [cart, isCartOpen, selectedProduct, showMyPage]);
 
@@ -449,6 +440,7 @@
                 setSelectedCategory("전체");
                 setSearchTerm("");
                 setSelectedProduct(null);
+                setShowMyPage(false); // 마이페이지 닫기
                 window.scrollTo(0, 0);
             };
 
@@ -463,7 +455,8 @@
 
             const handlePlaceOrder = async () => {
                 if(cart.length === 0) return;
-                if(!confirm("발주하시겠습니까?")) return;
+                if(!confirm("총 " + formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0)) + "원 발주하시겠습니까?")) return;
+                
                 try {
                     const { addDoc, collection } = window.fs;
                     await addDoc(collection(window.db, "orders"), {
@@ -487,32 +480,30 @@
                 return matchCat && matchSearch;
             });
 
-            // 상세 페이지 (뒤로가기 개선)
+            // 상세 페이지 (X 닫기 버튼 추가 및 Logo Home 링크 추가)
             const ProductDetail = ({ product, onBack, onAddToCart }) => {
                 const [qty, setQty] = useState(1);
                 return (
-                    <div className="animate-in slide-in-from-right duration-300 bg-white min-h-screen flex flex-col pb-[80px]">
-                        <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center gap-4">
-                            <button onClick={onBack} className="p-2 -ml-2 hover:bg-slate-100 rounded-full"><Icon name="ArrowLeft" className="w-8 h-8 text-slate-800" /></button>
+                    <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-right duration-300 min-h-screen flex flex-col pb-[80px]">
+                        <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center justify-between">
+                            <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full"><Icon name="ArrowLeft" className="w-7 h-7 text-slate-800" /></button>
                             <div className="flex-1 flex justify-center"><div className="font-bold text-lg bg-slate-800 text-white px-3 py-1 rounded cursor-pointer" onClick={goHome}>SJ Innovation</div></div>
-                            <div className="w-8"></div>
+                            <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full"><Icon name="X" className="w-6 h-6 text-slate-600" /></button>
                         </div>
                         <div className="flex-1 overflow-y-auto">
                             <div className="max-w-3xl mx-auto">
                                 <div className="bg-slate-50 aspect-square w-full flex items-center justify-center mb-6"><span className="text-[8rem] drop-shadow-2xl">{product.image}</span></div>
                                 <div className="px-5 pb-8">
-                                    <div className="flex items-center gap-2 mb-2"><span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">{product.category}</span><div className="flex items-center gap-1 text-yellow-500"><Icon name="Star" className="w-3 h-3 fill-current" /><span className="text-xs font-bold">{product.rating}</span></div></div>
-                                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4 leading-snug">{product.name}</h1>
                                     <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100"><span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{formatPrice(product.price)}</span><span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{formatPrice(product.originPrice)}</span><span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">{Math.round((1-product.price/product.originPrice)*100)}% OFF</span></div>
-                                    <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100"><Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" /><div><span className="font-bold block text-sm">최소 1카톤 발주 가능</span><span className="text-xs text-indigo-700 mt-1 block">도매 전용 상품으로 낱개 발주가 불가능하며, 카톤(박스) 단위로만 출고됩니다.</span></div></div>
-                                    <div className="space-y-8"><div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3><p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">{product.description}</p></div><div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 상세 정보</h3><div className="w-full bg-slate-100 rounded-xl min-h-[400px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 p-4 text-center"><Icon name="FileText" className="w-12 h-12 mb-4 opacity-30" /><span className="font-medium">상세 페이지 이미지 영역</span></div></div><div><h3 className="text-lg font-bold text-slate-900 mb-3">배송 정보</h3><div className="bg-slate-50 p-5 rounded-xl space-y-3 text-sm text-slate-600 border border-slate-100"><div className="flex gap-3 items-center"><Icon name="Truck" className="w-5 h-5 text-slate-400" /><span>평일 14시 이전 주문 시 당일 출고</span></div><div className="flex gap-3 items-center"><Icon name="Boxes" className="w-5 h-5 text-slate-400" /><span>박스 단위 발주 가능</span></div></div></div></div>
+                                    <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100"><Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" /><div><span className="font-bold block text-sm">최소 1카톤 발주 가능</span></div></div>
+                                    <div className="space-y-8"><div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3><p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">{product.description}</p></div></div>
                                 </div>
                             </div>
                         </div>
-                        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 sm:p-4 shadow z-30 safe-area-bottom">
+                        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 sm:p-4 shadow z-30 safe-area-bottom transition-all duration-300">
                             <div className="max-w-3xl mx-auto flex gap-3">
                                 <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1"><button onClick={()=>setQty(q=>Math.max(1,q-1))} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center"><Icon name="Minus" className="w-4 h-4"/></button><span className="font-bold w-8 text-center">{qty}</span><button onClick={()=>setQty(q=>q+1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center"><Icon name="Plus" className="w-4 h-4"/></button></div>
-                                <button onClick={()=>{onAddToCart(product, qty); onBack();}} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
+                                <button onClick={()=>{onAddToCart(product,qty); onBack();}} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-slate-900"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
                             </div>
                         </div>
                     </div>
@@ -523,9 +514,9 @@
 
             return (
                 <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
-                    <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100">
+                    <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100 transition-all duration-300">
                         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                            <div className="flex items-center gap-2 cursor-pointer" onClick={goHome}>
+                            <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
                                 <div className="bg-slate-800 w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-lg">S</div>
                                 <div className="flex flex-col"><span className="font-bold text-lg leading-none hidden sm:block">SJ Innovation</span></div>
                             </div>
@@ -534,15 +525,15 @@
                                 <Icon name="Search" className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
                             </div>
                             <div className="flex items-center gap-4">
-                                <button onClick={()=>setIsCartOpen(true)} className="relative p-2"><Icon name="Boxes" className="w-6 h-6" />{cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}</button>
+                                <button onClick={()=>setIsCartOpen(true)} className="relative p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="Boxes" className="w-6 h-6" />{cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}</button>
                                 <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
-                                <button onClick={()=>setShowMyPage(true)} className="flex items-center gap-2 text-sm font-medium hover:bg-slate-100 p-2 rounded-full"><div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center"><Icon name="User" className="w-4 h-4" /></div><span className="hidden sm:block">{user.storeName || "내 정보"}</span></button>
-                                <button onClick={onLogout} className="text-xs font-bold text-slate-500 hover:text-black border px-2 py-1 rounded">로그아웃</button>
+                                <button onClick={()=>setShowMyPage(true)} className="flex items-center gap-2 text-sm font-medium hover:bg-slate-100 p-2 rounded-full transition-all"><div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center"><Icon name="User" className="w-4 h-4" /></div><span className="hidden sm:block">{user.storeName || "내 정보"}</span></button>
+                                <button onClick={onLogout} className="bg-slate-200 hover:bg-red-500 hover:text-white px-3 py-1 rounded font-bold text-sm transition-all">로그아웃</button>
                             </div>
                         </div>
                     </header>
 
-                    <main className="max-w-7xl mx-auto px-4 py-8">
+                    <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
                         <div className="bg-slate-900 rounded-2xl p-8 mb-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
                             <div><span className="bg-white/20 text-white px-3 py-1 rounded-full text-xs font-semibold mb-3 inline-block border border-white/30">SJ Innovation 파트너</span><h2 className="text-3xl font-bold mb-2">겨울 시즌 신상 입고!</h2><p className="text-slate-300">티니핑 시즌5 굿즈 & 방한 용품 대량 입고.</p></div>
                             <div className="flex gap-3"><div className="bg-white/10 p-4 rounded-xl text-center min-w-[100px]"><div className="text-2xl font-bold">NEW</div><div className="text-xs text-slate-300">신규 캐릭터</div></div><div className="bg-white/10 p-4 rounded-xl text-center min-w-[100px]"><div className="text-2xl font-bold">40%</div><div className="text-xs text-slate-300">추가 할인</div></div></div>
@@ -550,13 +541,13 @@
 
                         <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide">
                             {CATEGORIES.map(cat => (
-                                <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button>
+                                <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button>
                             ))}
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
                             {filteredProducts.map(p => (
-                                <div key={p.id} onClick={() => setSelectedProduct(p)} className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group overflow-hidden flex flex-col">
+                                <div key={p.id} onClick={() => setSelectedProduct(p)} className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group overflow-hidden flex flex-col">
                                     <div className="aspect-[4/3] bg-slate-100 relative flex items-center justify-center overflow-hidden">
                                         <span className="text-6xl transform group-hover:scale-110 transition-transform duration-500">{p.image}</span>
                                         <div className="absolute top-3 left-3 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">인기</div>
@@ -577,10 +568,10 @@
                     </main>
 
                     {isCartOpen && (
-                        <div className="fixed inset-0 z-50 flex justify-end">
+                        <div className="fixed inset-0 z-50 flex justify-end transition-all duration-300">
                             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={()=>setIsCartOpen(false)}></div>
-                            <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col p-5 animate-in slide-in-from-right">
-                                <div className="flex justify-between items-center mb-4 border-b pb-4"><h2 className="font-bold text-lg">발주 목록 ({cart.length})</h2><button onClick={()=>setIsCartOpen(false)}><Icon name="X" /></button></div>
+                            <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col p-5 animate-in slide-in-from-right duration-300">
+                                <div className="flex justify-between items-center mb-4 border-b pb-4"><h2 className="font-bold text-lg">발주 목록 ({cart.length})</h2><button onClick={()=>setIsCartOpen(false)} className="hover:bg-slate-100 p-2 rounded-full"><Icon name="X" /></button></div>
                                 <div className="flex-1 overflow-y-auto space-y-4">
                                     {cart.map((item, idx) => (
                                         <div key={idx} className="flex gap-4 border-b pb-4 items-center">
@@ -589,11 +580,11 @@
                                                 <h4 className="font-medium line-clamp-1">{item.name}</h4>
                                                 <div className="flex justify-between mt-1 text-sm"><span className="bg-slate-100 px-2 rounded">수량: {item.quantity}</span><span className="font-bold">₩{formatPrice(item.price * item.quantity)}</span></div>
                                             </div>
-                                            <button onClick={()=>{const nc=[...cart]; nc.splice(idx,1); setCart(nc);}} className="text-slate-400 hover:text-red-500"><Icon name="X" className="w-4 h-4" /></button>
+                                            <button onClick={()=>{const nc=[...cart]; nc.splice(idx,1); setCart(nc);}} className="text-slate-400 hover:text-red-500 transition-colors"><Icon name="X" className="w-4 h-4" /></button>
                                         </div>
                                     ))}
                                 </div>
-                                {cart.length>0 && <div className="border-t pt-4"><div className="flex justify-between mb-4"><span className="text-slate-600">총 공급가액</span><span className="font-bold text-xl">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span></div><button onClick={handlePlaceOrder} className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg flex justify-center items-center gap-2"><Icon name="Truck" className="w-5 h-5" />발주 신청하기</button></div>}
+                                {cart.length>0 && <div className="border-t pt-4"><div className="flex justify-between mb-4"><span className="text-slate-600">총 공급가액</span><span className="font-bold text-xl">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span></div><button onClick={handlePlaceOrder} className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg flex justify-center items-center gap-2 transition-all hover:bg-slate-900"><Icon name="Truck" className="w-5 h-5" />발주 신청하기</button></div>}
                             </div>
                         </div>
                     )}
