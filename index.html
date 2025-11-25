@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰</title>
+    <title>SJ 파트너스 몰 (Final v3)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -36,9 +36,12 @@
             window.createUser = createUserWithEmailAndPassword;
             window.signInUser = signInWithEmailAndPassword;
             window.logOut = signOut;
+            
+            // 로그인 유지 설정 함수 전역 등록
             window.setPersistence = setPersistence;
-            window.browserLocalPersistence = browserLocalPersistence; // 기억하기 (영구)
-            window.browserSessionPersistence = browserSessionPersistence; // 창 닫으면 삭제
+            window.browserLocalPersistence = browserLocalPersistence; // 브라우저 껐다 켜도 유지
+            window.browserSessionPersistence = browserSessionPersistence; // 끄면 삭제
+
             window.fs = { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where };
             console.log("Firebase Connected");
         } catch (e) { console.error("Firebase Init Error", e); }
@@ -63,24 +66,19 @@
 
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // --- [최종 수정] 상품 데이터 (사장님 요청 리스트) ---
-        // minQty: 최소 주문량 (1카톤 기준)
-        // cartonQty: 1카톤 당 수량 (동일하게 설정)
+        // --- [최종 데이터] 사장님 요청 리스트 14종 ---
         const INITIAL_PRODUCTS = [
-            // 젓가락 세트 (20개)
             { id: "new_p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
             { id: "new_p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
             { id: "new_p3", name: "올인원 교정젓가락풀세트 (반짝핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "반짝핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
             { id: "new_p4", name: "올인원 교정젓가락풀세트 (초롱핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "초롱핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
             
-            // 장갑/목도리 (20개)
             { id: "new_p5", name: "슈팅스타 캐치티니핑 하츄핑 모자목도리", category: "유아동의류", price: 16900, originPrice: 29900, image: "🧢", description: "하츄핑 캐릭터 모자/목도리 일체형.", stock: 100, minQty: 20, cartonQty: 20 },
             { id: "new_p6", name: "슈팅스타 캐치티니핑 하츄핑 벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, image: "🧤", description: "따뜻한 하츄핑 벙어리 장갑.", stock: 100, minQty: 20, cartonQty: 20 },
             { id: "new_p7", name: "슈팅스타 캐치티니핑 하츄핑 스키장갑", category: "유아동의류", price: 22900, originPrice: 32900, image: "🧤", description: "방수 기능이 탁월한 스키장갑.", stock: 100, minQty: 20, cartonQty: 20 },
             { id: "new_p8", name: "슈팅스타 캐치티니핑 하츄핑 베이직손가락장갑", category: "유아동의류", price: 16900, originPrice: 29900, image: "🧤", description: "활동성이 좋은 손가락 장갑.", stock: 100, minQty: 20, cartonQty: 20 },
             { id: "new_p9", name: "슈팅스타 캐치티니핑 하츄핑 털벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, image: "🧤", description: "부드러운 털 소재 벙어리 장갑.", stock: 100, minQty: 20, cartonQty: 20 },
 
-            // 기타 (10개 / 20개 / 16개)
             { id: "new_p10", name: "캐치티니핑 시즌6 미스터리 뱃지 1팩", category: "완구/교구", price: 8900, originPrice: 12900, image: "🌟", description: "랜덤 미스터리 뱃지 1팩.", stock: 200, minQty: 10, cartonQty: 10 },
             { id: "new_p11", name: "브레인롯 랜덤딱지 1박스", category: "완구/교구", price: 22900, originPrice: 39900, image: "🎲", description: "대유행 브레인롯 랜덤 딱지 1박스.", stock: 200, minQty: 10, cartonQty: 10 },
             { id: "new_p12", name: "젠바디 코로나 자가진단 키트", category: "생활/건강", price: 9350, originPrice: 13500, image: "🩺", description: "빠르고 정확한 자가진단 키트.", stock: 500, minQty: 20, cartonQty: 20 },
@@ -90,9 +88,84 @@
 
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-        // --------------------------------------------------------
-        // [1] 관리자 페이지
-        // --------------------------------------------------------
+        // [마이페이지]
+        const MyPage = ({ user, onClose }) => {
+            const [myOrders, setMyOrders] = useState([]);
+            const [tab, setTab] = useState("info");
+
+            useEffect(() => {
+                const fetchMyOrders = async () => {
+                    if(!window.fs || !window.auth.currentUser) return;
+                    const { collection, query, where, getDocs } = window.fs;
+                    try {
+                        const q = query(collection(window.db, "orders"), where("userId", "==", window.auth.currentUser.uid));
+                        const snap = await getDocs(q);
+                        const list = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.date) - new Date(a.date));
+                        setMyOrders(list);
+                    } catch(e) { console.error(e); }
+                };
+                fetchMyOrders();
+                lucide.createIcons();
+            }, []);
+
+            const handleCancelOrder = async (id) => {
+                if(!confirm("주문을 취소하시겠습니까?")) return;
+                try {
+                    await window.fs.updateDoc(window.fs.doc(window.db, "orders", id), { status: "주문취소" });
+                    setMyOrders(prev => prev.map(o => o.id === id ? { ...o, status: "주문취소" } : o));
+                    alert("주문이 취소되었습니다.");
+                } catch(e) { alert("실패: " + e.message); }
+            };
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300">
+                    <div className="bg-white w-full max-w-2xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in duration-200">
+                        <div className="p-4 border-b flex justify-between items-center bg-slate-50">
+                            <h2 className="font-bold text-xl">마이페이지</h2>
+                            <button onClick={onClose} className="hover:bg-slate-200 p-2 rounded-full"><Icon name="X" /></button>
+                        </div>
+                        <div className="flex border-b">
+                            <button onClick={()=>setTab("info")} className={`flex-1 py-3 font-bold ${tab==="info"?"border-b-2 border-slate-800 text-slate-900":"text-slate-400"}`}>내 정보</button>
+                            <button onClick={()=>setTab("orders")} className={`flex-1 py-3 font-bold ${tab==="orders"?"border-b-2 border-slate-800 text-slate-900":"text-slate-400"}`}>주문 내역</button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {tab === "info" ? (
+                                <div className="space-y-4 text-sm">
+                                    <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">상호명</div><div className="font-bold">{user.storeName}</div></div>
+                                    <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">대표자</div><div className="font-bold">{user.repName}</div></div>
+                                    <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">이메일</div><div className="font-bold">{user.email}</div></div>
+                                    <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">연락처</div><div className="font-bold">{user.mobile}</div></div>
+                                    <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">주소</div><div className="font-bold">{user.address}</div></div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {myOrders.length === 0 ? <div className="text-center text-slate-400 py-10">내역 없음</div> : 
+                                    myOrders.map(order => (
+                                        <div key={order.id} className="border rounded-xl p-4 shadow-sm">
+                                            <div className="flex justify-between items-center mb-2 border-b pb-2">
+                                                <span className="text-xs text-slate-500">{new Date(order.date).toLocaleString()}</span>
+                                                <span className={`text-xs font-bold px-2 py-1 rounded ${order.status==='접수대기'?'bg-blue-100 text-blue-600':order.status==='주문취소'?'bg-red-100 text-red-600':'bg-green-100 text-green-600'}`}>{order.status}</span>
+                                            </div>
+                                            <div className="space-y-1 mb-3 text-sm">
+                                                {order.items.map((item, i) => (
+                                                    <div key={i} className="flex justify-between"><span className="truncate w-2/3">{item.name}</span><span className="text-slate-500">{item.quantity}개</span></div>
+                                                ))}
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2 border-t">
+                                                <span className="font-bold">총 {formatPrice(order.totalAmount)}원</span>
+                                                {order.status === "접수대기" && <button onClick={()=>handleCancelOrder(order.id)} className="text-xs bg-slate-200 px-3 py-1 rounded hover:bg-slate-300">주문취소</button>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // [관리자 페이지]
         const AdminPage = ({ onLogout }) => {
             const [products, setProducts] = useState([]);
             const [users, setUsers] = useState([]);
@@ -105,8 +178,8 @@
             const fetchData = async () => {
                 if(!window.fs) return;
                 const { collection, getDocs, query, orderBy } = window.fs;
-                
-                const prodSnap = await getDocs(collection(window.db, "products"));
+                // DB 컬렉션 이름 products_final 로 변경 (초기화용)
+                const prodSnap = await getDocs(collection(window.db, "products_final"));
                 setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
                 const userSnap = await getDocs(collection(window.db, "users"));
@@ -125,114 +198,69 @@
             const handleStockUpdate = async (id, newStock) => {
                 const stockVal = parseInt(newStock);
                 setProducts(prev => prev.map(p => p.id === id ? { ...p, stock: stockVal } : p));
-                try {
-                    await window.fs.updateDoc(window.fs.doc(window.db, "products", id), { stock: stockVal });
-                } catch(e) { alert("저장 실패"); }
+                try { await window.fs.updateDoc(window.fs.doc(window.db, "products_final", id), { stock: stockVal }); } catch(e) { alert("실패"); }
             };
 
             const handleDeleteUser = async (id) => {
-                if(!confirm("정말 이 회원을 삭제하시겠습니까?")) return;
-                try {
-                    await window.fs.deleteDoc(window.fs.doc(window.db, "users", id));
-                    setUsers(prev => prev.filter(u => u.id !== id));
-                    alert("회원이 삭제되었습니다.");
-                } catch(e) { alert("오류: " + e.message); }
+                if(!confirm("삭제하시겠습니까?")) return;
+                try { await window.fs.deleteDoc(window.fs.doc(window.db, "users", id)); setUsers(prev => prev.filter(u => u.id !== id)); } catch(e) { alert(e.message); }
             };
 
             const handleOrderStatus = async (id, newStatus) => {
-                try {
-                    await window.fs.updateDoc(window.fs.doc(window.db, "orders", id), { status: newStatus });
-                    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
-                } catch(e) { alert("실패"); }
+                try { await window.fs.updateDoc(window.fs.doc(window.db, "orders", id), { status: newStatus }); setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o)); } catch(e) { alert("실패"); }
             };
 
             return (
                 <div className="min-h-screen bg-slate-100">
                     <nav className="bg-slate-900 text-white p-4 flex justify-between items-center shadow-md sticky top-0 z-50">
-                        <div className="flex items-center gap-2">
-                            <span className="bg-red-500 text-xs px-2 py-1 rounded font-bold">ADMIN</span>
-                            <span className="font-bold text-lg">SJ 관리자 모드</span>
-                        </div>
-                        <button onClick={onLogout} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold text-sm transition-all duration-300">로그아웃</button>
+                        <div className="flex items-center gap-2"><span className="bg-red-500 text-xs px-2 py-1 rounded font-bold">ADMIN</span><span className="font-bold text-lg">SJ 관리자</span></div>
+                        <button onClick={onLogout} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold text-sm">로그아웃</button>
                     </nav>
-                    <div className="max-w-7xl mx-auto p-4 sm:p-6">
-                        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                            <button onClick={()=>setTab("orders")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all duration-300 ${tab==="orders"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>📦 주문 현황</button>
-                            <button onClick={()=>setTab("users")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all duration-300 ${tab==="users"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>👥 회원 관리</button>
-                            <button onClick={()=>setTab("products")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all duration-300 ${tab==="products"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>🏷️ 상품 관리</button>
+                    <div className="max-w-7xl mx-auto p-4">
+                        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                            {["orders", "users", "products"].map(t => (
+                                <button key={t} onClick={()=>setTab(t)} className={`px-5 py-2 rounded-full font-bold uppercase ${tab===t?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>{t}</button>
+                            ))}
                         </div>
-
-                        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
-                            <div className="overflow-x-auto">
-                                {tab === "orders" && (
-                                    <table className="w-full text-left text-sm whitespace-nowrap">
-                                        <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">주문일시</th><th className="p-4">주문자</th><th className="p-4">내역</th><th className="p-4">금액</th><th className="p-4">상태</th></tr></thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {orders.length === 0 ? <tr><td colSpan="5" className="p-8 text-center text-slate-400">주문 내역이 없습니다.</td></tr> : orders.map(o=>(
-                                                <tr key={o.id} className="hover:bg-slate-50 transition-all duration-150">
-                                                    <td className="p-4 text-slate-500">{new Date(o.date).toLocaleString()}</td>
-                                                    <td className="p-4 font-bold">{o.userName}<div className="text-xs font-normal text-slate-400">{o.userEmail}</div></td>
-                                                    <td className="p-4 max-w-xs truncate">{o.items.length}건: {o.items[0].name} 등</td>
-                                                    <td className="p-4 font-bold text-indigo-600">₩{formatPrice(o.totalAmount)}</td>
-                                                    <td className="p-4">
-                                                        <select value={o.status} onChange={(e)=>handleOrderStatus(o.id, e.target.value)} className="border p-1 rounded text-xs font-bold transition-colors">
-                                                            <option value="접수대기">접수대기</option><option value="배송중">배송중</option><option value="배송완료">배송완료</option><option value="주문취소">주문취소</option>
-                                                        </select>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                                {tab === "users" && (
-                                    <table className="w-full text-left text-sm whitespace-nowrap">
-                                        <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">관리</th></tr></thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {users.map(u => (
-                                                <tr key={u.id} className="hover:bg-slate-50 transition-all duration-150">
-                                                    <td className="p-4 font-bold">{u.storeName}</td>
-                                                    <td className="p-4">{u.repName}</td>
-                                                    <td className="p-4 text-slate-500">{u.email}</td>
-                                                    <td className="p-4 flex gap-2">
-                                                        <button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs hover:bg-blue-200 transition-colors duration-150">상세</button>
-                                                        <button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs hover:bg-red-200 transition-colors duration-150">삭제</button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                                {tab === "products" && (
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">상품명</th><th className="p-4 w-32">재고</th></tr></thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {products.map(p => (
-                                                <tr key={p.id} className="hover:bg-slate-50 transition-all duration-150">
-                                                    <td className="p-4 font-medium">{p.name}</td>
-                                                    <td className="p-4"><input type="number" value={p.stock} onChange={(e) => handleStockUpdate(p.id, e.target.value)} className="w-20 border border-slate-300 rounded text-center p-1 focus:ring-2 focus:ring-blue-500 outline-none transition-colors" /></td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
+                        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200 overflow-x-auto">
+                            {tab === "orders" && (
+                                <table className="w-full text-left text-sm whitespace-nowrap">
+                                    <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">일시</th><th className="p-4">주문자</th><th className="p-4">내역</th><th className="p-4">금액</th><th className="p-4">상태</th></tr></thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {orders.map(o=>(<tr key={o.id} className="hover:bg-slate-50"><td className="p-4 text-slate-500">{new Date(o.date).toLocaleDateString()}</td><td className="p-4 font-bold">{o.userName}<div className="text-xs font-normal text-slate-400">{o.userEmail}</div></td><td className="p-4 max-w-xs truncate">{o.items.length}건</td><td className="p-4 font-bold text-indigo-600">₩{formatPrice(o.totalAmount)}</td><td className="p-4"><select value={o.status} onChange={(e)=>handleOrderStatus(o.id, e.target.value)} className="border p-1 rounded text-xs font-bold"><option value="접수대기">접수대기</option><option value="배송중">배송중</option><option value="배송완료">배송완료</option><option value="주문취소">주문취소</option></select></td></tr>))}
+                                    </tbody>
+                                </table>
+                            )}
+                            {tab === "users" && (
+                                <table className="w-full text-left text-sm whitespace-nowrap">
+                                    <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">관리</th></tr></thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {users.map(u=>(<tr key={u.id} className="hover:bg-slate-50"><td className="p-4 font-bold">{u.storeName}</td><td className="p-4">{u.repName}</td><td className="p-4">{u.email}</td><td className="p-4 flex gap-2"><button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs">삭제</button></td></tr>))}
+                                    </tbody>
+                                </table>
+                            )}
+                            {tab === "products" && (
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">상품명</th><th className="p-4">재고</th></tr></thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {products.map(p=>(<tr key={p.id} className="hover:bg-slate-50"><td className="p-4 font-medium">{p.name}</td><td className="p-4"><input type="number" value={p.stock} onChange={(e)=>handleStockUpdate(p.id, e.target.value)} className="w-20 border rounded text-center p-1" /></td></tr>))}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
-                    {/* 회원 상세 팝업 */}
                     {selectedUser && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300">
-                            <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative animate-in zoom-in duration-200">
-                                <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 transition-colors"><Icon name="X" className="w-6 h-6" /></button>
-                                <h3 className="font-bold text-lg mb-4 border-b pb-2">회원 상세 정보</h3>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                            <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative">
+                                <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4"><Icon name="X"/></button>
+                                <h3 className="font-bold text-lg mb-4 border-b pb-2">회원 상세</h3>
                                 <div className="space-y-2 text-sm">
-                                    <div className="flex border-b pb-1"><span className="w-24 text-slate-500">상호명</span><span className="font-bold">{selectedUser.storeName}</span></div>
-                                    <div className="flex border-b pb-1"><span className="w-24 text-slate-500">대표자</span><span>{selectedUser.repName}</span></div>
-                                    <div className="flex border-b pb-1"><span className="w-24 text-slate-500">이메일</span><span>{selectedUser.email}</span></div>
-                                    <div className="flex border-b pb-1"><span className="w-24 text-slate-500">연락처</span><span>{selectedUser.mobile}</span></div>
-                                    <div className="flex border-b pb-1"><span className="w-24 text-slate-500">사업자번호</span><span>{selectedUser.businessNumber}</span></div>
-                                    <div className="flex border-b pb-1"><span className="w-24 text-slate-500">업태/종목</span><span>{selectedUser.businessCategory} / {selectedUser.businessItem}</span></div>
-                                    <div className="flex border-b pb-1"><span className="w-24 text-slate-500">주소</span><span>{selectedUser.address}</span></div>
-                                    <div className="flex border-b pb-1"><span className="w-24 text-slate-500">가입일</span><span>{new Date(selectedUser.joinedAt).toLocaleDateString()}</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">상호명</span><span className="font-bold">{selectedUser.storeName}</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">대표자</span><span>{selectedUser.repName}</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">연락처</span><span>{selectedUser.mobile}</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">사업자번호</span><span>{selectedUser.businessNumber}</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">업태/종목</span><span>{selectedUser.businessCategory} / {selectedUser.businessItem}</span></div>
+                                    <div className="col-span-2 pt-2 border-t mt-2"><span className="text-slate-500 block mb-1">주소</span><span>{selectedUser.address}</span></div>
                                 </div>
                             </div>
                         </div>
@@ -241,11 +269,11 @@
             );
         };
 
-        // --- [로그인 페이지] (기억하기 추가) ---
+        // [로그인 페이지] (기억하기 기능)
         const LoginPage = ({ onAdminLogin }) => {
             const [isLoginMode, setIsLoginMode] = useState(true);
             const [isAddrOpen, setIsAddrOpen] = useState(false);
-            const [rememberMe, setRememberMe] = useState(false); // 기억하기 체크 상태
+            const [rememberMe, setRememberMe] = useState(false); // 기억하기 체크
             const addrWrapRef = useRef(null);
             const [loading, setLoading] = useState(false);
             const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '', name: '', mobile: '', email: '', zipcode: '', address: '', addressDetail: '', businessType: '문구/팬시점', storeName: '', repName: '', businessNumber: '', businessCategory: '', businessItem: '', taxEmail: '' });
@@ -271,11 +299,11 @@
                 const loginId = isLoginMode ? formData.username : formData.email;
                 
                 if(isLoginMode && loginId === 'sj' && formData.password === '0914') { onAdminLogin(); return; }
-                if(!window.auth) { alert("시스템 로딩중..."); setLoading(false); return; }
+                if(!window.auth) { alert("로딩중..."); setLoading(false); return; }
 
                 try {
                     if(isLoginMode) {
-                        // 기억하기 설정 (Local: 영구, Session: 창 닫으면 삭제)
+                        // 로그인 기억하기 설정
                         const persistence = rememberMe ? window.browserLocalPersistence : window.browserSessionPersistence;
                         await window.setPersistence(window.auth, persistence);
                         await window.signInUser(window.auth, formData.username, formData.password);
@@ -283,8 +311,7 @@
                         if(formData.password !== formData.confirmPassword) { alert("비밀번호 불일치"); setLoading(false); return; }
                         if(!formData.email.includes("@")) { alert("이메일 형식을 확인해주세요"); setLoading(false); return; }
                         const cred = await window.createUser(window.auth, formData.email, formData.password);
-                        const { doc, setDoc } = window.fs;
-                        await setDoc(doc(window.db, "users", cred.user.uid), {
+                        await window.fs.setDoc(window.fs.doc(window.db, "users", cred.user.uid), {
                             email: formData.email, displayId: formData.username, name: formData.name, mobile: formData.mobile,
                             address: `${formData.address} ${formData.addressDetail}`, businessType: formData.businessType,
                             storeName: formData.storeName, repName: formData.repName, businessNumber: formData.businessNumber,
@@ -294,8 +321,8 @@
                         alert("가입 완료! 자동 로그인됩니다.");
                     }
                 } catch(err) {
-                    if(err.code === 'auth/email-already-in-use') alert("이미 가입된 이메일입니다.");
-                    else if(err.code === 'auth/invalid-credential') alert("아이디 또는 비밀번호 오류");
+                    if(err.code === 'auth/email-already-in-use') alert("이미 가입된 이메일");
+                    else if(err.code === 'auth/invalid-credential') alert("아이디/비번 오류");
                     else alert("오류: " + err.message);
                     setLoading(false);
                 }
@@ -309,12 +336,9 @@
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {isLoginMode ? (
                                 <div className="space-y-4">
-                                    <div><label className="block text-sm font-bold mb-1 text-slate-700">아이디 (이메일)</label><input name="username" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none transition-all" onChange={handleChange} required placeholder="example@naver.com" /></div>
-                                    <div><label className="block text-sm font-bold mb-1 text-slate-700">비밀번호</label><input name="password" type="password" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none transition-all" onChange={handleChange} required /></div>
-                                    <div className="flex items-center gap-2">
-                                        <input type="checkbox" id="remember" className="w-4 h-4 accent-slate-800" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
-                                        <label htmlFor="remember" className="text-sm text-slate-600 cursor-pointer">로그인 정보 기억하기</label>
-                                    </div>
+                                    <div><label className="block text-sm font-bold mb-1 text-slate-700">아이디 (이메일)</label><input name="username" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none" onChange={handleChange} required placeholder="example@naver.com" /></div>
+                                    <div><label className="block text-sm font-bold mb-1 text-slate-700">비밀번호</label><input name="password" type="password" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none" onChange={handleChange} required /></div>
+                                    <div className="flex items-center gap-2"><input type="checkbox" id="remember" className="w-4 h-4 accent-slate-800" checked={rememberMe} onChange={e=>setRememberMe(e.target.checked)} /><label htmlFor="remember" className="text-sm text-slate-600 cursor-pointer">로그인 정보 기억하기</label></div>
                                 </div>
                             ) : (
                                 <div className="space-y-6">
@@ -408,13 +432,13 @@
                 return matchCat && matchSearch;
             });
 
-            // 상세 페이지 (최대 5박스 한정 및 수량 로직)
+            // 상세 페이지 (MOQ 및 5박스 한정 규칙)
             const ProductDetail = ({ product, onBack, onAddToCart }) => {
                 const [qty, setQty] = useState(product.minQty || 1);
                 
                 const handleQuantityChange = (delta) => {
                     const min = product.minQty || 1;
-                    const max = (product.cartonQty || 1) * 5; // 최대 5박스(카톤) 한정
+                    const max = (product.cartonQty || 1) * 5; // 최대 5박스
                     const newQuantity = qty + delta;
 
                     if (delta > 0) {
@@ -554,9 +578,10 @@
                     if (!window.fs) return;
                     const { collection, getDocs, doc, setDoc } = window.fs;
                     try {
-                        const snap = await getDocs(collection(window.db, "products"));
+                        // 창고 이름 변경 (products_final_v3) 하여 기존 데이터 무시하고 새 데이터 강제 업로드
+                        const snap = await getDocs(collection(window.db, "products_final_v3"));
                         if (snap.empty) {
-                            await Promise.all(INITIAL_PRODUCTS.map(p => setDoc(doc(window.db, "products", p.id), p)));
+                            await Promise.all(INITIAL_PRODUCTS.map(p => setDoc(doc(window.db, "products_final_v3", p.id), p)));
                             setProducts(INITIAL_PRODUCTS);
                         } else {
                             setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
