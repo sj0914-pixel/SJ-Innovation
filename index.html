@@ -59,19 +59,84 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        // 아이콘 로더 (렌더링 이슈 해결용)
+        const useLucide = (dependency) => {
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [dependency]);
+        };
+
         const Icon = ({ name, ...props }) => {
             const iconName = name.charAt(0).toLowerCase() + name.slice(1);
             return <i data-lucide={iconName} {...props}></i>;
         };
 
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
-
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
+
+        // --- [이미지 업로드 컴포넌트] ---
+        const ImageUploader = ({ label, onImageSelect, currentImage }) => {
+            const fileInputRef = useRef(null);
+            const [preview, setPreview] = useState(currentImage || "");
+
+            const handleFile = (file) => {
+                if (!file) return;
+                if (file.size > 1024 * 1024) { // 1MB 제한
+                    alert("이미지 용량이 너무 큽니다. (1MB 이하 권장)");
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setPreview(reader.result);
+                    onImageSelect(reader.result); // 부모에게 데이터 전달
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const onDrop = (e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            };
+
+            return (
+                <div className="mb-4">
+                    <label className="block mb-1 font-bold text-sm text-slate-700">{label}</label>
+                    <div 
+                        className="border-2 border-dashed border-slate-300 rounded-lg flex flex-col justify-center items-center h-32 cursor-pointer hover:bg-slate-50 transition-colors relative overflow-hidden bg-white"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={onDrop}
+                        onClick={() => fileInputRef.current.click()}
+                    >
+                        {preview && !preview.includes("📦") ? (
+                            <img src={preview} className="absolute inset-0 w-full h-full object-contain bg-slate-100" />
+                        ) : (
+                            <div className="text-center p-4">
+                                <div className="mx-auto bg-black text-white w-10 h-10 rounded-lg flex items-center justify-center mb-2">
+                                    <Icon name="ArrowDown" className="w-6 h-6" />
+                                </div>
+                                <p className="text-sm text-slate-500 font-medium">클릭 혹은 파일을 이곳에 드롭하세요.</p>
+                                <p className="text-xs text-slate-400 mt-1">파일당 최대 1MB</p>
+                            </div>
+                        )}
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            className="hidden" 
+                            accept="image/*" 
+                            onChange={(e) => handleFile(e.target.files[0])} 
+                        />
+                    </div>
+                </div>
+            );
+        };
 
         // [마이페이지]
         const MyPage = ({ user, onClose }) => {
             const [myOrders, setMyOrders] = useState([]);
             const [tab, setTab] = useState("info");
+            useLucide(tab); // 탭 바뀔 때 아이콘 리로드
 
             useEffect(() => {
                 const fetchMyOrders = async () => {
@@ -85,7 +150,6 @@
                     } catch(e) { console.error(e); }
                 };
                 fetchMyOrders();
-                lucide.createIcons();
             }, []);
 
             const handleCancelOrder = async (id) => {
@@ -153,9 +217,13 @@
             const [tab, setTab] = useState("orders");
             const [selectedUser, setSelectedUser] = useState(null);
             
-            // 상품 추가/수정 모달
+            // 상품 추가/수정 모달 state
             const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-            const [editingProduct, setEditingProduct] = useState(null); // null이면 추가, 객체면 수정
+            const [editingProduct, setEditingProduct] = useState(null);
+            const [thumbImage, setThumbImage] = useState("");
+            const [detailImage, setDetailImage] = useState("");
+
+            useLucide([tab, selectedUser, isProductModalOpen]); // 탭이나 모달 열릴 때 아이콘 리로드
 
             useEffect(() => { fetchData(); }, [tab]);
 
@@ -163,15 +231,12 @@
                 if(!window.fs) return;
                 const { collection, getDocs, query, orderBy } = window.fs;
                 
-                // 상품
                 const prodSnap = await getDocs(collection(window.db, "products_final_v3"));
                 setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-                // 유저
                 const userSnap = await getDocs(collection(window.db, "users"));
                 setUsers(userSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-                // 주문
                 try {
                     const q = query(collection(window.db, "orders"), orderBy("date", "desc"));
                     const orderSnap = await getDocs(q);
@@ -191,7 +256,6 @@
                 try { await window.fs.updateDoc(window.fs.doc(window.db, "orders", id), { status: newStatus }); setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o)); } catch(e) { alert("실패"); }
             };
 
-            // --- 상품 관리 로직 ---
             const handleSaveProduct = async (e) => {
                 e.preventDefault();
                 const form = e.target;
@@ -203,39 +267,45 @@
                     stock: Number(form.pStock.value),
                     minQty: Number(form.pMinQty.value),
                     cartonQty: Number(form.pCartonQty.value),
-                    image: form.pImage.value || "📦",
-                    detailImage: form.pDetailImage.value || "",
+                    image: thumbImage || "📦",
+                    detailImage: detailImage || "",
                     description: form.pDescription.value,
                 };
 
                 try {
                     if (editingProduct) {
-                        // 수정
                         await window.fs.updateDoc(window.fs.doc(window.db, "products_final_v3", editingProduct.id), newProd);
                         alert("수정되었습니다.");
                     } else {
-                        // 추가
                         await window.fs.addDoc(window.fs.collection(window.db, "products_final_v3"), newProd);
                         alert("등록되었습니다.");
                     }
                     setIsProductModalOpen(false);
                     setEditingProduct(null);
-                    fetchData(); // 목록 새로고침
-                } catch (err) {
-                    alert("저장 오류: " + err.message);
-                }
+                    fetchData(); 
+                } catch (err) { alert("저장 오류: " + err.message); }
             };
 
             const handleDeleteProduct = async (id) => {
-                if(!confirm("정말 상품을 삭제하시겠습니까?")) return;
+                if(!confirm("삭제하시겠습니까?")) return;
                 try {
                     await window.fs.deleteDoc(window.fs.doc(window.db, "products_final_v3", id));
                     setProducts(prev => prev.filter(p => p.id !== id));
-                } catch(e) { alert("삭제 실패"); }
+                } catch(e) { alert("실패"); }
             };
 
-            const openAddModal = () => { setEditingProduct(null); setIsProductModalOpen(true); };
-            const openEditModal = (prod) => { setEditingProduct(prod); setIsProductModalOpen(true); };
+            const openAddModal = () => { 
+                setEditingProduct(null); 
+                setThumbImage(""); 
+                setDetailImage("");
+                setIsProductModalOpen(true); 
+            };
+            const openEditModal = (prod) => { 
+                setEditingProduct(prod); 
+                setThumbImage(prod.image); 
+                setDetailImage(prod.detailImage);
+                setIsProductModalOpen(true); 
+            };
 
             return (
                 <div className="min-h-screen bg-slate-100">
@@ -249,8 +319,6 @@
                                 <button key={t} onClick={()=>setTab(t)} className={`px-5 py-2 rounded-full font-bold uppercase ${tab===t?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>{t}</button>
                             ))}
                         </div>
-                        
-                        {/* 탭 내용 */}
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200 overflow-x-auto min-h-[500px]">
                             {tab === "orders" && (
                                 <table className="w-full text-left text-sm whitespace-nowrap">
@@ -270,23 +338,17 @@
                             )}
                             {tab === "products" && (
                                 <div className="p-4">
-                                    <div className="flex justify-between mb-4">
-                                        <h3 className="font-bold text-lg">상품 목록 ({products.length})</h3>
-                                        <button onClick={openAddModal} className="bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700 text-sm">+ 상품 등록</button>
-                                    </div>
+                                    <div className="flex justify-between mb-4"><h3 className="font-bold text-lg">상품 목록</h3><button onClick={openAddModal} className="bg-indigo-600 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button></div>
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">이미지</th><th className="p-4">상품명</th><th className="p-4">가격</th><th className="p-4">재고</th><th className="p-4">관리</th></tr></thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {products.map(p=>(
                                                 <tr key={p.id} className="hover:bg-slate-50">
-                                                    <td className="p-4 text-2xl">{p.image.startsWith('http') || p.image.startsWith('.') ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : p.image}</td>
+                                                    <td className="p-4 text-2xl">{p.image.startsWith('data:') || p.image.startsWith('http') ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : p.image}</td>
                                                     <td className="p-4"><div className="font-bold">{p.name}</div><div className="text-xs text-slate-400">{p.category}</div></td>
                                                     <td className="p-4">₩{formatPrice(p.price)}</td>
                                                     <td className="p-4 font-bold text-blue-600">{p.stock}</td>
-                                                    <td className="p-4 flex gap-2">
-                                                        <button onClick={()=>openEditModal(p)} className="bg-slate-200 px-3 py-1 rounded text-xs font-bold hover:bg-slate-300">수정</button>
-                                                        <button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-3 py-1 rounded text-xs font-bold hover:bg-red-200">삭제</button>
-                                                    </td>
+                                                    <td className="p-4 flex gap-2"><button onClick={()=>openEditModal(p)} className="bg-slate-200 px-3 py-1 rounded text-xs font-bold">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-3 py-1 rounded text-xs font-bold">삭제</button></td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -295,29 +357,30 @@
                             )}
                         </div>
                     </div>
-
-                    {/* 회원 상세 팝업 (X 버튼 추가됨) */}
+                    
+                    {/* 회원 상세 팝업 (X 아이콘 확실히 렌더링) */}
                     {selectedUser && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                             <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative">
-                                <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-100"><Icon name="X"/></button>
+                                <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full z-10"><Icon name="X"/></button>
                                 <h3 className="font-bold text-lg mb-4 border-b pb-2">회원 상세</h3>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between"><span className="text-slate-500">상호명</span><span className="font-bold">{selectedUser.storeName}</span></div>
                                     <div className="flex justify-between"><span className="text-slate-500">대표자</span><span>{selectedUser.repName}</span></div>
                                     <div className="flex justify-between"><span className="text-slate-500">연락처</span><span>{selectedUser.mobile}</span></div>
                                     <div className="flex justify-between"><span className="text-slate-500">사업자번호</span><span>{selectedUser.businessNumber}</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">업태/종목</span><span>{selectedUser.businessCategory} / {selectedUser.businessItem}</span></div>
                                     <div className="col-span-2 pt-2 border-t mt-2"><span className="text-slate-500 block mb-1">주소</span><span>{selectedUser.address}</span></div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* 상품 등록/수정 모달 (Full CRUD) */}
+                    {/* 상품 등록/수정 모달 (이미지 업로드 포함) */}
                     {isProductModalOpen && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                             <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                                <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-100"><Icon name="X"/></button>
+                                <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full z-10"><Icon name="X"/></button>
                                 <h3 className="font-bold text-lg mb-4 border-b pb-2">{editingProduct ? "상품 수정" : "상품 등록"}</h3>
                                 <form onSubmit={handleSaveProduct} className="space-y-3 text-sm">
                                     <div className="grid grid-cols-2 gap-2">
@@ -326,17 +389,18 @@
                                     </div>
                                     <div><label className="block mb-1 font-bold">상품명</label><input name="pName" defaultValue={editingProduct?.name} className="w-full border p-2 rounded" required /></div>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <div><label className="block mb-1 font-bold">공급가(판매가)</label><input name="pPrice" type="number" defaultValue={editingProduct?.price} className="w-full border p-2 rounded" required /></div>
-                                        <div><label className="block mb-1 font-bold">권장가(원가)</label><input name="pOriginPrice" type="number" defaultValue={editingProduct?.originPrice} className="w-full border p-2 rounded" required /></div>
+                                        <div><label className="block mb-1 font-bold">공급가</label><input name="pPrice" type="number" defaultValue={editingProduct?.price} className="w-full border p-2 rounded" required /></div>
+                                        <div><label className="block mb-1 font-bold">권장가</label><input name="pOriginPrice" type="number" defaultValue={editingProduct?.originPrice} className="w-full border p-2 rounded" required /></div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div><label className="block mb-1 font-bold">최소주문(MOQ)</label><input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 20} className="w-full border p-2 rounded" /></div>
                                         <div><label className="block mb-1 font-bold">1카톤 수량</label><input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 20} className="w-full border p-2 rounded" /></div>
                                     </div>
-                                    <div><label className="block mb-1 font-bold">썸네일 이미지 (URL)</label><input name="pImage" defaultValue={editingProduct?.image} placeholder="예: ./images/pic.jpg 또는 https://..." className="w-full border p-2 rounded" /></div>
-                                    <div><label className="block mb-1 font-bold">상세페이지 이미지 (URL, 선택)</label><input name="pDetailImage" defaultValue={editingProduct?.detailImage} placeholder="상세페이지 이미지 경로" className="w-full border p-2 rounded" /></div>
-                                    <div><label className="block mb-1 font-bold">소개 문구</label><textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-20"></textarea></div>
                                     
+                                    <ImageUploader label="썸네일 이미지" currentImage={thumbImage} onImageSelect={setThumbImage} />
+                                    <ImageUploader label="상세페이지 이미지 (선택)" currentImage={detailImage} onImageSelect={setDetailImage} />
+                                    
+                                    <div><label className="block mb-1 font-bold">소개 문구</label><textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-20"></textarea></div>
                                     <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-indigo-700">{editingProduct ? "수정 저장" : "신규 등록"}</button>
                                 </form>
                             </div>
@@ -355,7 +419,7 @@
             const [loading, setLoading] = useState(false);
             const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '', name: '', mobile: '', email: '', zipcode: '', address: '', addressDetail: '', businessType: '문구/팬시점', storeName: '', repName: '', businessNumber: '', businessCategory: '', businessItem: '', taxEmail: '' });
 
-            useEffect(() => { lucide.createIcons(); }, []);
+            useEffect(() => { if(window.lucide) window.lucide.createIcons(); }, []);
             useEffect(() => {
                 if(isAddrOpen && addrWrapRef.current && window.daum) {
                     addrWrapRef.current.innerHTML = '';
@@ -373,20 +437,17 @@
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 setLoading(true);
-                const loginId = isLoginMode ? formData.username : formData.email;
                 
-                if(isLoginMode && loginId === 'sj' && formData.password === '0914') { onAdminLogin(); return; }
-                if(!window.auth) { alert("로딩중..."); setLoading(false); return; }
+                if(isLoginMode && formData.username === 'sj' && formData.password === '0914') { onAdminLogin(); return; }
 
                 try {
                     if(isLoginMode) {
-                        // 로그인 기억하기 로직 강화
+                        // 로그인 기억하기 로직
                         const persistence = rememberMe ? window.browserLocalPersistence : window.browserSessionPersistence;
                         await window.setPersistence(window.auth, persistence);
                         await window.signInUser(window.auth, formData.username, formData.password);
                     } else {
                         if(formData.password !== formData.confirmPassword) { alert("비밀번호 불일치"); setLoading(false); return; }
-                        if(!formData.email.includes("@")) { alert("이메일 형식을 확인해주세요"); setLoading(false); return; }
                         const cred = await window.createUser(window.auth, formData.email, formData.password);
                         await window.fs.setDoc(window.fs.doc(window.db, "users", cred.user.uid), {
                             email: formData.email, displayId: formData.username, name: formData.name, mobile: formData.mobile,
@@ -398,7 +459,7 @@
                         alert("가입 완료! 자동 로그인됩니다.");
                     }
                 } catch(err) {
-                    alert("로그인/가입 실패: " + err.message);
+                    alert("오류: " + err.message);
                     setLoading(false);
                 }
             };
@@ -457,8 +518,8 @@
             const [searchTerm, setSearchTerm] = useState("");
             const [selectedProduct, setSelectedProduct] = useState(null);
             const [showMyPage, setShowMyPage] = useState(false);
-
-            useEffect(() => { lucide.createIcons(); }, [cart, isCartOpen, selectedProduct, showMyPage]);
+            
+            useLucide([cart, isCartOpen, selectedProduct, showMyPage]);
 
             const goHome = () => {
                 setSelectedCategory("전체");
@@ -482,8 +543,7 @@
                 if(!confirm("총 " + formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0)) + "원 발주하시겠습니까?")) return;
                 
                 try {
-                    const { addDoc, collection } = window.fs;
-                    await addDoc(collection(window.db, "orders"), {
+                    await window.fs.addDoc(window.fs.collection(window.db, "orders"), {
                         userId: window.auth.currentUser.uid,
                         userEmail: user.email,
                         userName: user.storeName || "미등록상점",
@@ -507,6 +567,7 @@
             // 상세 페이지
             const ProductDetail = ({ product, onBack, onAddToCart }) => {
                 const [qty, setQty] = useState(product.minQty || 1);
+                useLucide([]); // 아이콘 로드
                 
                 const handleQuantityChange = (delta) => {
                     const min = product.minQty || 1;
@@ -532,8 +593,8 @@
                         <div className="flex-1 overflow-y-auto">
                             <div className="max-w-3xl mx-auto">
                                 <div className="bg-slate-50 aspect-square w-full flex items-center justify-center mb-6 overflow-hidden">
-                                    {product.image.startsWith('.') || product.image.startsWith('http') ? 
-                                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" /> : 
+                                    {product.image.startsWith('data:') || product.image.startsWith('.') || product.image.startsWith('http') ? 
+                                        <img src={product.image} alt={product.name} className="w-full h-full object-contain" /> : 
                                         <span className="text-[8rem] drop-shadow-2xl">{product.image}</span>}
                                 </div>
                                 <div className="px-5 pb-8">
@@ -602,8 +663,8 @@
                             {filteredProducts.map(p => (
                                 <div key={p.id} onClick={() => setSelectedProduct(p)} className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group overflow-hidden flex flex-col">
                                     <div className="aspect-[4/3] bg-slate-100 relative flex items-center justify-center overflow-hidden">
-                                        {p.image.startsWith('.') || p.image.startsWith('http') ? 
-                                            <img src={p.image} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" /> : 
+                                        {p.image.startsWith('data:') || p.image.startsWith('http') || p.image.startsWith('.') ? 
+                                            <img src={p.image} alt={p.name} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" /> : 
                                             <span className="text-6xl transform group-hover:scale-110 transition-transform duration-500">{p.image}</span>}
                                         <div className="absolute top-3 left-3 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">인기</div>
                                     </div>
@@ -631,7 +692,7 @@
                                     {cart.map((item, idx) => (
                                         <div key={idx} className="flex gap-4 border-b pb-4 items-center">
                                             <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center text-2xl overflow-hidden">
-                                                {item.image.startsWith('.') || item.image.startsWith('http') ? <img src={item.image} className="w-full h-full object-cover"/> : item.image}
+                                                {item.image.startsWith('data:') || item.image.startsWith('http') ? <img src={item.image} className="w-full h-full object-contain"/> : item.image}
                                             </div>
                                             <div className="flex-1">
                                                 <h4 className="font-medium line-clamp-1">{item.name}</h4>
@@ -658,42 +719,36 @@
             const [loading, setLoading] = useState(true);
 
             useEffect(() => {
-                const initData = async () => {
-                    if (!window.fs) return;
-                    const { collection, getDocs, doc, setDoc } = window.fs;
-                    try {
-                        const snap = await getDocs(collection(window.db, "products_final_v3"));
-                        if (snap.empty) {
-                            await Promise.all(INITIAL_PRODUCTS.map(p => setDoc(doc(window.db, "products_final_v3", p.id), p)));
-                            setProducts(INITIAL_PRODUCTS);
-                        } else {
-                            setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                const unsubscribe = onAuthStateChanged(window.auth, async (u) => {
+                    if (u) {
+                        // 관리자 체크 (sj / 0914)
+                        // 실제 앱에서는 이메일이나 UID로 체크해야 하지만 여기선 약속된 ID
+                        if (u.email === null) { 
+                            // sj 아이디로 로그인 시 이메일이 null일 수 있음 (익명로그인 아님)
+                            // 사실 파이어베이스 이메일 로그인은 항상 이메일 형태여야 함.
+                            // 여기선 displayId 등을 체크하거나, 별도 관리자 플래그 사용.
+                            // 임시: 그냥 로그인 성공 시 유저 정보 로드
                         }
-                    } catch(e) { console.error(e); }
-                };
-                const timer = setTimeout(() => {
-                    if (window.auth) {
-                        initData();
-                        window.auth.onAuthStateChanged(async (u) => { 
-                            if (u && !isAdmin) {
-                                try {
-                                    const userDoc = await window.fs.getDocs(window.fs.query(window.fs.collection(window.db, "users"), window.fs.where("email", "==", u.email)));
-                                    if(!userDoc.empty) {
-                                        const userData = userDoc.docs[0].data();
-                                        setUser({ ...u, ...userData });
-                                    } else {
-                                        setUser(u);
-                                    }
-                                } catch(e) { setUser(u); }
+                        
+                        // 유저 정보 DB에서 긁어오기
+                        try {
+                            const q = window.fs.query(window.fs.collection(window.db, "users"), window.fs.where("email", "==", u.email));
+                            const snap = await window.fs.getDocs(q);
+                            if (!snap.empty) {
+                                setUser({ ...u, ...snap.docs[0].data() });
                             } else {
-                                if(!isAdmin) setUser(u); 
+                                // 관리자 계정일 수도 있음 (DB에 없을 수 있음)
+                                setUser(u);
                             }
-                            setLoading(false); 
-                        });
+                        } catch (e) { setUser(u); }
+                    } else {
+                        setUser(null);
+                        setIsAdmin(false);
                     }
-                }, 1000);
-                return () => clearTimeout(timer);
-            }, [isAdmin]);
+                    setLoading(false);
+                });
+                return () => unsubscribe();
+            }, []);
 
             const handleAdminLogin = () => { setIsAdmin(true); setUser({ email: 'admin' }); };
             const handleLogout = () => { if(isAdmin) { setIsAdmin(false); setUser(null); } else window.logOut(window.auth); };
