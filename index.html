@@ -3,17 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰</title>
+    <title>SJ Innovation 파트너스 몰</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://unpkg.com/lucide@latest"></script>
-    
     <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 
     <script type="module">
@@ -21,7 +17,6 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // 사장님의 파이어베이스 설정값
         const firebaseConfig = {
             apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqcYceZwUtI",
             authDomain: "sj-innovation-a8f6b.firebaseapp.com",
@@ -32,24 +27,21 @@
             measurementId: "G-NED86350PH"
         };
 
-        // 파이어베이스 초기화
         try {
             const app = initializeApp(firebaseConfig);
             window.auth = getAuth(app);
             window.createUser = createUserWithEmailAndPassword;
             window.signInUser = signInWithEmailAndPassword;
             window.logOut = signOut;
-            console.log("Firebase initialized successfully");
+            window.isFirebaseReady = true; // 로딩 완료 신호
         } catch (e) {
-            console.error("Firebase Init Error:", e);
-            alert("로그인 시스템 연결 실패: " + e.message);
+            console.error("Firebase Error", e);
         }
     </script>
 
     <style>
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans">
@@ -57,102 +49,57 @@
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-        
+
+        // 아이콘 컴포넌트
         const Icon = ({ name, ...props }) => {
             const iconName = name.charAt(0).toLowerCase() + name.slice(1);
             return <i data-lucide={iconName} {...props}></i>;
         };
 
-        // --- 데이터 ---
-        const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
-        const PRODUCTS = [
-            { id: 1, name: "캐치티니핑 하츄핑 방한용품 모음전 (장갑/목도리)", category: "유아동의류", price: 11900, originPrice: 23000, rating: 4.9, image: "🧣", description: "겨울 시즌 필수 아이템! 아이들이 좋아하는 하츄핑 캐릭터가 그려진 따뜻한 방한 장갑과 목도리 세트입니다." },
-            { id: 2, name: "티니핑 마스크 시즌3 새부리형 소형 (20매)", category: "생활/건강", price: 12900, originPrice: 15900, rating: 4.8, image: "😷", description: "숨쉬기 편한 새부리형 구조의 어린이용 마스크입니다." },
-            { id: 3, name: "슈팅스타 캐치티니핑 시즌5 하츄핑 유아 털목도리", category: "유아동의류", price: 12900, originPrice: 21900, rating: 4.9, image: "🧣", description: "포근한 감촉의 유아용 털목도리입니다." },
-            { id: 4, name: "슈팅스타 캐치티니핑 패딩 벙어리 장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수 기능이 있는 패딩 소재의 벙어리 장갑입니다." },
-            { id: 5, name: "슈팅스타 캐치티니핑 모자목도리 세트", category: "유아동의류", price: 16900, originPrice: 29900, rating: 5.0, image: "🧢", description: "모자와 목도리가 하나로! 귀까지 따뜻하게 덮어주는 일체형 방한 모자입니다." },
-            { id: 6, name: "이탈리안 브레인롯 랜덤 딱지 (25팩)", category: "완구/교구", price: 22900, originPrice: 39900, rating: 4.8, image: "🎲", description: "요즘 초등학생들 사이에서 대유행! 다양한 캐릭터 딱지를 모을 수 있는 랜덤 팩 세트입니다." },
-            { id: 7, name: "슈팅스타 캐치티니핑 시즌5 자석 글자 한글플러스", category: "완구/교구", price: 39900, originPrice: 49900, rating: 4.9, image: "🧲", description: "놀면서 배우는 한글 공부! 자석 교구 세트입니다." },
-            { id: 8, name: "캐치티니핑 올인원 교정 젓가락 스푼 포크 세트", category: "주방/식기", price: 13900, originPrice: 17500, rating: 4.8, image: "🥢", description: "올바른 젓가락질 습관을 길러주는 교정 젓가락과 스푼, 포크, 케이스 세트입니다." },
-            { id: 9, name: "슈팅스타 캐치티니핑 논슬립 스텐컵 (왕자핑)", category: "주방/식기", price: 9900, originPrice: 15000, rating: 4.7, image: "🥛", description: "바닥에 미끄럼 방지 처리가 되어 있어 쏟을 걱정이 적은 스테인리스 컵입니다." },
-            { id: 10, name: "위시캣 유아 어린이 안심락 스트랩 보틀", category: "주방/식기", price: 8900, originPrice: 12500, rating: 4.6, image: "🍼", description: "원터치 오픈 방식과 잠금 장치(안심락)가 있는 유아용 물병입니다." },
-            { id: 11, name: "새콤달콤 캐치티니핑 시즌4 플레이팅 자석 소꿉놀이", category: "완구/교구", price: 23500, originPrice: 27000, rating: 4.8, image: "🏰", description: "예쁜 디저트를 자석으로 붙였다 떼었다 할 수 있는 소꿉놀이 세트입니다." },
-            { id: 12, name: "아산제약 hCG 임신테스트기 진단 키트 (25회분)", category: "생활/건강", price: 23900, originPrice: 47000, rating: 4.9, image: "⚕️", description: "정확도가 높고 사용이 간편한 임신 진단 키트입니다." },
-            { id: 13, name: "참존 KF94 톤업핏 블랙라벨 마스크 중형", category: "생활/건강", price: 10900, originPrice: 20000, rating: 4.5, image: "😷", description: "스타일리시한 핏과 편안한 호흡을 동시에 만족시키는 KF94 마스크입니다." },
-            { id: 14, name: "젠바디 코로나 자가 진단 키트 (10회분)", category: "생활/건강", price: 9350, originPrice: 13500, rating: 4.6, image: "🩺", description: "빠르고 간편하게 코로나 감염 여부를 확인할 수 있는 자가 검사 키트입니다." },
-            { id: 15, name: "헬로카봇 시즌15 무소음 교정젓가락 케이스 세트", category: "주방/식기", price: 14900, originPrice: 19000, rating: 4.7, image: "🤖", description: "달그락거리는 소리를 줄인 무소음 케이스가 포함된 헬로카봇 젓가락 세트입니다." },
-            { id: 16, name: "위시캣 하트 손잡이 휴대용 보틀 380ml", category: "주방/식기", price: 8950, originPrice: 11000, rating: 4.5, image: "🥤", description: "사랑스러운 하트 모양 손잡이가 달린 휴대용 물병입니다." },
-            { id: 17, name: "반짝핑 수저세트 교정 젓가락 (어린이집용)", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.7, image: "✨", description: "블링블링 반짝핑 캐릭터가 들어간 수저 세트입니다." },
-            { id: 18, name: "빛나핑 수저세트 교정 젓가락 (유치원용)", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.8, image: "🌟", description: "유치원생에게 딱 맞는 사이즈의 교정 젓가락 세트입니다." },
-            { id: 19, name: "초롱핑 수저세트 교정 젓가락 올인원", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.6, image: "🎋", description: "초롱초롱한 눈망울의 초롱핑 캐릭터 수저 세트입니다." },
-            { id: 20, name: "새콤달콤 캐치티니핑 디저트샵 자석 소꿉놀이", category: "완구/교구", price: 27000, originPrice: 35000, rating: 4.9, image: "🍰", description: "디저트 가게 놀이를 할 수 있는 풍성한 구성의 소꿉놀이 세트입니다." },
+        // --- 초기 상품 데이터 ---
+        const INITIAL_PRODUCTS = [
+            { id: 1, name: "캐치티니핑 하츄핑 방한용품 (장갑/목도리)", category: "유아동의류", price: 11900, originPrice: 23000, stock: 100, image: "🧣" },
+            { id: 2, name: "티니핑 마스크 시즌3 새부리형 (20매)", category: "생활/건강", price: 12900, originPrice: 15900, stock: 500, image: "😷" },
+            { id: 3, name: "슈팅스타 하츄핑 유아 털목도리", category: "유아동의류", price: 12900, originPrice: 21900, stock: 30, image: "🧣" },
+            { id: 4, name: "이탈리안 브레인롯 랜덤 딱지 (25팩)", category: "완구/교구", price: 22900, originPrice: 39900, stock: 200, image: "🎲" },
+            { id: 5, name: "슈팅스타 자석 글자 한글플러스", category: "완구/교구", price: 39900, originPrice: 49900, stock: 15, image: "🧲" },
+            { id: 6, name: "교정 젓가락 스푼 포크 세트", category: "주방/식기", price: 13900, originPrice: 17500, stock: 150, image: "🥢" },
+            { id: 7, name: "논슬립 스텐컵 (왕자핑)", category: "주방/식기", price: 9900, originPrice: 15000, stock: 80, image: "🥛" },
+            { id: 8, name: "유아 어린이 안심락 스트랩 보틀", category: "주방/식기", price: 8900, originPrice: 12500, stock: 120, image: "🍼" },
+            { id: 9, name: "디저트샵 자석 소꿉놀이", category: "완구/교구", price: 27000, originPrice: 35000, stock: 40, image: "🍰" },
+            { id: 10, name: "KF94 톤업핏 블랙라벨 마스크", category: "생활/건강", price: 10900, originPrice: 20000, stock: 1000, image: "😷" }
         ];
 
-        // --- 컴포넌트 ---
-        const ProductDetailPage = ({ product, onBack, onAddToCart }) => {
-            const [quantity, setQuantity] = useState(1);
-            useEffect(() => { lucide.createIcons(); }, []);
+        // --- 관리자용 회원 가짜 데이터 ---
+        const INITIAL_MEMBERS = [
+            { id: 1, email: "partner01@naver.com", name: "김철수", store: "대박문구", status: "승인" },
+            { id: 2, email: "toy_king@gmail.com", name: "이영희", store: "토이킹덤", status: "대기" },
+            { id: 3, email: "sj_love@daum.net", name: "박민수", store: "SJ사랑점", status: "승인" }
+        ];
 
-            return (
-                <div className="animate-in slide-in-from-right duration-300 bg-white min-h-screen flex flex-col pb-[80px]">
-                    <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center gap-4">
-                        <button onClick={onBack} className="p-2 -ml-2 hover:bg-slate-100 rounded-full"><Icon name="ArrowLeft" className="w-6 h-6 text-slate-600" /></button>
-                        <h2 className="font-bold text-lg text-slate-800 truncate pr-4 flex-1">{product.name}</h2>
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                        <div className="max-w-3xl mx-auto px-5 py-8">
-                            <div className="bg-slate-50 aspect-square w-full flex items-center justify-center mb-6 rounded-xl">
-                                <span className="text-[8rem]">{product.image}</span>
-                            </div>
-                            <h1 className="text-xl font-bold text-slate-900 mb-4">{product.name}</h1>
-                            <div className="text-2xl font-bold text-slate-900 mb-6">₩{new Intl.NumberFormat('ko-KR').format(product.price)}</div>
-                            <p className="text-slate-600 bg-slate-50 p-5 rounded-xl border border-slate-100 mb-8">{product.description}</p>
-                        </div>
-                    </div>
-                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 p-4 safe-area-bottom">
-                        <div className="max-w-3xl mx-auto flex gap-4">
-                            <div className="flex items-center gap-4 bg-slate-100 rounded-lg p-1">
-                                <button onClick={() => setQuantity(q => Math.max(1, q-1))} className="w-9 h-9 flex items-center justify-center bg-white rounded shadow-sm"><Icon name="Minus" className="w-4 h-4" /></button>
-                                <span className="font-bold w-8 text-center">{quantity}</span>
-                                <button onClick={() => setQuantity(q => q+1)} className="w-9 h-9 flex items-center justify-center bg-white rounded shadow-sm"><Icon name="Plus" className="w-4 h-4" /></button>
-                            </div>
-                            <button onClick={() => { onAddToCart(product, quantity); onBack(); }} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2">담기</button>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const LoginPage = () => {
+        // ------------------------------------------
+        // [1] 로그인 & 회원가입 페이지
+        // ------------------------------------------
+        const LoginPage = ({ onLogin, onAdminLogin }) => {
             const [isLoginMode, setIsLoginMode] = useState(true);
-            const [isAddrOpen, setIsAddrOpen] = useState(false);
-            const addrWrapRef = useRef(null);
             const [loading, setLoading] = useState(false);
-            const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', name: '', zipcode: '', address: '', addressDetail: '', storeName: '', businessNumber: '' });
-
-            useEffect(() => { lucide.createIcons(); }, []);
-
-            // 주소검색 로직
-            useEffect(() => {
-                if (isAddrOpen && addrWrapRef.current && window.daum && window.daum.Postcode) {
-                    addrWrapRef.current.innerHTML = '';
-                    new window.daum.Postcode({
-                        oncomplete: function(data) {
-                            let addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
-                            setFormData(prev => ({ ...prev, zipcode: data.zonecode, address: addr }));
-                            setIsAddrOpen(false); 
-                        },
-                        width: '100%', height: '100%'
-                    }).embed(addrWrapRef.current);
-                }
-            }, [isAddrOpen]);
+            const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', storeName: '' });
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 setLoading(true);
-                // 안전장치: window.auth가 준비되었는지 확인
+
+                // ★ 관리자 로그인 특수 체크 (sj / 0914) ★
+                if (isLoginMode && formData.email === 'sj' && formData.password === '0914') {
+                    setTimeout(() => {
+                        onAdminLogin(); // 관리자 모드로 이동
+                    }, 500);
+                    return;
+                }
+
+                // 일반 파이어베이스 로그인
                 if (!window.auth) {
-                    alert("로그인 시스템이 로딩중입니다. 3초 뒤 다시 시도해주세요.");
+                    alert("시스템 로딩중입니다. 잠시만 기다려주세요.");
                     setLoading(false);
                     return;
                 }
@@ -160,60 +107,241 @@
                 try {
                     if (isLoginMode) {
                         await window.signInUser(window.auth, formData.email, formData.password);
+                        // 성공하면 App 컴포넌트에서 감지하여 화면 전환
                     } else {
                         if (formData.password !== formData.confirmPassword) {
-                            alert("비밀번호 불일치"); setLoading(false); return;
+                            alert("비밀번호가 일치하지 않습니다."); setLoading(false); return;
                         }
                         await window.createUser(window.auth, formData.email, formData.password);
-                        alert("가입 완료!");
+                        alert("회원가입 성공! 자동으로 로그인됩니다.");
                     }
-                } catch (error) {
-                    console.error(error);
-                    if(error.code === 'auth/email-already-in-use') alert("이미 가입된 이메일입니다.");
-                    else if(error.code === 'auth/invalid-credential') alert("아이디/비번을 확인해주세요.");
-                    else alert("오류: " + error.message);
-                } finally {
+                } catch (err) {
+                    console.error(err);
+                    if(err.code === 'auth/invalid-email') alert("이메일 형식이 올바르지 않습니다.");
+                    else if(err.code === 'auth/invalid-credential') alert("아이디 또는 비밀번호가 틀렸습니다.");
+                    else if(err.code === 'auth/email-already-in-use') alert("이미 가입된 이메일입니다.");
+                    else alert("로그인 오류: " + err.message);
                     setLoading(false);
                 }
             };
 
-            const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+            const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
             return (
                 <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 animate-in fade-in zoom-in duration-300">
                         <div className="text-center mb-8">
-                            <h1 className="text-2xl font-bold">{isLoginMode ? "SJ 파트너 로그인" : "사업자 회원등록"}</h1>
+                            <div className="bg-slate-800 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white text-3xl font-bold shadow-lg">S</div>
+                            <h1 className="text-2xl font-bold text-slate-800">{isLoginMode ? "파트너 로그인" : "파트너 회원가입"}</h1>
+                            <p className="text-slate-500 text-sm mt-2">SJ Innovation 폐쇄형 도매몰</p>
                         </div>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <input name="email" type="email" placeholder="이메일" className="w-full p-3 border rounded-lg" onChange={handleChange} required />
-                            <input name="password" type="password" placeholder="비밀번호" className="w-full p-3 border rounded-lg" onChange={handleChange} required />
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{isLoginMode ? "아이디 (이메일)" : "이메일"}</label>
+                                <input name="email" type="text" placeholder="example@sj.com" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-800 outline-none transition-all" onChange={handleChange} required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">비밀번호</label>
+                                <input name="password" type="password" placeholder="비밀번호 입력" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-800 outline-none transition-all" onChange={handleChange} required />
+                            </div>
                             {!isLoginMode && (
                                 <>
-                                    <input name="confirmPassword" type="password" placeholder="비밀번호 확인" className="w-full p-3 border rounded-lg" onChange={handleChange} required />
-                                    <input name="storeName" type="text" placeholder="상호명" className="w-full p-3 border rounded-lg" onChange={handleChange} />
-                                    <div className="flex gap-2">
-                                        <input name="address" value={formData.address} readOnly placeholder="주소" className="w-full p-3 border rounded-lg bg-slate-50" />
-                                        <button type="button" onClick={() => setIsAddrOpen(true)} className="bg-slate-600 text-white px-3 rounded-lg text-sm">검색</button>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">비밀번호 확인</label>
+                                        <input name="confirmPassword" type="password" placeholder="비밀번호 재입력" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-800 outline-none transition-all" onChange={handleChange} required />
                                     </div>
-                                    <input name="addressDetail" placeholder="상세주소" className="w-full p-3 border rounded-lg" onChange={handleChange} />
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">상호명</label>
+                                        <input name="storeName" type="text" placeholder="상호명을 입력하세요" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-800 outline-none transition-all" onChange={handleChange} />
+                                    </div>
                                 </>
                             )}
-                            <button type="submit" disabled={loading} className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold mt-4">
-                                {loading ? "처리중..." : (isLoginMode ? "로그인" : "회원가입")}
+                            <button type="submit" disabled={loading} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-xl font-bold transition-all disabled:opacity-50 mt-6 shadow-md">
+                                {loading ? "처리중..." : (isLoginMode ? "로그인 하기" : "회원가입 완료")}
                             </button>
                         </form>
-                        <div className="mt-6 text-center">
-                            <button onClick={() => setIsLoginMode(!isLoginMode)} className="text-sm underline">
-                                {isLoginMode ? "회원가입 하기" : "로그인 하기"}
-                            </button>
+                        <div className="mt-6 text-center pt-6 border-t border-slate-100">
+                            <p className="text-slate-500 text-sm">
+                                {isLoginMode ? "아직 계정이 없으신가요?" : "이미 계정이 있으신가요?"}
+                                <button onClick={() => setIsLoginMode(!isLoginMode)} className="ml-2 font-bold text-slate-800 underline hover:text-black">
+                                    {isLoginMode ? "회원가입" : "로그인"}
+                                </button>
+                            </p>
                         </div>
                     </div>
-                    {isAddrOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                            <div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative">
-                                <button onClick={() => setIsAddrOpen(false)} className="absolute top-2 right-2 p-2 bg-white z-10 rounded-full shadow"><Icon name="X" className="w-6 h-6" /></button>
-                                <div ref={addrWrapRef} className="w-full h-full"></div>
+                </div>
+            );
+        };
+
+        // ------------------------------------------
+        // [2] 관리자 페이지 (Admin)
+        // ------------------------------------------
+        const AdminPage = ({ products, setProducts, onLogout }) => {
+            const [activeTab, setActiveTab] = useState("products");
+            const [members, setMembers] = useState(INITIAL_MEMBERS);
+
+            const handleStockChange = (id, newStock) => {
+                setProducts(products.map(p => p.id === id ? { ...p, stock: parseInt(newStock) } : p));
+            };
+
+            const handleMemberStatus = (id) => {
+                setMembers(members.map(m => m.id === id ? { ...m, status: m.status === "승인" ? "정지" : "승인" } : m));
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-100 font-sans">
+                    <nav className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shadow-lg">
+                        <div className="flex items-center gap-3">
+                            <div className="font-bold text-xl">SJ 관리자 모드</div>
+                            <span className="bg-red-500 text-xs px-2 py-1 rounded font-bold">ADMIN</span>
+                        </div>
+                        <button onClick={onLogout} className="text-sm bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded transition-colors">로그아웃</button>
+                    </nav>
+                    
+                    <div className="max-w-7xl mx-auto p-6">
+                        <div className="flex gap-4 mb-6">
+                            <button onClick={() => setActiveTab("products")} className={`px-6 py-3 rounded-lg font-bold transition-colors shadow-sm ${activeTab === "products" ? "bg-white text-slate-900" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}>📦 상품/재고 관리</button>
+                            <button onClick={() => setActiveTab("members")} className={`px-6 py-3 rounded-lg font-bold transition-colors shadow-sm ${activeTab === "members" ? "bg-white text-slate-900" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}>👥 회원 관리</button>
+                        </div>
+
+                        {activeTab === "products" ? (
+                            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-slate-50 text-slate-500 text-sm uppercase">
+                                        <tr>
+                                            <th className="p-4 border-b">상품명</th>
+                                            <th className="p-4 border-b">가격</th>
+                                            <th className="p-4 border-b w-32">재고수량</th>
+                                            <th className="p-4 border-b w-24">관리</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {products.map(p => (
+                                            <tr key={p.id} className="hover:bg-slate-50">
+                                                <td className="p-4">
+                                                    <div className="font-bold text-slate-800">{p.name}</div>
+                                                    <div className="text-xs text-slate-400">{p.category}</div>
+                                                </td>
+                                                <td className="p-4 text-slate-600">₩{p.price.toLocaleString()}</td>
+                                                <td className="p-4">
+                                                    <input type="number" value={p.stock} onChange={(e) => handleStockChange(p.id, e.target.value)} className="w-full p-2 border rounded text-center focus:ring-2 focus:ring-blue-500 outline-none" />
+                                                </td>
+                                                <td className="p-4 text-center"><button className="text-blue-500 hover:underline text-sm">저장</button></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50 text-slate-500 text-sm uppercase">
+                                        <tr>
+                                            <th className="p-4 border-b">이름/상호명</th>
+                                            <th className="p-4 border-b">이메일</th>
+                                            <th className="p-4 border-b">상태</th>
+                                            <th className="p-4 border-b">관리</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {members.map(m => (
+                                            <tr key={m.id} className="hover:bg-slate-50">
+                                                <td className="p-4">
+                                                    <div className="font-bold text-slate-800">{m.name}</div>
+                                                    <div className="text-xs text-slate-400">{m.store}</div>
+                                                </td>
+                                                <td className="p-4 text-slate-600">{m.email}</td>
+                                                <td className="p-4">
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${m.status === "승인" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{m.status}</span>
+                                                </td>
+                                                <td className="p-4">
+                                                    <button onClick={() => handleMemberStatus(m.id)} className="text-xs bg-slate-800 text-white px-3 py-1 rounded hover:bg-slate-700">
+                                                        {m.status === "승인" ? "정지" : "승인"}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // ------------------------------------------
+        // [3] 쇼핑몰 페이지 (기존 코드 유지)
+        // ------------------------------------------
+        const ShopPage = ({ products, user, onLogout }) => {
+            const [cart, setCart] = useState([]);
+            const [isCartOpen, setIsCartOpen] = useState(false);
+            const [selectedProduct, setSelectedProduct] = useState(null);
+
+            const addToCart = (product) => {
+                setCart(prev => {
+                    const idx = prev.findIndex(item => item.id === product.id);
+                    if(idx > -1) {
+                        const newCart = [...prev]; newCart[idx].quantity += 1; return newCart;
+                    }
+                    return [...prev, { ...product, quantity: 1 }];
+                });
+                alert("장바구니에 담겼습니다.");
+            };
+
+            // 상품 상세 팝업 (간단 버전)
+            if(selectedProduct) {
+                return (
+                    <div className="fixed inset-0 bg-white z-50 overflow-y-auto animate-in slide-in-from-right">
+                        <div className="p-4 border-b flex items-center gap-4 sticky top-0 bg-white/90 backdrop-blur">
+                            <button onClick={() => setSelectedProduct(null)}><Icon name="ArrowLeft" /></button>
+                            <h2 className="font-bold text-lg truncate">{selectedProduct.name}</h2>
+                        </div>
+                        <div className="p-6 max-w-2xl mx-auto">
+                            <div className="aspect-square bg-slate-100 flex items-center justify-center text-[8rem] rounded-2xl mb-6">{selectedProduct.image}</div>
+                            <h1 className="text-2xl font-bold mb-2">{selectedProduct.name}</h1>
+                            <p className="text-xl font-bold text-slate-800 mb-6">₩{selectedProduct.price.toLocaleString()}</p>
+                            <button onClick={() => { addToCart(selectedProduct); setSelectedProduct(null); }} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold">장바구니 담기</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-slate-50 pb-20">
+                    <header className="bg-white shadow-sm px-4 h-16 flex items-center justify-between sticky top-0 z-40">
+                        <div className="flex items-center gap-2 font-bold text-lg"><span className="bg-slate-800 text-white p-1 rounded">S</span> SJ Innovation</div>
+                        <div className="flex gap-4">
+                            <button onClick={() => setIsCartOpen(true)} className="relative"><Icon name="Boxes" />{cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">{cart.length}</span>}</button>
+                            <button onClick={onLogout}><Icon name="LogOut" /></button>
+                        </div>
+                    </header>
+                    <main className="p-4 max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {products.map(p => (
+                            <div key={p.id} onClick={() => setSelectedProduct(p)} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden cursor-pointer hover:shadow-md transition-all">
+                                <div className="aspect-square bg-slate-50 flex items-center justify-center text-5xl">{p.image}</div>
+                                <div className="p-4">
+                                    <div className="text-xs text-slate-400 mb-1">{p.category}</div>
+                                    <h3 className="font-bold text-sm line-clamp-2 mb-2">{p.name}</h3>
+                                    <div className="flex justify-between items-end">
+                                        <span className="font-bold">₩{p.price.toLocaleString()}</span>
+                                        <span className="text-xs text-slate-400">재고 {p.stock}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </main>
+                    {isCartOpen && (
+                        <div className="fixed inset-0 z-50 flex justify-end">
+                            <div className="absolute inset-0 bg-black/30" onClick={() => setIsCartOpen(false)}></div>
+                            <div className="bg-white w-full max-w-md h-full shadow-2xl relative p-4 flex flex-col animate-in slide-in-from-right">
+                                <div className="flex justify-between mb-4 font-bold text-lg"><h2>장바구니</h2><button onClick={() => setIsCartOpen(false)}><Icon name="X" /></button></div>
+                                <div className="flex-1 overflow-y-auto space-y-4">
+                                    {cart.map((item, i) => (
+                                        <div key={i} className="flex gap-4 border-b pb-4"><div className="w-16 h-16 bg-slate-100 flex items-center justify-center text-2xl rounded">{item.image}</div><div><div className="font-bold">{item.name}</div><div className="text-sm">₩{item.price.toLocaleString()} x {item.quantity}</div></div></div>
+                                    ))}
+                                </div>
+                                <button className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold mt-4">발주 신청하기</button>
                             </div>
                         </div>
                     )}
@@ -221,109 +349,56 @@
             );
         };
 
+        // ------------------------------------------
+        // [Main] 최상위 App 컴포넌트
+        // ------------------------------------------
         const App = () => {
             const [user, setUser] = useState(null);
+            const [isAdmin, setIsAdmin] = useState(false);
             const [loading, setLoading] = useState(true);
-            const [selectedProduct, setSelectedProduct] = useState(null);
-            const [cart, setCart] = useState([]);
-            const [isCartOpen, setIsCartOpen] = useState(false);
-
-            useEffect(() => { lucide.createIcons(); }, [user, selectedProduct, isCartOpen]);
+            const [products, setProducts] = useState(INITIAL_PRODUCTS);
 
             useEffect(() => {
-                // 안전장치: window.auth가 로드될 때까지 재시도 (최대 5초)
-                let retryCount = 0;
-                const checkAuth = setInterval(() => {
-                    if (window.auth) {
-                        clearInterval(checkAuth);
+                lucide.createIcons();
+                // 3초간 로딩 대기 (Firebase 연결 안전장치)
+                const timer = setTimeout(() => {
+                    if(window.auth) {
                         window.auth.onAuthStateChanged((u) => {
-                            setUser(u);
+                            if (!isAdmin) setUser(u); // 관리자 모드가 아닐 때만 유저 세팅
                             setLoading(false);
                         });
                     } else {
-                        retryCount++;
-                        if (retryCount > 50) { // 5초 경과
-                            clearInterval(checkAuth);
-                            alert("로그인 시스템 로딩 실패. 새로고침 해주세요.");
-                            setLoading(false);
-                        }
+                        setLoading(false); // 연결 실패해도 일단 화면은 띄움
                     }
-                }, 100);
-                return () => clearInterval(checkAuth);
-            }, []);
+                }, 1000);
+                return () => clearTimeout(timer);
+            }, [isAdmin]);
 
-            const addToCart = (product, qty) => {
-                setCart(prev => {
-                    const idx = prev.findIndex(p => p.id === product.id);
-                    if (idx > -1) {
-                        const newCart = [...prev]; newCart[idx].quantity += qty; return newCart;
-                    }
-                    return [...prev, { ...product, quantity: qty }];
-                });
-                alert("장바구니 담기 완료");
+            const handleLogout = () => {
+                if (isAdmin) {
+                    setIsAdmin(false);
+                    setUser(null);
+                    alert("관리자 로그아웃 되었습니다.");
+                } else {
+                    window.logOut(window.auth);
+                }
             };
 
-            if (loading) return <div className="flex h-screen items-center justify-center">시스템 로딩중...</div>;
-            if (!user) return <LoginPage />;
-            if (selectedProduct) return <ProductDetailPage product={selectedProduct} onBack={() => setSelectedProduct(null)} onAddToCart={addToCart} />;
+            const handleAdminLogin = () => {
+                setIsAdmin(true);
+                setUser({ email: 'admin' }); // 가짜 유저 세팅
+            };
 
-            return (
-                <div className="min-h-screen bg-slate-50 text-slate-800 pb-20">
-                    <header className="sticky top-0 z-40 bg-white shadow-sm px-4 h-16 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="bg-slate-800 w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold">S</div>
-                            <span className="font-bold text-lg hidden sm:block">SJ Innovation</span>
-                        </div>
-                        <div className="flex gap-4 items-center">
-                            <button onClick={() => setIsCartOpen(true)} className="relative p-2">
-                                <Icon name="Boxes" className="w-6 h-6" />
-                                {cart.length > 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 rounded-full">{cart.length}</span>}
-                            </button>
-                            <button onClick={() => window.logOut(window.auth)} className="text-slate-400"><Icon name="LogOut" className="w-5 h-5" /></button>
-                        </div>
-                    </header>
+            if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 font-bold text-slate-400">시스템 연결중...</div>;
 
-                    <main className="max-w-7xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {PRODUCTS.map(product => (
-                            <div key={product.id} onClick={() => setSelectedProduct(product)} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden cursor-pointer hover:shadow-lg transition-all">
-                                <div className="aspect-square bg-slate-100 flex items-center justify-center text-6xl">{product.image}</div>
-                                <div className="p-4">
-                                    <h3 className="font-bold text-slate-800 truncate">{product.name}</h3>
-                                    <div className="mt-2 flex justify-between items-end">
-                                        <span className="text-sm text-slate-500 line-through">₩{new Intl.NumberFormat('ko-KR').format(product.originPrice)}</span>
-                                        <span className="text-lg font-bold text-indigo-600">₩{new Intl.NumberFormat('ko-KR').format(product.price)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </main>
-
-                    {isCartOpen && (
-                        <div className="fixed inset-0 z-50 flex justify-end">
-                            <div className="absolute inset-0 bg-black/30" onClick={() => setIsCartOpen(false)}></div>
-                            <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col p-4 animate-in slide-in-from-right">
-                                <div className="flex justify-between items-center mb-4"><h2 className="font-bold text-lg">장바구니</h2><button onClick={() => setIsCartOpen(false)}><Icon name="X" /></button></div>
-                                <div className="flex-1 overflow-y-auto space-y-4">
-                                    {cart.map((item, idx) => (
-                                        <div key={idx} className="flex gap-4 border-b pb-4">
-                                            <div className="w-16 h-16 bg-slate-100 rounded flex items-center justify-center text-2xl">{item.image}</div>
-                                            <div className="flex-1">
-                                                <div className="font-bold truncate">{item.name}</div>
-                                                <div className="text-sm text-slate-500">{item.quantity}개 / ₩{new Intl.NumberFormat('ko-KR').format(item.price * item.quantity)}</div>
-                                            </div>
-                                            <button onClick={() => setCart(c => c.filter((_, i) => i !== idx))} className="text-red-500"><Icon name="X" className="w-4 h-4" /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="border-t pt-4">
-                                    <div className="flex justify-between font-bold text-xl mb-4"><span>총 합계</span><span>₩{new Intl.NumberFormat('ko-KR').format(cart.reduce((a,c) => a + c.price*c.quantity, 0))}</span></div>
-                                    <button className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold">발주 신청하기</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
+            // 1. 관리자면 -> 관리자 페이지
+            if (isAdmin) return <AdminPage products={products} setProducts={setProducts} onLogout={handleLogout} />;
+            
+            // 2. 일반 회원이면 -> 쇼핑몰 페이지
+            if (user) return <ShopPage products={products} user={user} onLogout={handleLogout} />;
+            
+            // 3. 로그인이 안되어 있으면 -> 로그인 페이지
+            return <LoginPage onLogin={() => {}} onAdminLogin={handleAdminLogin} />;
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
