@@ -60,20 +60,25 @@
 
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // --- 최종 상품 데이터 (MOQ 적용됨) ---
+        // --- 최종 상품 데이터 (규칙 및 카탈로그 반영) ---
         const INITIAL_PRODUCTS = [
-            { id: "p1", name: "브레인롯 랜덤딱지 1박스 (25팩)", category: "완구/교구", price: 22900, originPrice: 39900, rating: 4.8, image: "🎲", description: "대용량 랜덤 딱지 1박스 (총 125개입).", stock: 200, minQty: 10, maxQty: 50 },
-            { id: "p2", name: "티니핑 마스크 시즌3 새부리형 소형", category: "생활/건강", price: 12900, originPrice: 15900, rating: 4.8, image: "😷", description: "숨쉬기 편한 새부리형 마스크 (20개입).", stock: 500, minQty: 20, maxQty: 50 },
-            { id: "p3", name: "참존 KF94 톤업핏 마스크 중형", category: "생활/건강", price: 10900, originPrice: 20000, rating: 4.5, image: "😷", description: "스타일리시한 핏의 KF94 마스크 (16개입).", stock: 300, minQty: 16, maxQty: 50 },
-            { id: "p4", name: "올인원 교정젓가락세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, rating: 4.8, image: "🥢", description: "올바른 젓가락질 습관 세트.", stock: 150, minQty: 20, maxQty: 50 },
-            { id: "p5", name: "슈팅스타 하츄핑 모자목도리 세트", category: "유아동의류", price: 16900, originPrice: 29900, rating: 5.0, image: "🧣", description: "모자와 목도리가 하나로! 일체형 방한 모자.", stock: 40, minQty: 20, maxQty: 50 },
-            { id: "p6", name: "슈팅스타 패딩 벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수 기능이 있는 패딩 소재의 벙어리 장갑.", stock: 60, minQty: 20, maxQty: 50 },
-            { id: "p7", name: "슈팅스타 하트레이스 스키장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수/방한 기능의 스키장갑.", stock: 30, minQty: 20, maxQty: 50 },
-            { id: "p8", name: "슈팅스타 베이직손가락장갑", category: "유아동의류", price: 16900, originPrice: 29900, rating: 4.5, image: "🧤", description: "베이직 디자인의 손가락 장갑.", stock: 40, minQty: 20, maxQty: 50 },
-            { id: "p9", name: "슈팅스타 하츄핑 벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "하츄핑 캐릭터 벙어리장갑.", stock: 60, minQty: 20, maxQty: 50 },
-            { id: "p10", name: "젠바디 코로나 자가 진단 키트", category: "생활/건강", price: 9350, originPrice: 13500, rating: 4.6, image: "🩺", description: "빠르고 간편한 자가 검사 키트.", stock: 500, minQty: 20, maxQty: 50 },
-            { id: "p11", name: "논슬립 스텐컵 (왕자핑)", category: "주방/식기", price: 9900, originPrice: 15000, rating: 4.7, image: "🥛", description: "미끄럼 방지 처리.", stock: 80, minQty: 20, maxQty: 50 },
-            { id: "p12", name: "위시캣 유아 어린이 안심락 스트랩 보틀", category: "주방/식기", price: 8900, originPrice: 12500, rating: 4.6, image: "🍼", description: "원터치 오픈.", stock: 120, minQty: 20, maxQty: 50 }
+            // 장갑/모자류 (MOQ 20)
+            { id: "p1", name: "슈팅스타 하츄핑 모자목도리 세트", category: "유아동의류", price: 16900, originPrice: 29900, rating: 5.0, image: "🧣", description: "모자와 목도리가 하나로! 일체형 방한 모자입니다.", stock: 40, minQty: 20, cartonQty: 20 },
+            { id: "p2", name: "슈팅스타 패딩 벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수 기능이 있는 패딩 소재의 벙어리 장갑입니다.", stock: 60, minQty: 20, cartonQty: 20 },
+            { id: "p3", name: "슈팅스타 하트레이스 스키장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수/방한 기능이 있는 고급 스키장갑입니다.", stock: 30, minQty: 20, cartonQty: 20 },
+            { id: "p4", name: "슈팅스타 베이직 손가락장갑", category: "유아동의류", price: 16900, originPrice: 29900, rating: 4.5, image: "🧤", description: "베이직 디자인의 손가락 장갑입니다.", stock: 40, minQty: 20, cartonQty: 20 },
+            { id: "p5", name: "슈팅스타 하츄핑 벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "하츄핑 캐릭터가 그려진 벙어리 장갑입니다.", stock: 60, minQty: 20, cartonQty: 20 },
+            // 수저세트류 (MOQ 20)
+            { id: "p6", name: "올인원 교정젓가락세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, rating: 4.8, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락과 스푼, 포크 세트입니다.", stock: 150, minQty: 20, cartonQty: 20 },
+            { id: "p7", name: "올인원 교정젓가락세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, rating: 4.8, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락과 스푼, 포크 세트입니다.", stock: 150, minQty: 20, cartonQty: 20 },
+            { id: "p8", name: "반짝핑 수저세트 교정 젓가락", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.7, image: "✨", description: "어린이집용 반짝핑 캐릭터 수저 세트입니다.", stock: 60, minQty: 20, cartonQty: 20 },
+            { id: "p9", name: "초롱핑 수저세트 교정 젓가락 올인원", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.6, image: "🎋", description: "초롱핑 캐릭터 수저 세트입니다.", stock: 60, minQty: 20, cartonQty: 20 },
+            { id: "p10", name: "헬로카봇 무소음 교정젓가락 케이스 세트", category: "주방/식기", price: 14900, originPrice: 19000, rating: 4.7, image: "🤖", description: "달그락거리는 소리를 줄인 무소음 케이스 헬로카봇 젓가락 세트입니다.", stock: 70, minQty: 20, cartonQty: 20 },
+            // 기타 (뱃지, 딱지, 마스크, 키트)
+            { id: "p11", name: "브레인롯 랜덤딱지 1팩 (5개입)", category: "완구/교구", price: 22900, originPrice: 39900, rating: 4.8, image: "🎲", description: "랜덤 딱지 1팩 (총 5개입).", stock: 200, minQty: 10, cartonQty: 10 },
+            { id: "p12", name: "캐치티니핑 시즌6 미스터리 뱃지 1팩 (3개입)", category: "완구/교구", price: 8900, originPrice: 12900, rating: 4.9, image: "🌟", description: "시즌6 미스터리 뱃지 1팩 (랜덤 3개입).", stock: 50, minQty: 20, cartonQty: 20 },
+            { id: "p13", name: "젠바디 코로나 자가 진단 키트", category: "생활/건강", price: 9350, originPrice: 13500, rating: 4.6, image: "🩺", description: "빠르고 간편한 자가 검사 키트.", stock: 500, minQty: 20, cartonQty: 20 },
+            { id: "p14", name: "참존 KF94 톤업핏 블랙라벨 마스크", category: "생활/건강", price: 10900, originPrice: 20000, rating: 4.5, image: "😷", description: "스타일리시한 핏 마스크 (16개입).", stock: 300, minQty: 16, cartonQty: 16 },
         ];
 
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
@@ -163,7 +168,7 @@
                                                     <td className="p-4 max-w-xs truncate">{o.items.length}건: {o.items[0].name} 등</td>
                                                     <td className="p-4 font-bold text-indigo-600">₩{formatPrice(o.totalAmount)}</td>
                                                     <td className="p-4">
-                                                        <select value={o.status} onChange={(e)=>handleOrderStatus(o.id, e.target.value)} className="border p-1 rounded text-xs font-bold transition-all">
+                                                        <select value={o.status} onChange={(e)=>handleOrderStatus(o.id, e.target.value)} className="border p-1 rounded text-xs font-bold transition-colors">
                                                             <option value="접수대기">접수대기</option><option value="배송중">배송중</option><option value="배송완료">배송완료</option><option value="주문취소">주문취소</option>
                                                         </select>
                                                     </td>
@@ -209,7 +214,7 @@
                     {/* 회원 상세 팝업 */}
                     {selectedUser && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300">
-                            <div className className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative animate-in zoom-in duration-200">
+                            <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative animate-in zoom-in duration-200">
                                 <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 transition-colors"><Icon name="X" className="w-6 h-6" /></button>
                                 <h3 className="font-bold text-lg mb-4 border-b pb-2">회원 상세 정보</h3>
                                 <div className="space-y-2 text-sm">
@@ -390,19 +395,19 @@
 
             // 상세 페이지 (뒤로가기 개선)
             const ProductDetail = ({ product, onBack, onAddToCart }) => {
-                const [qty, setQty] = useState(product.minQty || 1); // MOQ 적용
+                const [qty, setQty] = useState(product.minQty || 1);
                 
                 const handleQuantityChange = (delta) => {
                     const min = product.minQty || 1;
-                    const max = product.maxQty || 50; // 최대 50개 한정 
+                    const max = product.maxQty || 50;
                     const newQuantity = qty + delta;
 
                     if (delta > 0) {
                         if (newQuantity <= max) setQty(newQuantity);
-                        else alert(`최대 발주 수량은 ${max}개입니다. `);
+                        else alert(`최대 발주 수량은 ${max}개입니다.`);
                     } else {
                         if (newQuantity >= min) setQty(newQuantity);
-                        else alert(`최소 주문 수량은 ${min}개입니다. `);
+                        else alert(`최소 주문 수량은 ${min}개입니다.`);
                     }
                 };
 
@@ -418,8 +423,8 @@
                                 <div className="bg-slate-50 aspect-square w-full flex items-center justify-center mb-6"><span className="text-[8rem] drop-shadow-2xl">{product.image}</span></div>
                                 <div className="px-5 pb-8">
                                     <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100"><span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{formatPrice(product.price)}</span><span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{formatPrice(product.originPrice)}</span><span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">{Math.round((1-product.price/product.originPrice)*100)}% OFF</span></div>
-                                    <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100"><Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" /><div><span className="font-bold block text-sm">최소 {product.minQty}개 발주 가능</span><span className="text-xs text-indigo-700 mt-1 block">도매 전용 상품 (최대 50개 한정, 카톤 단위 출고)</span></div></div>
-                                    <div className="space-y-8"><div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3><p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">{product.description}</p></div><div><h3 className="text-lg font-bold text-slate-900 mb-3">배송 정보</h3><div className="bg-slate-50 p-5 rounded-xl space-y-3 text-sm text-slate-600 border border-slate-100"><div className="flex gap-3 items-center"><Icon name="Truck" className="w-5 h-5 text-slate-400" /><span>평일 14시 이전 주문 시 당일 출고</span></div><div className="flex gap-3 items-center"><Icon name="Boxes" className="w-5 h-5 text-slate-400" /><span>대량 발주는 문의 남기기 </span></div></div></div></div>
+                                    <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100"><Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" /><div><span className="font-bold block text-sm">최소 {product.minQty}개 발주 가능 (1카톤 당 {product.cartonQty}개)</span><span className="text-xs text-indigo-700 mt-1 block">도매 전용 상품 (최대 50개 한정, 카톤 단위 출고)</span></div></div>
+                                    <div className="space-y-8"><div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3><p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">{product.description}</p></div><div><h3 className="text-lg font-bold text-slate-900 mb-3">배송 정보</h3><div className="bg-slate-50 p-5 rounded-xl space-y-3 text-sm text-slate-600 border border-slate-100"><div className="flex gap-3 items-center"><Icon name="Truck" className="w-5 h-5 text-slate-400" /><span>평일 14시 이전 주문 시 당일 출고</span></div><div className="flex gap-3 items-center"><Icon name="Boxes" className="w-5 h-5 text-slate-400" /><span>박스 단위 발주 가능</span></div></div></div></div>
                                 </div>
                             </div>
                         </div>
