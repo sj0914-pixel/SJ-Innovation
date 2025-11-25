@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (Final v6)</title>
+    <title>SJ 파트너스 몰 (Final v7)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -42,12 +42,11 @@
             window.setPersistence = setPersistence;
             window.browserLocalPersistence = browserLocalPersistence;
             window.browserSessionPersistence = browserSessionPersistence;
-            // onSnapshot 추가 (실시간 연동용)
-            window.fs = { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot };
+            window.fs = { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot, deleteDoc };
             
             console.log("Firebase Connected");
         } catch (e) {
-            alert("연결 실패: " + e.message);
+            console.error("Firebase Init Error", e);
         }
     </script>
 
@@ -74,7 +73,7 @@
 
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // [이미지 업로드 컴포넌트]
+        // [이미지 업로드 컴포넌트] (5MB 제한 적용)
         const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             const fileInputRef = useRef(null);
             const [preview, setPreview] = useState(currentImage || "");
@@ -83,7 +82,11 @@
 
             const handleFile = (file) => {
                 if (!file) return;
-                if (file.size > 1024 * 1024) { alert("이미지 1MB 이하 권장"); return; }
+                // 5MB 제한 (5 * 1024 * 1024)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert("이미지가 너무 큽니다 (5MB 이하 권장).");
+                    return;
+                }
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     setPreview(reader.result);
@@ -105,8 +108,11 @@
                             <img src={preview} className="absolute inset-0 w-full h-full object-contain bg-slate-50" />
                         ) : (
                             <div className="text-center p-4">
-                                <div className="mx-auto bg-black text-white w-10 h-10 rounded-lg flex items-center justify-center mb-2"><Icon name="UploadCloud" className="w-6 h-6" /></div>
-                                <p className="text-sm text-slate-500 font-medium">클릭/드래그 업로드</p>
+                                <div className="mx-auto bg-black text-white w-10 h-10 rounded-lg flex items-center justify-center mb-2">
+                                    <Icon name="UploadCloud" className="w-6 h-6" />
+                                </div>
+                                <p className="text-sm text-slate-500 font-medium">클릭 또는 드래그하여 업로드</p>
+                                <p className="text-xs text-slate-400 mt-1">파일당 최대 5MB</p>
                             </div>
                         )}
                         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleFile(e.target.files[0])} />
@@ -115,7 +121,7 @@
             );
         };
 
-        // --- 상품 데이터 (초기화용) ---
+        // --- 초기 상품 데이터 ---
         const INITIAL_PRODUCTS = [
             { id: "new_p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
             { id: "new_p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
@@ -144,7 +150,6 @@
             useEffect(() => {
                 if(!window.fs || !window.auth.currentUser) return;
                 const { collection, query, where, onSnapshot } = window.fs;
-                // 실시간 구독
                 const q = query(collection(window.db, "orders"), where("userId", "==", window.auth.currentUser.uid));
                 const unsub = onSnapshot(q, (snap) => {
                     const list = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -220,24 +225,19 @@
 
             useLucide();
 
-            // 실시간 데이터 동기화
+            // 실시간 데이터 동기화 (창고 products_final_v5 사용)
             useEffect(() => {
                 if(!window.fs) return;
                 const { collection, query, orderBy, onSnapshot } = window.fs;
 
-                // 상품 구독 (v5 컬렉션)
                 const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => {
                     setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                 });
 
-                // 유저 구독
                 const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => {
                     setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                 });
 
-                // 주문 구독
-                let q = query(collection(window.db, "orders"), orderBy("date", "desc"));
-                // orderBy 에러 발생 시 fallback
                 const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
                     let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     list.sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -330,7 +330,7 @@
                                         <tbody className="divide-y divide-slate-100">
                                             {products.map(p=>(
                                                 <tr key={p.id} className="hover:bg-slate-50">
-                                                    <td className="p-4 text-2xl">{p.image && (p.image.startsWith('data:') || p.image.startsWith('http')) ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
+                                                    <td className="p-4 text-2xl">{p.image && (p.image.startsWith('data:') || p.image.startsWith('http') || p.image.startsWith('.')) ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
                                                     <td className="p-4"><div className="font-bold">{p.name}</div><div className="text-xs text-slate-400">{p.category}</div></td>
                                                     <td className="p-4">₩{formatPrice(p.price)}</td>
                                                     <td className="p-4 font-bold text-blue-600">{p.stock}</td>
@@ -697,59 +697,48 @@
             const [loading, setLoading] = useState(true);
 
             useEffect(() => {
-                const initData = async () => {
-                    if (!window.fs) return;
-                    const { collection, getDocs, doc, setDoc } = window.fs;
-                    try {
-                        // 새 창고 v5_final 에 데이터 저장
-                        const snap = await getDocs(collection(window.db, "products_final_v5"));
-                        if (snap.empty) {
-                            await Promise.all(INITIAL_PRODUCTS.map(p => setDoc(doc(window.db, "products_final_v5", p.id), p)));
-                            setProducts(INITIAL_PRODUCTS);
-                        } else {
-                            // snap.docs.map... 하지만 실시간 리스너가 AdminPage에서 돌고 있음. 
-                            // App에서는 초기 로딩만 담당하거나, 여기서도 구독할 수 있음.
-                            // 간단히 AdminPage와 ShopPage가 각자 구독하도록 (또는 AdminPage가 수정하면 ShopPage 리로드 필요없이 자동반영되게)
-                            // ShopPage에 리스너를 달아주는게 좋음.
-                            
-                            // 여기선 일단 로딩 완료 처리
-                        }
-                    } catch(e) { console.error(e); }
-                };
-                
-                const unsubscribe = onAuthStateChanged(window.auth, async (u) => {
-                    if (u) {
-                        if (u.email === null) { 
-                            // sj
-                        }
-                        try {
-                            const q = window.fs.query(window.fs.collection(window.db, "users"), window.fs.where("email", "==", u.email));
-                            const snap = await window.fs.getDocs(q);
-                            if (!snap.empty) {
-                                setUser({ ...u, ...snap.docs[0].data() });
+                // 1. Firebase가 초기화될 때까지 대기하는 안전장치 (Polling)
+                const waitForAuth = setInterval(() => {
+                    if (window.auth && window.onAuthStateChanged) {
+                        clearInterval(waitForAuth);
+                        
+                        // 2. Auth State Listener 등록
+                        window.onAuthStateChanged(window.auth, async (u) => {
+                            if (u) {
+                                // 관리자 계정 체크 (단순 ID 체크)
+                                // 실제로는 UID나 custom claim을 쓰지만 여기선 약속된 ID
+                                // 이메일이 없는 경우도 대비
+                                if (u.email === null) { }
+
+                                try {
+                                    const q = window.fs.query(window.fs.collection(window.db, "users"), window.fs.where("email", "==", u.email));
+                                    const snap = await window.fs.getDocs(q);
+                                    if (!snap.empty) {
+                                        setUser({ ...u, ...snap.docs[0].data() });
+                                    } else {
+                                        setUser(u);
+                                    }
+                                } catch (e) { setUser(u); }
                             } else {
-                                setUser(u);
+                                setUser(null);
+                                setIsAdmin(false);
                             }
-                        } catch (e) { setUser(u); }
-                    } else {
-                        setUser(null);
-                        setIsAdmin(false);
+
+                            // 3. 상품 데이터 로드 (v5)
+                            // 여기서는 초기화 로직만 수행하고, 실시간 반영은 각 페이지 컴포넌트의 useEffect에서 담당
+                            try {
+                                const prodSnap = await window.fs.getDocs(window.fs.collection(window.db, "products_final_v5"));
+                                if (prodSnap.empty) {
+                                    await Promise.all(INITIAL_PRODUCTS.map(p => window.fs.setDoc(window.fs.doc(window.db, "products_final_v5", p.id), p)));
+                                }
+                            } catch(e) { console.error(e); }
+                            
+                            setLoading(false);
+                        });
                     }
-                    
-                    // 데이터 초기화 로직 실행
-                    await initData();
-                    setLoading(false);
-                });
-                return () => unsubscribe();
-            }, []);
-            
-            // ShopPage에 products 상태를 내려주기 위해 여기서 실시간 구독 추가
-            useEffect(() => {
-                if (!window.fs) return;
-                const unsub = window.fs.onSnapshot(window.fs.collection(window.db, "products_final_v5"), (snap) => {
-                    setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                });
-                return () => unsub();
+                }, 100); // 0.1초마다 체크
+
+                return () => clearInterval(waitForAuth);
             }, []);
 
             const handleAdminLogin = () => { setIsAdmin(true); setUser({ email: 'admin' }); };
