@@ -3,15 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (Final v4)</title>
+    <title>SJ 파트너스 몰 (Final v5)</title>
     
-    <script>
-        window.onerror = function(msg, url, line, col, error) {
-            alert("🚨 오류 발생!\n" + msg + "\n(줄 번호: " + line + ")");
-            return false;
-        };
-    </script>
-
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -41,10 +34,12 @@
             window.auth = getAuth(app);
             window.db = getFirestore(app);
             
-            // 함수 전역 등록
+            // ★★★ 핵심 수정: 함수들을 window에 확실하게 등록 ★★★
             window.createUser = createUserWithEmailAndPassword;
             window.signInUser = signInWithEmailAndPassword;
             window.logOut = signOut;
+            window.onAuthStateChanged = onAuthStateChanged; // << 여기가 누락되어 에러가 났었습니다!
+            
             window.setPersistence = setPersistence;
             window.browserLocalPersistence = browserLocalPersistence;
             window.browserSessionPersistence = browserSessionPersistence;
@@ -68,11 +63,11 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // 아이콘 자동 로더 (화면 깜빡임/X버튼 사라짐 해결)
+        // 아이콘 자동 로더 (렌더링 될 때마다 아이콘 그리기)
         const useLucide = () => {
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
-            }); // 모든 렌더링마다 실행하여 아이콘 누락 방지
+            }); 
         };
 
         const Icon = ({ name, ...props }) => {
@@ -82,7 +77,7 @@
 
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // --- [이미지 업로드 컴포넌트] ---
+        // [이미지 업로드 컴포넌트]
         const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             const fileInputRef = useRef(null);
             const [preview, setPreview] = useState(currentImage || "");
@@ -91,7 +86,7 @@
 
             const handleFile = (file) => {
                 if (!file) return;
-                if (file.size > 1024 * 1024) { // 1MB 제한
+                if (file.size > 1024 * 1024) {
                     alert("이미지가 너무 큽니다 (1MB 이하 권장).");
                     return;
                 }
@@ -128,7 +123,7 @@
             );
         };
 
-        // --- 상품 데이터 (14종) ---
+        // --- 상품 데이터 ---
         const INITIAL_PRODUCTS = [
             { id: "new_p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
             { id: "new_p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
@@ -245,7 +240,6 @@
                 if(!window.fs) return;
                 const { collection, getDocs, query, orderBy } = window.fs;
                 
-                // 초기화용 v4 컬렉션 사용
                 const prodSnap = await getDocs(collection(window.db, "products_final_v4"));
                 setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
@@ -420,7 +414,7 @@
             const [loading, setLoading] = useState(false);
             const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '', name: '', mobile: '', email: '', zipcode: '', address: '', addressDetail: '', businessType: '문구/팬시점', storeName: '', repName: '', businessNumber: '', businessCategory: '', businessItem: '', taxEmail: '' });
 
-            useEffect(() => { if(window.lucide) window.lucide.createIcons(); }, []);
+            useLucide();
             useEffect(() => {
                 if(isAddrOpen && addrWrapRef.current && window.daum) {
                     addrWrapRef.current.innerHTML = '';
@@ -716,27 +710,15 @@
             const [loading, setLoading] = useState(true);
 
             useEffect(() => {
-                const initData = async () => {
-                    if (!window.fs) return;
-                    const { collection, getDocs, doc, setDoc } = window.fs;
-                    try {
-                        // 새 창고 v4_final 에 데이터 저장
-                        const snap = await getDocs(collection(window.db, "products_final_v4"));
-                        if (snap.empty) {
-                            await Promise.all(INITIAL_PRODUCTS.map(p => setDoc(doc(window.db, "products_final_v4", p.id), p)));
-                            setProducts(INITIAL_PRODUCTS);
-                        } else {
-                            setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                        }
-                    } catch(e) { console.error(e); }
-                };
-                // 인증 대기 (무한 대기 방지 -> 1초 후 강제 실행 X, 리스너 사용)
+                // 초기 데이터 로딩 & 인증 체크 병합
                 const unsubscribe = onAuthStateChanged(window.auth, async (u) => {
                     if (u) {
+                        // 관리자 체크
                         if (u.email === null) { 
-                            // sj 계정 처리 등 (관리자)
+                            // sj 계정 등 
                         }
                         try {
+                            // 사용자 정보 로드
                             const q = window.fs.query(window.fs.collection(window.db, "users"), window.fs.where("email", "==", u.email));
                             const snap = await window.fs.getDocs(q);
                             if (!snap.empty) {
@@ -749,8 +731,20 @@
                         setUser(null);
                         setIsAdmin(false);
                     }
-                    // 데이터 로드 시작
-                    initData();
+
+                    // 상품 데이터 로드 (v5)
+                    try {
+                        const prodCollection = window.fs.collection(window.db, "products_final_v5");
+                        const prodSnap = await window.fs.getDocs(prodCollection);
+                        if (prodSnap.empty) {
+                            // 초기화
+                            await Promise.all(INITIAL_PRODUCTS.map(p => window.fs.setDoc(window.fs.doc(window.db, "products_final_v5", p.id), p)));
+                            setProducts(INITIAL_PRODUCTS);
+                        } else {
+                            setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+                        }
+                    } catch(e) { console.error(e); }
+                    
                     setLoading(false);
                 });
                 return () => unsubscribe();
