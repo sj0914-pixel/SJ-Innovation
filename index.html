@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (Stable)</title>
+    <title>SJ 파트너스 몰 (FINAL SUCCESS)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -19,7 +19,6 @@
         import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // SJ-Innovation (한국) 키
         const firebaseConfig = {
             apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqcYceZwUtI",
             authDomain: "sj-innovation-a8f6b.firebaseapp.com",
@@ -47,7 +46,7 @@
             
             window.isFirebaseReady = true;
         } catch (e) {
-            alert("연결 오류: " + e.message);
+            console.error(e);
         }
     </script>
 
@@ -63,8 +62,8 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        const useLucide = () => {
-            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }); 
+        const useLucide = (deps) => {
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, deps); 
         };
 
         const Icon = ({ name, ...props }) => {
@@ -84,7 +83,7 @@
             const handleFile = (file) => {
                 if (!file) return;
                 if (file.size > 700 * 1024) {
-                    alert("⛔ 이미지 용량이 너무 큽니다! (700KB 이하만 가능)\n용량을 줄여서 올려주세요.");
+                    alert("⛔ [오류 방지] 이미지가 너무 큽니다! (700KB 이하만 가능)\n용량을 줄여서 올려주세요.");
                     return;
                 }
                 const reader = new FileReader();
@@ -109,7 +108,7 @@
                         ) : (
                             <div className="text-center p-4">
                                 <div className="mx-auto bg-black text-white w-10 h-10 rounded-lg flex items-center justify-center mb-2"><Icon name="UploadCloud" className="w-6 h-6" /></div>
-                                <p className="text-sm text-slate-500 font-medium">클릭/드래그 (700KB 이하)</p>
+                                <p className="text-sm text-slate-500 font-medium">클릭/드래그 (500KB 이하)</p>
                             </div>
                         )}
                         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleFile(e.target.files[0])} />
@@ -156,7 +155,7 @@
             };
 
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all">
                     <div className="bg-white w-full max-w-2xl h-[80vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in duration-200">
                         <div className="p-4 border-b flex justify-between items-center bg-slate-50"><h2 className="font-bold text-xl">마이페이지</h2><button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full"><Icon name="X" /></button></div>
                         <div className="flex border-b"><button onClick={()=>setTab("info")} className={`flex-1 py-3 font-bold ${tab==="info"?"border-b-2 border-black":""}`}>내 정보</button><button onClick={()=>setTab("orders")} className={`flex-1 py-3 font-bold ${tab==="orders"?"border-b-2 border-black":""}`}>주문 내역</button></div>
@@ -203,6 +202,7 @@
             useEffect(() => {
                 if(!window.fs) return;
                 const { collection, onSnapshot } = window.fs;
+                // products_final_release 컬렉션 사용
                 const unsubProd = onSnapshot(collection(window.db, "products_final_release"), s => setProducts(s.docs.map(d=>({id:d.id, ...d.data()}))));
                 const unsubUser = onSnapshot(collection(window.db, "users"), s => setUsers(s.docs.map(d=>({id:d.id, ...d.data()}))));
                 const unsubOrder = onSnapshot(collection(window.db, "orders"), s => setOrders(s.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>new Date(b.date)-new Date(a.date))));
@@ -255,7 +255,7 @@
                         </div>
                     </div>
                     {selUser && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative"><button onClick={()=>setSelUser(null)} className="absolute top-4 right-4 p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button><h3 className="font-bold text-lg mb-4">회원 상세</h3><div className="text-sm space-y-2"><div>상호: {selUser.storeName}</div><div>대표: {selUser.repName}</div><div>연락처: {selUser.mobile}</div><div>사업자: {selUser.businessNumber}</div><div>주소: {selUser.address}</div></div></div></div>}
-                    {isModalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"><button onClick={()=>setIsModalOpen(false)} className="absolute top-4 right-4 p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button><h3 className="font-bold text-lg mb-4">{editProd?"상품 수정":"상품 등록"}</h3><form onSubmit={handleSaveProduct} className="space-y-2 text-sm"><div className="grid grid-cols-2 gap-2"><div><label>카테고리</label><select name="c" defaultValue={editProd?.category} className="w-full border p-2 rounded">{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div><div><label>재고</label><input name="s" type="number" defaultValue={editProd?.stock||0} className="w-full border p-2 rounded" required/></div></div><div><label>상품명</label><input name="n" defaultValue={editProd?.name} className="w-full border p-2 rounded" required/></div><div className="grid grid-cols-2 gap-2"><div><label>공급가</label><input name="p" type="number" defaultValue={editProd?.price} className="w-full border p-2 rounded" required/></div><div><label>권장가</label><input name="op" type="number" defaultValue={editProd?.originPrice} className="w-full border p-2 rounded" required/></div></div><div className="grid grid-cols-2 gap-2"><div><label>최소주문</label><input name="min" type="number" defaultValue={editProd?.minQty||20} className="w-full border p-2 rounded"/></div><div><label>1카톤 수량</label><input name="cq" type="number" defaultValue={editProd?.cartonQty||20} className="w-full border p-2 rounded"/></div></div><ImageUploader label="썸네일 (700KB 이하)" currentImage={thumb} onImageSelect={setThumb}/><ImageUploader label="상세페이지 (700KB 이하)" currentImage={detail} onImageSelect={setDetail}/><div><label>소개</label><textarea name="d" defaultValue={editProd?.description} className="w-full border p-2 rounded h-16"/></div><button className="w-full bg-indigo-600 text-white py-3 rounded font-bold mt-2" disabled={isSaving}>{isSaving?"저장 중...":"저장"}</button></form></div></div>}
+                    {isModalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"><button onClick={()=>setIsModalOpen(false)} className="absolute top-4 right-4 p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button><h3 className="font-bold text-lg mb-4">{editProd?"상품 수정":"상품 등록"}</h3><form onSubmit={saveProd} className="space-y-2 text-sm"><div className="grid grid-cols-2 gap-2"><div><label>카테고리</label><select name="c" defaultValue={editProd?.category} className="w-full border p-2 rounded">{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div><div><label>재고</label><input name="s" type="number" defaultValue={editProd?.stock||0} className="w-full border p-2 rounded" required/></div></div><div><label>상품명</label><input name="n" defaultValue={editProd?.name} className="w-full border p-2 rounded" required/></div><div className="grid grid-cols-2 gap-2"><div><label>공급가</label><input name="p" type="number" defaultValue={editProd?.price} className="w-full border p-2 rounded" required/></div><div><label>권장가</label><input name="op" type="number" defaultValue={editProd?.originPrice} className="w-full border p-2 rounded" required/></div></div><div className="grid grid-cols-2 gap-2"><div><label>최소주문</label><input name="min" type="number" defaultValue={editProd?.minQty||20} className="w-full border p-2 rounded"/></div><div><label>1카톤 수량</label><input name="cq" type="number" defaultValue={editProd?.cartonQty||20} className="w-full border p-2 rounded"/></div></div><ImageUploader label="썸네일 (700KB 이하)" currentImage={thumb} onImageSelect={setThumb}/><ImageUploader label="상세페이지 (700KB 이하)" currentImage={detail} onImageSelect={setDetail}/><div><label>소개</label><textarea name="d" defaultValue={editProd?.description} className="w-full border p-2 rounded h-16"/></div><button className="w-full bg-indigo-600 text-white py-3 rounded font-bold mt-2" disabled={isSaving}>{isSaving?"저장 중...":"저장"}</button></form></div></div>}
                 </div>
             );
         };
@@ -346,7 +346,6 @@
                                             <input name="addressDetail" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" placeholder="나머지 주소 (상세주소)" onChange={handleChange} />
                                         </div>
                                     </section>
-
                                     <section className="bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200">
                                         <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">사업자 필수정보 <span className="text-red-500 text-sm">*</span></h3>
                                         <div className="mb-4">
@@ -440,14 +439,14 @@
             return (
                 <div className="min-h-screen bg-slate-50 pb-20">
                     <header className="sticky top-0 bg-white shadow p-4 flex justify-between items-center z-40">
-                        <div className="flex items-center gap-2 cursor-pointer" onClick={()=>{setSelectedCategory("전체");setSearchTerm("");}}><div className="bg-slate-800 w-8 h-8 rounded flex items-center justify-center text-white font-bold">S</div><span className="font-bold text-lg hidden sm:block">SJ Innovation</span></div>
+                        <div className="flex items-center gap-2 cursor-pointer" onClick={goHome}><div className="bg-slate-800 w-8 h-8 rounded flex items-center justify-center text-white font-bold">S</div><span className="font-bold text-lg hidden sm:block">SJ Innovation</span></div>
                         <div className="flex gap-4"><button onClick={()=>setIsOpen(true)} className="relative p-1"><Icon name="Boxes"/>{cart.length>0 && <span className="bg-red-500 text-white text-xs rounded-full px-1 absolute -top-1 -right-1">{cart.length}</span>}</button><button onClick={()=>setMyPage(true)} className="p-1"><Icon name="User"/></button><button onClick={onLogout} className="text-xs font-bold border px-2 py-1 rounded">로그아웃</button></div>
                     </header>
                     <main className="p-4 max-w-7xl mx-auto">
                         <div className="bg-slate-900 rounded-xl p-6 mb-6 text-white shadow-lg flex justify-between items-center"><div><span className="bg-white/20 px-2 py-1 rounded text-xs font-bold">SJ Partner</span><h2 className="text-2xl font-bold mt-1">겨울 신상 입고</h2></div><div className="text-right"><div className="text-3xl font-bold">NEW</div><div className="text-xs opacity-70">시즌 상품</div></div></div>
                         <div className="flex gap-2 overflow-x-auto pb-2 mb-4">{CATEGORIES.map(c=><button key={c} onClick={()=>setCat(c)} className={`px-4 py-1 rounded-full border whitespace-nowrap text-sm font-bold ${cat===c?"bg-slate-800 text-white":"bg-white"}`}>{c}</button>)}</div>
                         <input className="w-full p-3 rounded-lg border mb-6 text-sm" placeholder="상품 검색..." value={term} onChange={e=>setTerm(e.target.value)} />
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 gap-4">
                             {filtered.map(p=>(
                                 <div key={p.id} onClick={()=>setSelProd(p)} className="bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition">
                                     <div className="aspect-[4/3] bg-slate-100 relative flex items-center justify-center overflow-hidden">
@@ -492,12 +491,6 @@
                             } else { setUser(null); setIsAdmin(false); }
                             
                             // 초기화: products_final_release 컬렉션 사용
-                            try {
-                                const snap = await window.fs.getDocs(window.fs.collection(window.db, "products_final_release"));
-                                if (snap.empty) await Promise.all(INITIAL_PRODUCTS.map(p => window.fs.setDoc(window.fs.doc(window.db, "products_final_release", p.id), p)));
-                                setProducts(snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => a.name.localeCompare(b.name)));
-                            } catch(e){}
-                            
                             setLoading(false);
                         });
                     }
@@ -505,7 +498,6 @@
                 return () => clearInterval(check);
             }, []);
 
-            // 실시간 구독 (App 레벨)
             useEffect(() => {
                 if(!window.fs || !window.db) return;
                 const unsub = window.fs.onSnapshot(window.fs.collection(window.db, "products_final_release"), (snap) => {
