@@ -19,7 +19,7 @@
         import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // ★ 구형 프로젝트(SJ-Innovation) 키로 원상복구 (가장 안정적)
+        // ★ SJ-Innovation (한국) 키 복구
         const firebaseConfig = {
             apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqcYceZwUtI",
             authDomain: "sj-innovation-a8f6b.firebaseapp.com",
@@ -35,20 +35,20 @@
             window.auth = getAuth(app);
             window.db = getFirestore(app);
             
-            // 전역 함수 등록 (로그인 오류 해결)
+            // 전역 함수 등록 (로그인 에러 방지)
             window.createUser = createUserWithEmailAndPassword;
             window.signInUser = signInWithEmailAndPassword;
             window.logOut = signOut;
-            window.onAuthStateChanged = onAuthStateChanged; // ★ 이 부분 누락 수정됨
+            window.onAuthStateChanged = onAuthStateChanged; 
             window.setPersistence = setPersistence;
             window.browserLocalPersistence = browserLocalPersistence;
             window.browserSessionPersistence = browserSessionPersistence;
-            
             window.fs = { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot };
+            
             window.isFirebaseReady = true; 
-            console.log("Firebase Connected");
+            console.log("Firebase Restore Mode Connected");
         } catch (e) {
-            console.error(e);
+            alert("연결 오류: " + e.message);
         }
     </script>
 
@@ -65,7 +65,7 @@
         const { useState, useEffect, useRef } = React;
 
         const useLucide = () => {
-            useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }); 
         };
 
         const Icon = ({ name, ...props }) => {
@@ -75,7 +75,7 @@
 
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // [이미지 업로드] ★ 용량 제한(700KB) 추가하여 DB 멈춤 방지
+        // [이미지 업로드] (700KB 제한 - DB 멈춤 방지)
         const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             const fileInputRef = useRef(null);
             const [preview, setPreview] = useState(currentImage || "");
@@ -84,7 +84,7 @@
 
             const handleFile = (file) => {
                 if (!file) return;
-                // 700KB 제한 (Base64 변환 시 용량 증가 고려)
+                // 700KB 제한
                 if (file.size > 700 * 1024) {
                     alert("⛔ 오류 방지: 이미지가 너무 큽니다! (700KB 이하만 가능)\n용량을 줄여서 올려주세요.");
                     return;
@@ -120,24 +120,120 @@
             );
         };
 
-        // --- 상품 데이터 ---
-        const INITIAL_PRODUCTS = [
-            { id: "new_p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
-            { id: "new_p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
-            { id: "new_p3", name: "올인원 교정젓가락풀세트 (반짝핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "반짝핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
-            { id: "new_p4", name: "올인원 교정젓가락풀세트 (초롱핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "초롱핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
-            { id: "new_p5", name: "슈팅스타 캐치티니핑 하츄핑 모자목도리", category: "유아동의류", price: 16900, originPrice: 29900, image: "🧢", description: "하츄핑 캐릭터 모자/목도리 일체형.", stock: 100, minQty: 20, cartonQty: 20 },
-            { id: "new_p6", name: "슈팅스타 캐치티니핑 하츄핑 벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, image: "🧤", description: "따뜻한 하츄핑 벙어리 장갑.", stock: 100, minQty: 20, cartonQty: 20 },
-            { id: "new_p7", name: "슈팅스타 캐치티니핑 하츄핑 스키장갑", category: "유아동의류", price: 22900, originPrice: 32900, image: "🧤", description: "방수 기능이 탁월한 스키장갑.", stock: 100, minQty: 20, cartonQty: 20 },
-            { id: "new_p8", name: "슈팅스타 캐치티니핑 하츄핑 베이직손가락장갑", category: "유아동의류", price: 16900, originPrice: 29900, image: "🧤", description: "활동성이 좋은 손가락 장갑.", stock: 100, minQty: 20, cartonQty: 20 },
-            { id: "new_p9", name: "슈팅스타 캐치티니핑 하츄핑 털벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, image: "🧤", description: "부드러운 털 소재 벙어리 장갑.", stock: 100, minQty: 20, cartonQty: 20 },
-            { id: "new_p10", name: "캐치티니핑 시즌6 미스터리 뱃지 1팩", category: "완구/교구", price: 8900, originPrice: 12900, image: "🌟", description: "랜덤 미스터리 뱃지 1팩.", stock: 200, minQty: 10, cartonQty: 10 },
-            { id: "new_p11", name: "브레인롯 랜덤딱지 1박스", category: "완구/교구", price: 22900, originPrice: 39900, image: "🎲", description: "대유행 브레인롯 랜덤 딱지 1박스.", stock: 200, minQty: 10, cartonQty: 10 },
-            { id: "new_p12", name: "젠바디 코로나 자가진단 키트", category: "생활/건강", price: 9350, originPrice: 13500, image: "🩺", description: "빠르고 정확한 자가진단 키트.", stock: 500, minQty: 20, cartonQty: 20 },
-            { id: "new_p13", name: "캐치티니핑 하츄핑 마스크", category: "생활/건강", price: 12900, originPrice: 15900, image: "😷", description: "아이들이 좋아하는 하츄핑 마스크.", stock: 500, minQty: 20, cartonQty: 20 },
-            { id: "new_p14", name: "참존 마스크", category: "생활/건강", price: 10900, originPrice: 20000, image: "😷", description: "편안한 호흡 참존 마스크.", stock: 500, minQty: 16, cartonQty: 16 }
-        ];
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
+
+        // --- [로그인 페이지] (사장님이 원하시던 그 디자인 복구) ---
+        const LoginPage = ({ onAdminLogin }) => {
+            const [isLoginMode, setIsLoginMode] = useState(true);
+            const [isAddrOpen, setIsAddrOpen] = useState(false);
+            const [rememberMe, setRememberMe] = useState(false);
+            const addrWrapRef = useRef(null);
+            const [loading, setLoading] = useState(false);
+            const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '', name: '', mobile: '', email: '', zipcode: '', address: '', addressDetail: '', businessType: '문구/팬시점', storeName: '', repName: '', businessNumber: '', businessCategory: '', businessItem: '', taxEmail: '' });
+
+            useLucide();
+            useEffect(() => {
+                if(isAddrOpen && addrWrapRef.current && window.daum) {
+                    addrWrapRef.current.innerHTML = '';
+                    new window.daum.Postcode({ oncomplete: function(data) { let addr = data.userSelectedType==='R'?data.roadAddress:data.jibunAddress; if(data.buildingName) addr+=` (${data.buildingName})`; setFormData(prev=>({...prev, zipcode: data.zonecode, address: addr})); setIsAddrOpen(false); }, width: '100%', height: '100%' }).embed(addrWrapRef.current);
+                }
+            }, [isAddrOpen]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                
+                if(isLoginMode && formData.username === 'sj' && formData.password === '0914') { onAdminLogin(); return; }
+
+                try {
+                    if(isLoginMode) {
+                        const persistence = rememberMe ? window.browserLocalPersistence : window.browserSessionPersistence;
+                        await window.setPersistence(window.auth, persistence);
+                        await window.signInUser(window.auth, formData.username, formData.password);
+                    } else {
+                        if(formData.password !== formData.confirmPassword) { alert("비밀번호 불일치"); setLoading(false); return; }
+                        const cred = await window.createUser(window.auth, formData.email, formData.password);
+                        await window.fs.setDoc(window.fs.doc(window.db, "users", cred.user.uid), {
+                            email: formData.email, displayId: formData.username, name: formData.name, mobile: formData.mobile,
+                            address: `${formData.address} ${formData.addressDetail}`, businessType: formData.businessType,
+                            storeName: formData.storeName, repName: formData.repName, businessNumber: formData.businessNumber,
+                            businessCategory: formData.businessCategory, businessItem: formData.businessItem, taxEmail: formData.taxEmail,
+                            joinedAt: new Date().toISOString(), status: "승인대기"
+                        });
+                        alert("가입 완료! 자동 로그인됩니다.");
+                    }
+                } catch(err) { alert("오류: " + err.message); setLoading(false); }
+            };
+            const handleChange = (e) => setFormData(prev=>({...prev, [e.target.name]: e.target.value}));
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8 sm:px-6 lg:px-8 transition-all duration-500">
+                    <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all duration-500 ${isLoginMode ? 'max-w-md p-6 sm:p-8' : 'max-w-3xl p-6 sm:p-8'}`}>
+                        <div className="text-center mb-8">
+                            <div className="bg-slate-800 w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center mx-auto mb-4 text-white text-2xl sm:text-3xl font-bold shadow-lg">S</div>
+                            <h1 className="text-2xl font-bold text-slate-800">{isLoginMode ? "SJ 파트너 로그인" : "사업자 회원등록"}</h1>
+                            <p className="text-slate-500 mt-2 text-sm font-semibold">SJ Innovation</p>
+                        </div>
+                        
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            {isLoginMode ? (
+                                <div className="space-y-4">
+                                    <div><label className="block text-sm font-medium text-slate-700 mb-1">아이디</label><input name="username" className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-slate-500 outline-none" onChange={handleChange} required placeholder="아이디를 입력하세요" /></div>
+                                    <div><label className="block text-sm font-medium text-slate-700 mb-1">비밀번호</label><input name="password" type="password" className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-slate-500 outline-none" onChange={handleChange} required placeholder="비밀번호를 입력하세요" /></div>
+                                    <div className="flex items-center gap-2"><input type="checkbox" id="remember" className="w-4 h-4 accent-slate-800" checked={rememberMe} onChange={e=>setRememberMe(e.target.checked)} /><label htmlFor="remember" className="text-sm text-slate-600 cursor-pointer select-none">로그인 정보 기억하기</label></div>
+                                </div>
+                            ) : (
+                                <div className="space-y-8 animate-in fade-in duration-500">
+                                    <section className="bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200">
+                                        <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">필수정보 <span className="text-red-500 text-sm">*</span></h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">이름(실명)</label><input name="name" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">아이디</label><div className="flex gap-2"><input name="username" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /><button type="button" className="bg-slate-600 text-white text-xs px-3 rounded hover:bg-slate-700 whitespace-nowrap">중복확인</button></div></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">비밀번호</label><input name="password" type="password" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">비밀번호 확인</label><input name="confirmPassword" type="password" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">휴대폰 번호</label><input name="mobile" type="tel" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">이메일</label><input name="email" type="email" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                        </div>
+                                        <div className="mt-4">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">기본 배송지 주소</label>
+                                            <div className="flex gap-2 mb-2"><input name="zipcode" value={formData.zipcode} readOnly className="w-24 px-3 py-2 rounded border border-slate-300 bg-slate-100 text-sm" placeholder="우편번호" /><button type="button" onClick={() => setIsAddrOpen(true)} className="bg-slate-600 text-white text-xs px-3 rounded hover:bg-slate-700">주소검색</button></div>
+                                            <input name="address" value={formData.address} readOnly className="w-full px-3 py-2 rounded border border-slate-300 bg-slate-100 mb-2" placeholder="기본 주소" />
+                                            <input name="addressDetail" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" placeholder="나머지 주소 (상세주소)" onChange={handleChange} />
+                                        </div>
+                                    </section>
+                                    <section className="bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200">
+                                        <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">사업자 필수정보 <span className="text-red-500 text-sm">*</span></h3>
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">사업 형태</label>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                {['문구/팬시점', '과자/아이스크림', '편의점', '키즈카페', '기타업종'].map((type) => (
+                                                    <label key={type} className="flex items-center gap-2 text-sm cursor-pointer p-2 border rounded hover:bg-white transition-colors">
+                                                        <input type="radio" name="businessType" value={type} checked={formData.businessType === type} onChange={handleChange} className="text-slate-600 focus:ring-slate-500" />{type}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">상호명(법인명)</label><input name="storeName" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">대표자명</label><input name="repName" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">사업자 등록번호</label><input name="businessNumber" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">업태</label><input name="businessCategory" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">종목</label><input name="businessItem" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">세금계산서 이메일</label><input name="taxEmail" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                        </div>
+                                        <div className="mt-4 p-3 bg-slate-50 rounded-lg text-xs text-slate-700 flex items-start gap-2 border border-slate-200"><Icon name="Check" className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-500" /><span>허위 정보 기재 시 법적 문제가 발생할 수 있으며, 부정확한 정보 입력 시 정회원 승인이 거절될 수 있습니다.</span></div>
+                                    </section>
+                                </div>
+                            )}
+                            <button type="submit" disabled={loading} className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 rounded-xl transition-colors shadow-lg hover:shadow-xl mt-4 text-lg">{loading?"처리중...":(isLoginMode?"로그인하기":"사업자 회원등록 신청")}</button>
+                        </form>
+                        <div className="mt-6 text-center border-t border-slate-100 pt-6"><p className="text-sm text-slate-600">{isLoginMode ? "아직 파트너 회원이 아니신가요?" : "이미 아이디가 있으신가요?"}<button onClick={() => setIsLoginMode(!isLoginMode)} className="ml-2 font-bold text-slate-800 hover:underline focus:outline-none">{isLoginMode ? "사업자 회원가입" : "로그인하기"}</button></p></div>
+                        <p className="mt-8 text-center text-xs text-slate-400">copyright (c) SJ Innovation. All rights reserved.</p>
+                    </div>
+                    {isAddrOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative shadow-2xl flex flex-col"><div className="p-3 border-b flex justify-between font-bold bg-slate-50"><span>주소 검색</span><button onClick={()=>setIsAddrOpen(false)} className="hover:bg-slate-100 p-2 rounded-full"><Icon name="X"/></button></div><div ref={addrWrapRef} className="flex-1 w-full bg-slate-100 relative"></div></div></div>}
+                </div>
+            );
+        };
 
         // [마이페이지]
         const MyPage = ({ user, onClose }) => {
@@ -155,14 +251,14 @@
             }, []);
 
             const cancelOrder = async (id) => {
-                if(confirm("취소하시겠습니까?")) await window.fs.updateDoc(window.fs.doc(window.db, "orders", id), { status: "주문취소" });
+                if(confirm("주문을 취소하시겠습니까?")) await window.fs.updateDoc(window.fs.doc(window.db, "orders", id), { status: "주문취소" });
             };
 
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all">
                     <div className="bg-white w-full max-w-2xl h-[80vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in duration-200">
-                        <div className="p-4 border-b flex justify-between items-center bg-slate-50"><h2 className="font-bold text-xl">마이페이지</h2><button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full"><Icon name="X"/></button></div>
-                        <div className="flex border-b"><button onClick={()=>setTab("info")} className={`flex-1 py-3 font-bold ${tab==="info"?"border-b-2 border-black":""}`}>내 정보</button><button onClick={()=>setTab("orders")} className={`flex-1 py-3 font-bold ${tab==="orders"?"border-b-2 border-black":""}`}>주문 내역</button></div>
+                        <div className="p-4 border-b flex justify-between items-center bg-slate-50"><h2 className="font-bold text-xl">마이페이지</h2><button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full"><Icon name="X" /></button></div>
+                        <div className="flex border-b"><button onClick={()=>setTab("info")} className={`flex-1 py-3 font-bold ${tab==="info"?"border-b-2 border-slate-800 text-slate-900":"text-slate-400"}`}>내 정보</button><button onClick={()=>setTab("orders")} className={`flex-1 py-3 font-bold ${tab==="orders"?"border-b-2 border-slate-800 text-slate-900":"text-slate-400"}`}>주문 내역</button></div>
                         <div className="flex-1 overflow-y-auto p-6">
                             {tab==="info" ? (
                                 <div className="space-y-3 text-sm">
@@ -189,15 +285,15 @@
             );
         };
 
-        // 관리자 페이지
+        // [관리자 페이지]
         const AdminPage = ({ onLogout }) => {
             const [products, setProducts] = useState([]);
             const [users, setUsers] = useState([]);
             const [orders, setOrders] = useState([]);
             const [tab, setTab] = useState("orders");
             const [selUser, setSelUser] = useState(null);
-            const [editProd, setEditProd] = useState(null);
             const [isModalOpen, setIsModalOpen] = useState(false);
+            const [editProd, setEditProd] = useState(null);
             const [thumb, setThumb] = useState("");
             const [detail, setDetail] = useState("");
             const [isSaving, setIsSaving] = useState(false);
@@ -206,8 +302,8 @@
             useEffect(() => {
                 if(!window.fs) return;
                 const { collection, query, orderBy, onSnapshot } = window.fs;
-                // 데이터 컬렉션: products_simple_fixed_v2 (새 컬렉션 사용)
-                const unsubProd = onSnapshot(collection(window.db, "products_simple_fixed_v2"), s => setProducts(s.docs.map(d=>({id:d.id, ...d.data()}))));
+                // 데이터 컬렉션: products_safe_final (새 컬렉션 사용)
+                const unsubProd = onSnapshot(collection(window.db, "products_safe_final"), s => setProducts(s.docs.map(d=>({id:d.id, ...d.data()}))));
                 const unsubUser = onSnapshot(collection(window.db, "users"), s => setUsers(s.docs.map(d=>({id:d.id, ...d.data()}))));
                 const unsubOrder = onSnapshot(collection(window.db, "orders"), s => setOrders(s.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>new Date(b.date)-new Date(a.date))));
                 return () => { unsubProd(); unsubUser(); unsubOrder(); };
@@ -225,8 +321,8 @@
                     minQty: +f.min.value, cartonQty: +f.cq.value, image: thumb, detailImage: detail, description: f.d.value
                 };
                 try {
-                    if(editProd) await window.fs.updateDoc(window.fs.doc(window.db, "products_simple_fixed_v2", editProd.id), data);
-                    else await window.fs.addDoc(window.fs.collection(window.db, "products_simple_fixed_v2"), data);
+                    if(editProd) await window.fs.updateDoc(window.fs.doc(window.db, "products_safe_final", editProd.id), data);
+                    else await window.fs.addDoc(window.fs.collection(window.db, "products_safe_final"), data);
                     setIsModalOpen(false); alert("저장됨");
                 } catch(err) { 
                     alert("오류: "+err.message); 
@@ -234,7 +330,7 @@
                 } finally { setIsSaving(false); }
             };
 
-            const handleDeleteProduct = async (id) => { if(confirm("삭제?")) try { await window.fs.deleteDoc(window.fs.doc(window.db, "products_simple_fixed_v2", id)); } catch(e){} };
+            const handleDeleteProduct = async (id) => { if(confirm("삭제?")) try { await window.fs.deleteDoc(window.fs.doc(window.db, "products_safe_final", id)); } catch(e){} };
 
             const openAddModal = () => { setEditProd(null); setThumb(""); setDetail(""); setIsModalOpen(true); };
             const openEditModal = (p) => { setEditProd(p); setThumb(p.image); setDetail(p.detailImage); setIsModalOpen(true); };
@@ -256,79 +352,6 @@
             );
         };
 
-        // [로그인]
-        const LoginPage = ({ onAdminLogin }) => {
-            const [isLogin, setIsLogin] = useState(true);
-            const [isAddr, setIsAddr] = useState(false);
-            const [remember, setRemember] = useState(false);
-            const [loading, setLoading] = useState(false);
-            const [data, setData] = useState({id:'', pw:'', pw2:'', name:'', mobile:'', email:'', zip:'', addr:'', det:'', type:'문구/팬시점', store:'', rep:'', busNum:'', busCat:'', busItem:'', tax:''});
-            const addrRef = useRef(null);
-            useLucide();
-
-            useEffect(() => {
-                if(isAddr && addrRef.current && window.daum) {
-                    addrRef.current.innerHTML = '';
-                    new window.daum.Postcode({ oncomplete: function(d) { let a = d.userSelectedType==='R'?d.roadAddress:d.jibunAddress; if(d.buildingName) a+=` (${d.buildingName})`; setData(p=>({...p, zip:d.zonecode, addr:a})); setIsAddr(false); }, width:'100%', height:'100%' }).embed(addrRef.current);
-                }
-            }, [isAddr]);
-
-            const submit = async (e) => {
-                e.preventDefault(); setLoading(true);
-                const loginId = isLogin ? data.id : data.email;
-                if(isLogin && loginId==='sj' && data.pw==='0914') { onAdminLogin(); return; }
-                try {
-                    if(isLogin) {
-                        await window.setPersistence(window.auth, remember ? window.browserLocalPersistence : window.browserSessionPersistence);
-                        await window.signInUser(window.auth, data.id, data.pw);
-                    } else {
-                        if(data.pw !== data.pw2) throw new Error("비밀번호 불일치");
-                        const cred = await window.createUser(window.auth, data.email, data.pw);
-                        await window.fs.setDoc(window.fs.doc(window.db, "users", cred.user.uid), {
-                            email: data.email, displayId: data.id, name: data.name, mobile: data.mobile,
-                            address: `${data.addr} ${data.det}`, businessType: data.type, storeName: data.store,
-                            repName: data.rep, businessNumber: data.busNum, businessCategory: data.busCat,
-                            businessItem: data.busItem, taxEmail: data.tax, joinedAt: new Date().toISOString(), status: "승인대기"
-                        });
-                        alert("가입 완료");
-                    }
-                } catch(err) { alert(err.message); setLoading(false); }
-            };
-            const change = (e) => setData(p=>({...p, [e.target.name]: e.target.value}));
-
-            return (
-                <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
-                        <div className="text-center mb-8"><h1 className="text-2xl font-bold">{isLogin?"SJ 로그인":"회원가입"}</h1></div>
-                        <form onSubmit={submit} className="space-y-4">
-                            {isLogin ? (
-                                <div><input name="id" className="w-full p-3 border rounded mb-2" onChange={change} required placeholder="아이디 (이메일)"/><input name="pw" type="password" className="w-full p-3 border rounded" onChange={change} required placeholder="비밀번호"/><div className="flex items-center gap-2 mt-2"><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/><label>로그인 기억</label></div></div>
-                            ) : (
-                                <div className="space-y-2 text-sm">
-                                    <input name="name" className="w-full p-2 border rounded" onChange={change} placeholder="이름" required/>
-                                    <input name="id" className="w-full p-2 border rounded" onChange={change} placeholder="아이디(표시용)" required/>
-                                    <input name="pw" type="password" className="w-full p-2 border rounded" onChange={change} placeholder="비밀번호" required/>
-                                    <input name="pw2" type="password" className="w-full p-2 border rounded" onChange={change} placeholder="비번확인" required/>
-                                    <input name="mobile" className="w-full p-2 border rounded" onChange={change} placeholder="연락처" required/>
-                                    <input name="email" className="w-full p-2 border rounded" onChange={change} placeholder="이메일(로그인용)" required/>
-                                    <div className="flex gap-2"><input value={data.zip} readOnly className="w-24 border p-2 rounded"/><button type="button" onClick={()=>setIsAddr(true)} className="bg-slate-600 text-white px-2 rounded">검색</button></div>
-                                    <input value={data.addr} readOnly className="w-full border p-2 rounded"/>
-                                    <input name="det" className="w-full border p-2 rounded" placeholder="상세주소" onChange={change}/>
-                                    <input name="store" className="w-full p-2 border rounded" onChange={change} placeholder="상호명" required/>
-                                    <input name="rep" className="w-full p-2 border rounded" onChange={change} placeholder="대표자명" required/>
-                                    <input name="busNum" className="w-full p-2 border rounded" onChange={change} placeholder="사업자번호" required/>
-                                    <input name="tax" className="w-full p-2 border rounded" onChange={change} placeholder="세금계산서 이메일" required/>
-                                </div>
-                            )}
-                            <button type="submit" disabled={loading} className="w-full bg-slate-800 text-white py-3 rounded font-bold mt-4">{loading?"처리중...":(isLogin?"로그인":"가입")}</button>
-                        </form>
-                        <div className="mt-4 text-center"><button onClick={()=>setIsLogin(!isLogin)} className="underline">{isLogin?"회원가입":"로그인"}</button></div>
-                    </div>
-                    {isAddr && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white w-full max-w-lg h-[500px] rounded relative"><button onClick={()=>setIsAddr(false)} className="absolute top-2 right-2"><Icon name="X"/></button><div ref={addrRef} className="w-full h-full"></div></div></div>}
-                </div>
-            );
-        };
-
         // [쇼핑몰]
         const ShopPage = ({ products, user, onLogout }) => {
             const [cart, setCart] = useState([]);
@@ -339,6 +362,7 @@
             const [myPage, setMyPage] = useState(false);
             useLucide([cart, isOpen, selProd, myPage]);
 
+            const goHome = () => { setCat("전체"); setTerm(""); setSelProd(null); setMyPage(false); window.scrollTo(0,0); };
             const add = (p, q=1) => {
                 setCart(prev => {
                     const idx = prev.findIndex(i=>i.id===p.id);
@@ -347,7 +371,6 @@
                 });
                 alert("담기 완료");
             };
-
             const order = async () => {
                 if(!cart.length || !confirm("발주하시겠습니까?")) return;
                 try {
@@ -355,7 +378,6 @@
                     alert("접수됨"); setCart([]); setIsOpen(false);
                 } catch(e) { alert("실패"); }
             };
-
             const filtered = products.filter(p=>(cat==="전체"||p.category===cat) && p.name.includes(term));
 
             const Detail = ({ p, back, add }) => {
@@ -368,16 +390,18 @@
                 };
                 return (
                     <div className="fixed inset-0 z-50 bg-white flex flex-col pb-20 animate-in slide-in-from-right">
-                        <div className="p-4 border-b flex justify-between"><button onClick={back}><Icon name="ArrowLeft"/></button><span className="font-bold">상세</span><button onClick={back}><Icon name="X"/></button></div>
+                        <div className="sticky top-0 bg-white z-20 border-b p-4 flex justify-between"><button onClick={back} className="p-1 hover:bg-slate-100 rounded-full"><Icon name="ArrowLeft"/></button><div onClick={goHome} className="font-bold bg-slate-800 text-white px-2 rounded cursor-pointer">SJ</div><button onClick={back} className="p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button></div>
                         <div className="flex-1 overflow-y-auto p-4">
                             <div className="bg-slate-50 aspect-square flex items-center justify-center mb-4">{p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} className="w-full h-full object-contain"/>:<span className="text-6xl">{p.image}</span>}</div>
-                            <h2 className="text-xl font-bold mb-2">{p.name}</h2>
-                            <div className="text-2xl font-bold mb-4">₩{formatPrice(p.price)}</div>
-                            <div className="bg-indigo-50 p-3 rounded text-sm text-indigo-700 mb-4">최소 {p.minQty}개 (1카톤={p.cartonQty}개) / 최대 5박스</div>
-                            <div className="text-slate-600 mb-8">{p.description}</div>
-                            {p.detailImage && <img src={p.detailImage} className="w-full rounded"/>}
+                            <div className="px-4">
+                                <div className="text-xs font-bold text-slate-500 mb-1">{p.category}</div>
+                                <h2 className="text-xl font-bold mb-2">{p.name}</h2>
+                                <div className="flex items-end gap-2 mb-4"><span className="text-2xl font-bold">₩{formatPrice(p.price)}</span><span className="text-slate-400 line-through text-sm">₩{formatPrice(p.originPrice)}</span><span className="text-red-500 text-xs font-bold ml-auto">{Math.round((1-p.price/p.originPrice)*100)}% OFF</span></div>
+                                <div className="bg-indigo-50 p-3 rounded text-sm text-indigo-700 mb-6 font-bold"><div>최소 {p.minQty}개 (1카톤={p.cartonQty}개)</div><div className="text-xs font-normal mt-1">최대 5박스 한정</div></div>
+                                <div className="text-slate-600 mb-8 space-y-4"><div><h3 className="font-bold text-black mb-1">상품 설명</h3><p>{p.description}</p></div>{p.detailImage && <img src={p.detailImage} className="w-full rounded"/>}</div>
+                            </div>
                         </div>
-                        <div className="fixed bottom-0 w-full bg-white border-t p-4 flex gap-3">
+                        <div className="fixed bottom-0 w-full bg-white border-t p-4 flex gap-3 safe-area-bottom">
                             <div className="flex items-center bg-slate-100 rounded"><button onClick={()=>change(-1)} className="p-3"><Icon name="Minus" size={16}/></button><span className="w-8 text-center font-bold">{q}</span><button onClick={()=>change(1)} className="p-3"><Icon name="Plus" size={16}/></button></div>
                             <button onClick={()=>{add(p,q);back();}} className="flex-1 bg-slate-800 text-white rounded font-bold">담기</button>
                         </div>
@@ -390,23 +414,33 @@
             return (
                 <div className="min-h-screen bg-slate-50 pb-20">
                     <header className="sticky top-0 bg-white shadow p-4 flex justify-between items-center z-40">
-                        <div className="font-bold text-lg cursor-pointer" onClick={()=>{setSelectedCategory("전체");setSearchTerm("");}}>SJ Innovation</div>
-                        <div className="flex gap-4"><button onClick={()=>setIsOpen(true)}><Icon name="Boxes"/>{cart.length>0 && <span className="bg-red-500 text-white text-xs rounded-full px-1 absolute top-3 right-14">{cart.length}</span>}</button><button onClick={()=>setMyPage(true)}><Icon name="User"/></button><button onClick={onLogout}><Icon name="LogOut"/></button></div>
+                        <div className="flex items-center gap-2 cursor-pointer" onClick={goHome}><div className="bg-slate-800 w-8 h-8 rounded flex items-center justify-center text-white font-bold">S</div><span className="font-bold text-lg hidden sm:block">SJ Innovation</span></div>
+                        <div className="flex gap-3"><button onClick={()=>setIsOpen(true)} className="relative p-1"><Icon name="Boxes"/>{cart.length>0 && <span className="bg-red-500 text-white text-xs rounded-full px-1 absolute -top-1 -right-1">{cart.length}</span>}</button><button onClick={()=>setMyPage(true)} className="p-1"><Icon name="User"/></button><button onClick={onLogout} className="text-xs font-bold border px-2 py-1 rounded">로그아웃</button></div>
                     </header>
-                    <div className="p-4">
-                        <input className="w-full p-3 rounded border mb-4" placeholder="검색..." value={term} onChange={e=>setTerm(e.target.value)} />
-                        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">{CATEGORIES.map(c=><button key={c} onClick={()=>setSelectedCategory(c)} className={`px-4 py-1 rounded-full border whitespace-nowrap ${selectedCategory===c?"bg-slate-800 text-white":"bg-white"}`}>{c}</button>)}</div>
-                        <div className="grid grid-cols-2 gap-4">
+                    <main className="p-4 max-w-7xl mx-auto">
+                        <div className="bg-slate-900 rounded-xl p-6 mb-6 text-white shadow-lg flex justify-between items-center"><div><span className="bg-white/20 px-2 py-1 rounded text-xs font-bold">SJ Partner</span><h2 className="text-2xl font-bold mt-1">겨울 신상 입고</h2></div><div className="text-right"><div className="text-3xl font-bold">NEW</div><div className="text-xs opacity-70">시즌 상품</div></div></div>
+                        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">{CATEGORIES.map(c=><button key={c} onClick={()=>setCat(c)} className={`px-4 py-1 rounded-full border whitespace-nowrap text-sm font-bold ${cat===c?"bg-slate-800 text-white":"bg-white"}`}>{c}</button>)}</div>
+                        <input className="w-full p-3 rounded-lg border mb-6 text-sm" placeholder="상품 검색..." value={term} onChange={e=>setTerm(e.target.value)} />
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                             {filtered.map(p=>(
-                                <div key={p.id} onClick={()=>setSelProd(p)} className="bg-white rounded shadow p-3">
-                                    <div className="aspect-square bg-slate-100 mb-2 flex items-center justify-center">{p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} className="w-full h-full object-contain"/>:<span className="text-4xl">{p.image}</span>}</div>
-                                    <div className="font-bold text-sm truncate">{p.name}</div>
-                                    <div className="flex justify-between mt-1"><span className="font-bold">₩{formatPrice(p.price)}</span><span className="text-xs bg-slate-100 px-1 rounded">재고 {p.stock}</span></div>
+                                <div key={p.id} onClick={()=>setSelProd(p)} className="bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition">
+                                    <div className="aspect-[4/3] bg-slate-100 relative flex items-center justify-center overflow-hidden">
+                                        {p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} alt={p.name} className="w-full h-full object-contain"/>:<span className="text-5xl">{p.image}</span>}
+                                        <div className="absolute top-2 left-2 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded">HOT</div>
+                                    </div>
+                                    <div className="p-3">
+                                        <div className="text-xs text-slate-400 mb-1">{p.category}</div>
+                                        <h3 className="font-bold text-sm line-clamp-2 mb-2">{p.name}</h3>
+                                        <div className="flex justify-between items-end">
+                                            <span className="font-bold text-lg">₩{formatPrice(p.price)}</span>
+                                            <span className="text-xs bg-slate-100 px-1 rounded text-slate-500">재고 {p.stock}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
                         </div>
-                    </div>
-                    {isOpen && <div className="fixed inset-0 z-50 bg-black/50 flex justify-end"><div className="bg-white w-full max-w-md p-4 flex flex-col"><div className="flex justify-between mb-4"><h2 className="font-bold text-lg">장바구니</h2><button onClick={()=>setIsOpen(false)}><Icon name="X"/></button></div><div className="flex-1 overflow-y-auto">{cart.map((item,i)=><div key={i} className="flex justify-between border-b py-2"><span>{item.name} x {item.quantity}</span><span>₩{formatPrice(item.price*item.quantity)}</span></div>)}</div><div className="border-t pt-4 font-bold flex justify-between"><span>총계</span><span>₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span></div><button onClick={order} className="w-full bg-slate-800 text-white py-3 rounded mt-4">발주하기</button></div></div>}
+                    </main>
+                    {isOpen && <div className="fixed inset-0 z-50 bg-black/50 flex justify-end"><div className="bg-white w-full max-w-md p-4 flex flex-col"><div className="flex justify-between mb-4"><h2 className="font-bold text-lg">장바구니</h2><button onClick={()=>setIsOpen(false)}><Icon name="X"/></button></div><div className="flex-1 overflow-y-auto">{cart.map((item,i)=><div key={i} className="flex justify-between border-b py-3 text-sm"><div className="flex-1 font-bold">{item.name}</div><div className="text-right"><div>{item.quantity}개</div><div>₩{formatPrice(item.price*item.quantity)}</div></div></div>)}</div><div className="border-t pt-4 font-bold flex justify-between text-lg"><span>총계</span><span>₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span></div><button onClick={order} className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold mt-4">발주하기</button></div></div>}
                     {myPage && <MyPage user={user} onClose={()=>setMyPage(false)} />}
                 </div>
             );
@@ -432,13 +466,7 @@
                                 } catch(e) { setUser(u); }
                             } else { setUser(null); setIsAdmin(false); }
                             
-                            // 초기화: products_simple_fixed_v2 컬렉션 사용
-                            try {
-                                const snap = await window.fs.getDocs(window.fs.collection(window.db, "products_simple_fixed_v2"));
-                                if (snap.empty) await Promise.all(INITIAL_PRODUCTS.map(p => window.fs.setDoc(window.fs.doc(window.db, "products_simple_fixed_v2", p.id), p)));
-                                setProducts(snap.docs.map(d => ({id:d.id, ...d.data()})));
-                            } catch(e){}
-                            
+                            // 초기화: products_simple_fixed_v2 (초기화는 하지 않음, 기존 데이터 사용)
                             setLoading(false);
                         });
                     }
@@ -446,7 +474,6 @@
                 return () => clearInterval(check);
             }, []);
 
-            // 실시간 구독 (App 레벨)
             useEffect(() => {
                 if(!window.fs || !window.db) return;
                 const unsub = window.fs.onSnapshot(window.fs.collection(window.db, "products_simple_fixed_v2"), (snap) => {
