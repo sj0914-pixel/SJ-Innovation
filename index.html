@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰</title>
+    <title>SJ 파트너스 몰 (Final)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -16,7 +16,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, getDocs, doc, setDoc, updateDoc } 
+        import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -36,9 +36,10 @@
             window.createUser = createUserWithEmailAndPassword;
             window.signInUser = signInWithEmailAndPassword;
             window.logOut = signOut;
-            window.fs = { collection, getDocs, doc, setDoc, updateDoc };
+            // DB 함수들 전역 등록
+            window.fs = { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy };
             console.log("Firebase Connected");
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Firebase Init Error", e); }
     </script>
 
     <style>
@@ -60,169 +61,174 @@
 
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // --- 초기 데이터 (사장님 원본 데이터 20개 복원) ---
+        // --- 초기 데이터 ---
         const INITIAL_PRODUCTS = [
-            { id: "p1", name: "캐치티니핑 하츄핑 방한용품 모음전 (장갑/목도리)", category: "유아동의류", price: 11900, originPrice: 23000, rating: 4.9, image: "🧣", description: "겨울 시즌 필수 아이템! 아이들이 좋아하는 하츄핑 캐릭터가 그려진 따뜻한 방한 장갑과 목도리 세트입니다.", stock: 100 },
-            { id: "p2", name: "티니핑 마스크 시즌3 새부리형 소형 (20매)", category: "생활/건강", price: 12900, originPrice: 15900, rating: 4.8, image: "😷", description: "숨쉬기 편한 새부리형 구조의 어린이용 마스크입니다.", stock: 500 },
-            { id: "p3", name: "슈팅스타 캐치티니핑 시즌5 하츄핑 유아 털목도리", category: "유아동의류", price: 12900, originPrice: 21900, rating: 4.9, image: "🧣", description: "포근한 감촉의 유아용 털목도리입니다.", stock: 50 },
-            { id: "p4", name: "슈팅스타 캐치티니핑 패딩 벙어리 장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수 기능이 있는 패딩 소재의 벙어리 장갑입니다.", stock: 60 },
-            { id: "p5", name: "슈팅스타 캐치티니핑 모자목도리 세트", category: "유아동의류", price: 16900, originPrice: 29900, rating: 5.0, image: "🧢", description: "모자와 목도리가 하나로! 귀까지 따뜻하게 덮어주는 일체형 방한 모자입니다.", stock: 40 },
-            { id: "p6", name: "이탈리안 브레인롯 랜덤 딱지 (25팩)", category: "완구/교구", price: 22900, originPrice: 39900, rating: 4.8, image: "🎲", description: "요즘 초등학생들 사이에서 대유행! 다양한 캐릭터 딱지를 모을 수 있는 랜덤 팩 세트입니다.", stock: 200 },
-            { id: "p7", name: "슈팅스타 캐치티니핑 시즌5 자석 글자 한글플러스", category: "완구/교구", price: 39900, originPrice: 49900, rating: 4.9, image: "🧲", description: "놀면서 배우는 한글 공부! 자석 교구 세트입니다.", stock: 30 },
-            { id: "p8", name: "캐치티니핑 올인원 교정 젓가락 스푼 포크 세트", category: "주방/식기", price: 13900, originPrice: 17500, rating: 4.8, image: "🥢", description: "올바른 젓가락질 습관을 길러주는 교정 젓가락과 스푼, 포크, 케이스까지 포함된 올인원 세트입니다.", stock: 150 },
-            { id: "p9", name: "슈팅스타 캐치티니핑 논슬립 스텐컵 (왕자핑)", category: "주방/식기", price: 9900, originPrice: 15000, rating: 4.7, image: "🥛", description: "바닥에 미끄럼 방지 처리가 되어 있어 쏟을 걱정이 적은 스테인리스 컵입니다.", stock: 80 },
-            { id: "p10", name: "위시캣 유아 어린이 안심락 스트랩 보틀", category: "주방/식기", price: 8900, originPrice: 12500, rating: 4.6, image: "🍼", description: "원터치 오픈 방식과 잠금 장치(안심락)가 있어 가방 속에서도 샐 염려가 없는 유아용 물병입니다.", stock: 120 },
-            { id: "p11", name: "새콤달콤 캐치티니핑 시즌4 플레이팅 자석 소꿉놀이", category: "완구/교구", price: 23500, originPrice: 27000, rating: 4.8, image: "🏰", description: "예쁜 디저트를 자석으로 붙였다 떼었다 할 수 있는 소꿉놀이 세트입니다.", stock: 50 },
-            { id: "p12", name: "아산제약 hCG 임신테스트기 진단 키트 (25회분)", category: "생활/건강", price: 23900, originPrice: 47000, rating: 4.9, image: "⚕️", description: "약국 및 편의점 판매용 임신 진단 키트입니다. 정확도가 높고 사용이 간편합니다.", stock: 100 },
-            { id: "p13", name: "참존 KF94 톤업핏 블랙라벨 마스크 중형", category: "생활/건강", price: 10900, originPrice: 20000, rating: 4.5, image: "😷", description: "스타일리시한 핏과 편안한 호흡을 동시에 만족시키는 KF94 마스크입니다.", stock: 300 },
-            { id: "p14", name: "젠바디 코로나 자가 진단 키트 (10회분)", category: "생활/건강", price: 9350, originPrice: 13500, rating: 4.6, image: "🩺", description: "빠르고 간편하게 코로나 감염 여부를 확인할 수 있는 자가 검사 키트입니다.", stock: 500 },
-            { id: "p15", name: "헬로카봇 시즌15 무소음 교정젓가락 케이스 세트", category: "주방/식기", price: 14900, originPrice: 19000, rating: 4.7, image: "🤖", description: "달그락거리는 소리를 줄인 무소음 케이스가 포함된 헬로카봇 젓가락 세트입니다.", stock: 70 },
-            { id: "p16", name: "위시캣 하트 손잡이 휴대용 보틀 380ml", category: "주방/식기", price: 8950, originPrice: 11000, rating: 4.5, image: "🥤", description: "사랑스러운 하트 모양 손잡이가 달린 휴대용 물병입니다.", stock: 90 },
-            { id: "p17", name: "반짝핑 수저세트 교정 젓가락 (어린이집용)", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.7, image: "✨", description: "블링블링 반짝핑 캐릭터가 들어간 수저 세트입니다.", stock: 60 },
-            { id: "p18", name: "빛나핑 수저세트 교정 젓가락 (유치원용)", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.8, image: "🌟", description: "유치원생에게 딱 맞는 사이즈의 교정 젓가락 세트입니다.", stock: 60 },
-            { id: "p19", name: "초롱핑 수저세트 교정 젓가락 올인원", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.6, image: "🎋", description: "초롱초롱한 눈망울의 초롱핑 캐릭터 수저 세트입니다.", stock: 60 },
-            { id: 20, name: "새콤달콤 캐치티니핑 디저트샵 자석 소꿉놀이", category: "완구/교구", price: 27000, originPrice: 35000, rating: 4.9, image: "🍰", description: "디저트 가게 놀이를 할 수 있는 풍성한 구성의 소꿉놀이 세트입니다.", stock: 40 }
+            { id: "p1", name: "캐치티니핑 하츄핑 방한용품 모음전 (장갑/목도리)", category: "유아동의류", price: 11900, originPrice: 23000, rating: 4.9, image: "🧣", description: "겨울 시즌 필수 아이템!", stock: 100 },
+            { id: "p2", name: "티니핑 마스크 시즌3 새부리형 소형 (20매)", category: "생활/건강", price: 12900, originPrice: 15900, rating: 4.8, image: "😷", description: "숨쉬기 편한 새부리형 구조.", stock: 500 },
+            { id: "p3", name: "슈팅스타 캐치티니핑 시즌5 하츄핑 유아 털목도리", category: "유아동의류", price: 12900, originPrice: 21900, rating: 4.9, image: "🧣", description: "포근한 감촉.", stock: 50 },
+            { id: "p4", name: "슈팅스타 캐치티니핑 패딩 벙어리 장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수 기능.", stock: 60 },
+            { id: "p5", name: "슈팅스타 캐치티니핑 모자목도리 세트", category: "유아동의류", price: 16900, originPrice: 29900, rating: 5.0, image: "🧢", description: "일체형 방한 모자.", stock: 40 },
+            { id: "p6", name: "이탈리안 브레인롯 랜덤 딱지 (25팩)", category: "완구/교구", price: 22900, originPrice: 39900, rating: 4.8, image: "🎲", description: "초등학생 대유행.", stock: 200 },
+            { id: "p7", name: "슈팅스타 자석 글자 한글플러스", category: "완구/교구", price: 39900, originPrice: 49900, rating: 4.9, image: "🧲", description: "자석 교구.", stock: 30 },
+            { id: "p8", name: "캐치티니핑 올인원 교정 젓가락 스푼 포크 세트", category: "주방/식기", price: 13900, originPrice: 17500, rating: 4.8, image: "🥢", description: "교정 젓가락.", stock: 150 },
+            { id: "p9", name: "슈팅스타 캐치티니핑 논슬립 스텐컵 (왕자핑)", category: "주방/식기", price: 9900, originPrice: 15000, rating: 4.7, image: "🥛", description: "미끄럼 방지.", stock: 80 },
+            { id: "p10", name: "위시캣 유아 어린이 안심락 스트랩 보틀", category: "주방/식기", price: 8900, originPrice: 12500, rating: 4.6, image: "🍼", description: "원터치 오픈.", stock: 120 },
+            { id: "p11", name: "새콤달콤 캐치티니핑 시즌4 플레이팅 자석 소꿉놀이", category: "완구/교구", price: 23500, originPrice: 27000, rating: 4.8, image: "🏰", description: "소꿉놀이 세트.", stock: 50 },
+            { id: "p12", name: "아산제약 hCG 임신테스트기 진단 키트 (25회분)", category: "생활/건강", price: 23900, originPrice: 47000, rating: 4.9, image: "⚕️", description: "진단 키트.", stock: 100 },
+            { id: "p13", name: "참존 KF94 톤업핏 블랙라벨 마스크 중형", category: "생활/건강", price: 10900, originPrice: 20000, rating: 4.5, image: "😷", description: "KF94 마스크.", stock: 300 },
+            { id: "p14", name: "젠바디 코로나 자가 진단 키트 (10회분)", category: "생활/건강", price: 9350, originPrice: 13500, rating: 4.6, image: "🩺", description: "자가 검사 키트.", stock: 500 },
+            { id: "p15", name: "헬로카봇 시즌15 무소음 교정젓가락 케이스 세트", category: "주방/식기", price: 14900, originPrice: 19000, rating: 4.7, image: "🤖", description: "무소음 케이스.", stock: 70 },
+            { id: "p16", name: "위시캣 하트 손잡이 휴대용 보틀 380ml", category: "주방/식기", price: 8950, originPrice: 11000, rating: 4.5, image: "🥤", description: "투명 물병.", stock: 90 },
+            { id: "p17", name: "반짝핑 수저세트 교정 젓가락 (어린이집용)", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.7, image: "✨", description: "반짝핑 수저.", stock: 60 },
+            { id: "p18", name: "빛나핑 수저세트 교정 젓가락 (유치원용)", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.8, image: "🌟", description: "빛나핑 수저.", stock: 60 },
+            { id: "p19", name: "초롱핑 수저세트 교정 젓가락 올인원", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.6, image: "🎋", description: "초롱핑 수저.", stock: 60 },
+            { id: 20, name: "새콤달콤 캐치티니핑 디저트샵 자석 소꿉놀이", category: "완구/교구", price: 27000, originPrice: 35000, rating: 4.9, image: "🍰", description: "디저트 가게 놀이.", stock: 40 }
         ];
 
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-        // --- [관리자 페이지] ---
-        const AdminPage = ({ products, onLogout }) => {
-            const [localProducts, setLocalProducts] = useState(products);
+        // --------------------------------------------------------
+        // [1] 관리자 페이지 (회원 삭제 + 주문 관리 추가)
+        // --------------------------------------------------------
+        const AdminPage = ({ onLogout }) => {
+            const [products, setProducts] = useState([]);
             const [users, setUsers] = useState([]);
-            const [tab, setTab] = useState("products");
+            const [orders, setOrders] = useState([]);
+            const [tab, setTab] = useState("orders"); // 기본탭: 주문관리
 
             useEffect(() => {
-                const fetchUsers = async () => {
-                    if(!window.fs) return;
-                    const snap = await window.fs.getDocs(window.fs.collection(window.db, "users"));
-                    setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                };
-                if(tab === "users") fetchUsers();
+                fetchData();
             }, [tab]);
+
+            const fetchData = async () => {
+                if(!window.fs) return;
+                const { collection, getDocs, query, orderBy } = window.fs;
+                
+                // 상품
+                const prodSnap = await getDocs(collection(window.db, "products"));
+                setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+                // 회원
+                const userSnap = await getDocs(collection(window.db, "users"));
+                setUsers(userSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+                // 주문
+                try {
+                    const q = query(collection(window.db, "orders"), orderBy("date", "desc"));
+                    const orderSnap = await getDocs(q);
+                    setOrders(orderSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+                } catch(e) {
+                    // 인덱스 에러시 그냥 가져옴
+                    const orderSnap = await getDocs(collection(window.db, "orders"));
+                    setOrders(orderSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.date) - new Date(a.date)));
+                }
+            };
 
             const handleStockUpdate = async (id, newStock) => {
                 const stockVal = parseInt(newStock);
-                setLocalProducts(prev => prev.map(p => p.id === id ? { ...p, stock: stockVal } : p));
+                setProducts(prev => prev.map(p => p.id === id ? { ...p, stock: stockVal } : p));
                 try {
                     const { doc, updateDoc } = window.fs;
                     await updateDoc(doc(window.db, "products", id), { stock: stockVal });
                 } catch(e) { alert("저장 실패"); }
             };
 
+            const handleDeleteUser = async (id) => {
+                if(!confirm("정말 이 회원을 삭제하시겠습니까? (DB에서 영구 삭제)")) return;
+                try {
+                    const { doc, deleteDoc } = window.fs;
+                    await deleteDoc(doc(window.db, "users", id));
+                    setUsers(prev => prev.filter(u => u.id !== id));
+                    alert("회원이 삭제되었습니다.");
+                } catch(e) { alert("삭제 오류: " + e.message); }
+            };
+
+            const handleOrderStatus = async (id, newStatus) => {
+                try {
+                    const { doc, updateDoc } = window.fs;
+                    await updateDoc(doc(window.db, "orders", id), { status: newStatus });
+                    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
+                } catch(e) { alert("상태 변경 실패"); }
+            };
+
             return (
                 <div className="min-h-screen bg-slate-100">
-                    <nav className="bg-slate-900 text-white p-4 flex justify-between items-center shadow">
-                        <div className="flex items-center gap-2"><span className="bg-red-500 text-xs px-2 py-1 rounded font-bold">ADMIN</span><span className="font-bold">SJ 관리자</span></div>
-                        <button onClick={onLogout} className="text-sm bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded">로그아웃</button>
+                    <nav className="bg-slate-900 text-white p-4 flex justify-between items-center shadow-md sticky top-0 z-50">
+                        <div className="flex items-center gap-2">
+                            <span className="bg-red-500 text-xs px-2 py-1 rounded font-bold">ADMIN</span>
+                            <span className="font-bold text-lg">SJ 관리자 모드</span>
+                        </div>
+                        <button onClick={onLogout} className="text-sm bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded font-bold border border-slate-600">로그아웃</button>
                     </nav>
-                    <div className="max-w-7xl mx-auto p-6">
-                        <div className="flex gap-4 mb-6">
-                            <button onClick={()=>setTab("products")} className={`px-4 py-2 rounded font-bold ${tab==="products"?"bg-white":"bg-slate-200"}`}>상품 관리</button>
-                            <button onClick={()=>setTab("users")} className={`px-4 py-2 rounded font-bold ${tab==="users"?"bg-white":"bg-slate-200"}`}>회원 관리</button>
+                    <div className="max-w-7xl mx-auto p-4 sm:p-6">
+                        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+                            <button onClick={()=>setTab("orders")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap ${tab==="orders"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>📦 주문 현황</button>
+                            <button onClick={()=>setTab("users")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap ${tab==="users"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>👥 회원 관리</button>
+                            <button onClick={()=>setTab("products")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap ${tab==="products"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>🏷️ 상품 관리</button>
                         </div>
-                        <div className="bg-white rounded-xl shadow p-4 overflow-x-auto">
-                            {tab === "products" ? (
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-slate-100"><tr><th className="p-3">상품명</th><th className="p-3">재고</th></tr></thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {localProducts.map(p => (
-                                            <tr key={p.id}><td className="p-3 font-medium">{p.name}</td><td className="p-3"><input type="number" value={p.stock} onChange={e=>handleStockUpdate(p.id, e.target.value)} className="w-20 border rounded text-center" /></td></tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <table className="w-full text-left text-sm whitespace-nowrap">
-                                    <thead className="bg-slate-100"><tr><th className="p-3">상호명</th><th className="p-3">이메일</th><th className="p-3">연락처</th><th className="p-3">가입일</th></tr></thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {users.map(u => (
-                                            <tr key={u.id}><td className="p-3 font-bold">{u.storeName}</td><td className="p-3">{u.email}</td><td className="p-3">{u.mobile}</td><td className="p-3 text-xs text-slate-500">{u.joinedAt}</td></tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
+
+                        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
+                            <div className="overflow-x-auto">
+                                {tab === "orders" && (
+                                    <table className="w-full text-left text-sm whitespace-nowrap">
+                                        <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">주문일시</th><th className="p-4">주문자</th><th className="p-4">주문내역</th><th className="p-4">총금액</th><th className="p-4">상태</th></tr></thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {orders.length === 0 ? <tr><td colSpan="5" className="p-8 text-center text-slate-400">주문 내역이 없습니다.</td></tr> : 
+                                            orders.map(o => (
+                                                <tr key={o.id} className="hover:bg-slate-50">
+                                                    <td className="p-4 text-slate-500">{new Date(o.date).toLocaleString()}</td>
+                                                    <td className="p-4 font-bold">{o.userName}<div className="text-xs font-normal text-slate-400">{o.userEmail}</div></td>
+                                                    <td className="p-4 max-w-xs truncate" title={o.items.map(i=>`${i.name} (${i.quantity})`).join(", ")}>{o.items.length}건: {o.items[0].name} {o.items.length>1?`외 ${o.items.length-1}건`:''}</td>
+                                                    <td className="p-4 font-bold text-indigo-600">₩{formatPrice(o.totalAmount)}</td>
+                                                    <td className="p-4">
+                                                        <select value={o.status} onChange={(e)=>handleOrderStatus(o.id, e.target.value)} className={`p-1 rounded text-xs font-bold border ${o.status==='접수대기'?'text-red-500 bg-red-50 border-red-200':o.status==='배송중'?'text-blue-500 bg-blue-50 border-blue-200':'text-green-500 bg-green-50 border-green-200'}`}>
+                                                            <option value="접수대기">접수대기</option>
+                                                            <option value="배송중">배송중</option>
+                                                            <option value="배송완료">배송완료</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                                {tab === "users" && (
+                                    <table className="w-full text-left text-sm whitespace-nowrap">
+                                        <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">연락처</th><th className="p-4">이메일</th><th className="p-4">관리</th></tr></thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {users.map(u => (
+                                                <tr key={u.id} className="hover:bg-slate-50">
+                                                    <td className="p-4 font-bold">{u.storeName}</td>
+                                                    <td className="p-4">{u.repName}</td>
+                                                    <td className="p-4">{u.mobile}</td>
+                                                    <td className="p-4 text-slate-500">{u.email}</td>
+                                                    <td className="p-4"><button onClick={()=>handleDeleteUser(u.id)} className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-200 font-bold">삭제</button></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                                {tab === "products" && (
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">상품명</th><th className="p-4 w-32">재고</th></tr></thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {products.map(p => (
+                                                <tr key={p.id} className="hover:bg-slate-50">
+                                                    <td className="p-4 font-medium">{p.name}</td>
+                                                    <td className="p-4"><input type="number" value={p.stock} onChange={(e) => handleStockUpdate(p.id, e.target.value)} className="w-20 border border-slate-300 rounded text-center p-1 focus:ring-2 focus:ring-slate-500 outline-none" /></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
             );
         };
 
-        // --- [상품 상세 페이지] (100% 디자인 복원) ---
-        const ProductDetailPage = ({ product, onBack, onAddToCart }) => {
-            const [quantity, setQuantity] = useState(1);
-            useEffect(() => { lucide.createIcons(); }, []);
-
-            return (
-                <div className="animate-in slide-in-from-right duration-300 bg-white min-h-screen flex flex-col pb-[80px]">
-                    <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center gap-4">
-                        <button onClick={onBack} className="p-2 -ml-2 hover:bg-slate-100 rounded-full"><Icon name="ArrowLeft" className="w-6 h-6 text-slate-600" /></button>
-                        <h2 className="font-bold text-lg text-slate-800 truncate pr-4 flex-1">{product.name}</h2>
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                        <div className="max-w-3xl mx-auto">
-                            <div className="bg-slate-50 aspect-square w-full flex items-center justify-center mb-6">
-                                <span className="text-[8rem] sm:text-[10rem] drop-shadow-2xl transform hover:scale-110 transition-transform duration-500">{product.image}</span>
-                            </div>
-                            <div className="px-5 pb-8">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">{product.category}</span>
-                                    <div className="flex items-center gap-1 text-yellow-500"><Icon name="Star" className="w-3 h-3 fill-current" /><span className="text-xs font-bold">{product.rating}</span></div>
-                                </div>
-                                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4 leading-snug">{product.name}</h1>
-                                <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100">
-                                    <span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{formatPrice(product.price)}</span>
-                                    <span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{formatPrice(product.originPrice)}</span>
-                                    <span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">{Math.round((1 - product.price / product.originPrice) * 100)}% OFF</span>
-                                </div>
-                                <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100">
-                                    <Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" />
-                                    <div>
-                                        <span className="font-bold block text-sm">최소 1카톤 발주 가능</span>
-                                        <span className="text-xs text-indigo-700 mt-1 block">본 상품은 도매 전용 상품으로 낱개 발주가 불가능하며, 카톤(박스) 단위로만 출고됩니다.</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-8">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3>
-                                        <p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">{product.description}</p>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900 mb-3">상품 상세 정보</h3>
-                                        <div className="w-full bg-slate-100 rounded-xl min-h-[400px] sm:min-h-[600px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 p-4 text-center">
-                                            <Icon name="FileText" className="w-12 h-12 sm:w-16 sm:h-16 mb-4 opacity-30" />
-                                            <span className="font-medium">상세 페이지 이미지 영역</span>
-                                            <span className="text-xs sm:text-sm mt-2 text-slate-400">제품 상세 설명 이미지가 이곳에 로드됩니다.</span>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900 mb-3">배송 정보</h3>
-                                        <div className="bg-slate-50 p-5 rounded-xl space-y-3 text-sm text-slate-600 border border-slate-100">
-                                            <div className="flex gap-3 items-center"><Icon name="Truck" className="w-5 h-5 text-slate-400" /><span>평일 14시 이전 주문 시 당일 출고</span></div>
-                                            <div className="flex gap-3 items-center"><Icon name="Boxes" className="w-5 h-5 text-slate-400" /><span>박스 단위 발주 가능 (혼합 가능)</span></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 sm:p-4 shadow z-30 safe-area-bottom">
-                        <div className="max-w-3xl mx-auto flex flex-col sm:flex-row gap-3">
-                            <div className="flex items-center justify-between sm:justify-start sm:gap-6">
-                                <span className="font-bold text-slate-900 text-sm sm:text-base">수량 (카톤)</span>
-                                <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1">
-                                    <button onClick={()=>setQuantity(q=>Math.max(1,q-1))} className="w-8 h-8 bg-white rounded shadow-sm"><Icon name="Minus" className="w-4 h-4" /></button>
-                                    <span className="font-bold w-8 text-center">{quantity}</span>
-                                    <button onClick={()=>setQuantity(q=>q+1)} className="w-8 h-8 bg-white rounded shadow-sm"><Icon name="Plus" className="w-4 h-4" /></button>
-                                </div>
-                            </div>
-                            <button onClick={()=>{onAddToCart(product,quantity); onBack();}} className="flex-1 bg-slate-800 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        // --- [로그인 페이지] (관리자 체크 + DB저장) ---
+        // --- [로그인 페이지] ---
         const LoginPage = ({ onAdminLogin }) => {
             const [isLoginMode, setIsLoginMode] = useState(true);
             const [isAddrOpen, setIsAddrOpen] = useState(false);
@@ -248,11 +254,10 @@
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 setLoading(true);
+                const loginId = isLoginMode ? formData.username : formData.email;
                 
                 // 관리자 체크
-                const loginId = isLoginMode ? formData.username : formData.email;
                 if(isLoginMode && loginId === 'sj' && formData.password === '0914') { onAdminLogin(); return; }
-
                 if(!window.auth) { alert("시스템 로딩중..."); setLoading(false); return; }
 
                 try {
@@ -274,8 +279,7 @@
                 } catch(err) {
                     console.error(err);
                     if(err.code === 'auth/email-already-in-use') alert("이미 가입된 이메일입니다.");
-                    else if(err.code === 'auth/invalid-email') alert("이메일 형식 확인");
-                    else if(err.code === 'auth/invalid-credential') alert("아이디/비번 틀림");
+                    else if(err.code === 'auth/invalid-credential') alert("아이디 또는 비밀번호 오류");
                     else alert("오류: " + err.message);
                     setLoading(false);
                 }
@@ -285,20 +289,20 @@
             return (
                 <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8">
                     <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all ${isLoginMode?'max-w-md p-8':'max-w-3xl p-8'}`}>
-                        <div className="text-center mb-8"><div className="bg-slate-800 w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4 text-white text-2xl font-bold">S</div><h1 className="text-2xl font-bold">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1><p className="text-slate-500 mt-2 text-sm">SJ Innovation</p></div>
+                        <div className="text-center mb-8"><div className="bg-slate-800 w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4 text-white text-2xl font-bold">S</div><h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1><p className="text-slate-500 mt-2 text-sm">SJ Innovation</p></div>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {isLoginMode ? (
                                 <div className="space-y-4">
-                                    <div><label className="block text-sm font-bold mb-1">아이디 (이메일)</label><input name="username" className="w-full p-3 border rounded-lg" onChange={handleChange} required placeholder="example@naver.com" /></div>
-                                    <div><label className="block text-sm font-bold mb-1">비밀번호</label><input name="password" type="password" className="w-full p-3 border rounded-lg" onChange={handleChange} required /></div>
+                                    <div><label className="block text-sm font-bold mb-1 text-slate-700">아이디 (이메일)</label><input name="username" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none" onChange={handleChange} required placeholder="example@naver.com" /></div>
+                                    <div><label className="block text-sm font-bold mb-1 text-slate-700">비밀번호</label><input name="password" type="password" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none" onChange={handleChange} required /></div>
                                 </div>
                             ) : (
                                 <div className="space-y-6">
-                                    <section className="bg-slate-50 p-6 rounded-xl border">
-                                        <h3 className="font-bold mb-4 border-b pb-2">필수정보 *</h3>
+                                    <section className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                        <h3 className="font-bold mb-4 border-b border-slate-200 pb-2 text-slate-700">필수정보 <span className="text-red-500">*</span></h3>
                                         <div className="grid md:grid-cols-2 gap-4">
                                             <div><label className="block text-sm font-bold mb-1">이름</label><input name="name" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-bold mb-1">아이디</label><input name="username" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-bold mb-1">아이디(표시용)</label><input name="username" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
                                             <div><label className="block text-sm font-bold mb-1">비밀번호</label><input name="password" type="password" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
                                             <div><label className="block text-sm font-bold mb-1">비밀번호 확인</label><input name="confirmPassword" type="password" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
                                             <div><label className="block text-sm font-bold mb-1">연락처</label><input name="mobile" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
@@ -306,9 +310,9 @@
                                         </div>
                                         <div className="mt-4"><label className="block text-sm font-bold mb-1">주소</label><div className="flex gap-2 mb-2"><input value={formData.zipcode} readOnly className="w-24 p-2 border bg-slate-100 rounded" /><button type="button" onClick={()=>setIsAddrOpen(true)} className="bg-slate-600 text-white px-3 rounded text-sm">주소검색</button></div><input value={formData.address} readOnly className="w-full p-2 border bg-slate-100 rounded mb-2" /><input name="addressDetail" className="w-full p-2 border rounded" placeholder="상세주소" onChange={handleChange} /></div>
                                     </section>
-                                    <section className="bg-slate-50 p-6 rounded-xl border">
-                                        <h3 className="font-bold mb-4 border-b pb-2">사업자 정보 *</h3>
-                                        <div className="mb-4"><label className="block text-sm font-bold mb-2">사업 형태</label><div className="grid grid-cols-3 gap-3">{['문구/팬시점','과자/아이스크림','편의점','키즈카페','기타'].map(t=><label key={t} className="flex items-center gap-2 text-sm border p-2 rounded bg-white"><input type="radio" name="businessType" value={t} checked={formData.businessType===t} onChange={handleChange} />{t}</label>)}</div></div>
+                                    <section className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                        <h3 className="font-bold mb-4 border-b border-slate-200 pb-2 text-slate-700">사업자 정보 <span className="text-red-500">*</span></h3>
+                                        <div className="mb-4"><label className="block text-sm font-bold mb-2">사업 형태</label><div className="grid grid-cols-3 gap-3">{['문구/팬시점','과자/아이스크림','편의점','키즈카페','기타'].map(t=><label key={t} className="flex items-center gap-2 text-sm border p-2 rounded bg-white cursor-pointer"><input type="radio" name="businessType" value={t} checked={formData.businessType===t} onChange={handleChange} />{t}</label>)}</div></div>
                                         <div className="grid md:grid-cols-2 gap-4">
                                             <div><label className="block text-sm font-bold mb-1">상호명</label><input name="storeName" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
                                             <div><label className="block text-sm font-bold mb-1">대표자명</label><input name="repName" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
@@ -317,16 +321,16 @@
                                     </section>
                                 </div>
                             )}
-                            <button type="submit" disabled={loading} className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold mt-6">{loading?"처리중...":(isLoginMode?"로그인하기":"회원가입 완료")}</button>
+                            <button type="submit" disabled={loading} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-xl font-bold mt-6 transition-colors shadow-lg">{loading?"처리중...":(isLoginMode?"로그인하기":"회원가입 완료")}</button>
                         </form>
-                        <div className="mt-6 text-center text-sm"><button onClick={()=>setIsLoginMode(!isLoginMode)} className="underline font-bold">{isLoginMode?"사업자 회원가입":"로그인하기"}</button></div>
+                        <div className="mt-6 text-center text-sm"><button onClick={()=>setIsLoginMode(!isLoginMode)} className="underline font-bold text-slate-600 hover:text-slate-900">{isLoginMode?"사업자 회원가입":"로그인하기"}</button></div>
                     </div>
-                    {isAddrOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative"><button onClick={()=>setIsAddrOpen(false)} className="absolute top-2 right-2 p-2 bg-white z-10 rounded-full"><Icon name="X"/></button><div ref={addrWrapRef} className="w-full h-full"></div></div></div>}
+                    {isAddrOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative shadow-2xl flex flex-col"><div className="p-3 border-b flex justify-between font-bold bg-slate-50"><span>주소 검색</span><button onClick={()=>setIsAddrOpen(false)}><Icon name="X"/></button></div><div ref={addrWrapRef} className="flex-1 w-full bg-slate-100 relative"></div></div></div>}
                 </div>
             );
         };
 
-        // --- [쇼핑몰 페이지] (디자인 100% 복원) ---
+        // --- [쇼핑몰 페이지] ---
         const ShopPage = ({ products, user, onLogout }) => {
             const [cart, setCart] = useState([]);
             const [isCartOpen, setIsCartOpen] = useState(false);
@@ -336,13 +340,46 @@
 
             useEffect(() => { lucide.createIcons(); }, [cart, isCartOpen, selectedProduct]);
 
+            // 로고 클릭 시 초기화 (홈으로 이동)
+            const goHome = () => {
+                setSelectedCategory("전체");
+                setSearchTerm("");
+                setSelectedProduct(null);
+                window.scrollTo(0, 0);
+            };
+
             const addToCart = (product, quantity = 1) => {
                 setCart(prev => {
                     const idx = prev.findIndex(item => item.id === product.id);
                     if (idx > -1) { const newCart = [...prev]; newCart[idx].quantity += quantity; return newCart; }
                     return [...prev, { ...product, quantity }];
                 });
-                alert("장바구니 추가됨");
+                alert("장바구니에 추가되었습니다.");
+            };
+
+            // 실제 주문 처리 (DB 저장)
+            const handlePlaceOrder = async () => {
+                if(cart.length === 0) return;
+                if(!confirm("총 " + formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0)) + "원 발주하시겠습니까?")) return;
+                
+                try {
+                    const { addDoc, collection } = window.fs;
+                    const orderData = {
+                        userId: window.auth.currentUser.uid,
+                        userEmail: user.email,
+                        userName: user.storeName || "미등록상점", // DB에서 가져온 정보가 있다면 사용
+                        items: cart,
+                        totalAmount: cart.reduce((a,c)=>a+c.price*c.quantity,0),
+                        date: new Date().toISOString(),
+                        status: "접수대기"
+                    };
+                    await addDoc(collection(window.db, "orders"), orderData);
+                    alert("발주가 정상적으로 접수되었습니다. 관리자가 확인 후 배송됩니다.");
+                    setCart([]);
+                    setIsCartOpen(false);
+                } catch(e) {
+                    alert("주문 실패: " + e.message);
+                }
             };
 
             const filteredProducts = products.filter(p => {
@@ -351,25 +388,56 @@
                 return matchCat && matchSearch;
             });
 
-            if (selectedProduct) return <ProductDetailPage product={selectedProduct} onBack={() => setSelectedProduct(null)} onAddToCart={addToCart} />;
+            // 상품 상세 (디자인 유지)
+            const ProductDetail = ({ product, onBack, onAddToCart }) => {
+                const [qty, setQty] = useState(1);
+                return (
+                    <div className="animate-in slide-in-from-right duration-300 bg-white min-h-screen flex flex-col pb-[80px]">
+                        <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center gap-4">
+                            <button onClick={onBack} className="p-2 -ml-2 hover:bg-slate-100 rounded-full"><Icon name="ArrowLeft" className="w-6 h-6 text-slate-600" /></button>
+                            <h2 className="font-bold text-lg text-slate-800 truncate pr-4 flex-1">{product.name}</h2>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            <div className="max-w-3xl mx-auto">
+                                <div className="bg-slate-50 aspect-square w-full flex items-center justify-center mb-6"><span className="text-[8rem] drop-shadow-2xl">{product.image}</span></div>
+                                <div className="px-5 pb-8">
+                                    <div className="flex items-center gap-2 mb-2"><span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">{product.category}</span><div className="flex items-center gap-1 text-yellow-500"><Icon name="Star" className="w-3 h-3 fill-current" /><span className="text-xs font-bold">{product.rating}</span></div></div>
+                                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4 leading-snug">{product.name}</h1>
+                                    <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100"><span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{formatPrice(product.price)}</span><span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{formatPrice(product.originPrice)}</span><span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">{Math.round((1-product.price/product.originPrice)*100)}% OFF</span></div>
+                                    <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100"><Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" /><div><span className="font-bold block text-sm">최소 1카톤 발주 가능</span><span className="text-xs text-indigo-700 mt-1 block">도매 전용 상품으로 낱개 발주가 불가능하며, 카톤(박스) 단위로만 출고됩니다.</span></div></div>
+                                    <div className="space-y-8"><div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3><p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">{product.description}</p></div><div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 상세 정보</h3><div className="w-full bg-slate-100 rounded-xl min-h-[400px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 p-4 text-center"><Icon name="FileText" className="w-12 h-12 mb-4 opacity-30" /><span className="font-medium">상세 페이지 이미지 영역</span></div></div><div><h3 className="text-lg font-bold text-slate-900 mb-3">배송 정보</h3><div className="bg-slate-50 p-5 rounded-xl space-y-3 text-sm text-slate-600 border border-slate-100"><div className="flex gap-3 items-center"><Icon name="Truck" className="w-5 h-5 text-slate-400" /><span>평일 14시 이전 주문 시 당일 출고</span></div><div className="flex gap-3 items-center"><Icon name="Boxes" className="w-5 h-5 text-slate-400" /><span>박스 단위 발주 가능</span></div></div></div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 sm:p-4 shadow z-30 safe-area-bottom">
+                            <div className="max-w-3xl mx-auto flex gap-3">
+                                <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1"><button onClick={()=>setQty(q=>Math.max(1,q-1))} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center"><Icon name="Minus" className="w-4 h-4"/></button><span className="font-bold w-8 text-center">{qty}</span><button onClick={()=>setQty(q=>q+1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center"><Icon name="Plus" className="w-4 h-4"/></button></div>
+                                <button onClick={()=>{onAddToCart(product, qty); onBack();}} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            if (selectedProduct) return <ProductDetail product={selectedProduct} onBack={() => setSelectedProduct(null)} onAddToCart={addToCart} />;
 
             return (
                 <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
                     <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100">
                         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                            <div className="flex items-center gap-2 cursor-pointer" onClick={()=>setSelectedCategory("전체")}>
+                            <div className="flex items-center gap-2 cursor-pointer" onClick={goHome}>
                                 <div className="bg-slate-800 w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-lg">S</div>
                                 <div className="flex flex-col"><span className="font-bold text-lg leading-none hidden sm:block">SJ Innovation</span></div>
                             </div>
                             <div className="flex-1 max-w-lg mx-4 relative hidden sm:block">
-                                <input type="text" placeholder="상품 검색 (캐릭터, 품명)" className="w-full bg-slate-100 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-slate-500 focus:bg-white transition-all" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
+                                <input type="text" placeholder="상품 검색..." className="w-full bg-slate-100 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-slate-500 focus:bg-white transition-all" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
                                 <Icon name="Search" className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
                             </div>
                             <div className="flex items-center gap-4">
                                 <button onClick={()=>setIsCartOpen(true)} className="relative p-2"><Icon name="Boxes" className="w-6 h-6" />{cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}</button>
                                 <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
-                                <button className="flex items-center gap-2 text-sm font-medium hidden sm:flex"><div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center"><Icon name="User" className="w-4 h-4" /></div><span>{user.email} 님</span></button>
-                                <button onClick={onLogout}><Icon name="LogOut" className="w-5 h-5 text-slate-400" /></button>
+                                <button className="flex items-center gap-2 text-sm font-medium hidden sm:flex"><div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center"><Icon name="User" className="w-4 h-4" /></div><span>{user.storeName || user.email}</span></button>
+                                <button onClick={onLogout} className="text-slate-400 hover:text-red-500"><Icon name="LogOut" className="w-5 h-5" /></button>
                             </div>
                         </div>
                     </header>
@@ -382,7 +450,7 @@
 
                         <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide">
                             {CATEGORIES.map(cat => (
-                                <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap border ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button>
+                                <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button>
                             ))}
                         </div>
 
@@ -425,7 +493,7 @@
                                         </div>
                                     ))}
                                 </div>
-                                {cart.length>0 && <div className="border-t pt-4"><div className="flex justify-between mb-4"><span className="text-slate-600">총 공급가액</span><span className="font-bold text-xl">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span></div><button className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg flex justify-center items-center gap-2"><Icon name="Truck" className="w-5 h-5" />발주 신청하기</button></div>}
+                                {cart.length>0 && <div className="border-t pt-4"><div className="flex justify-between mb-4"><span className="text-slate-600">총 공급가액</span><span className="font-bold text-xl">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span></div><button onClick={handlePlaceOrder} className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg flex justify-center items-center gap-2"><Icon name="Truck" className="w-5 h-5" />발주 신청하기</button></div>}
                             </div>
                         </div>
                     )}
@@ -456,7 +524,23 @@
                 const timer = setTimeout(() => {
                     if (window.auth) {
                         initData();
-                        window.auth.onAuthStateChanged(u => { if (!isAdmin) setUser(u); setLoading(false); });
+                        window.auth.onAuthStateChanged(async (u) => { 
+                            if (u && !isAdmin) {
+                                // 유저 추가 정보(상호명 등) 가져오기
+                                try {
+                                    const userDoc = await window.fs.getDocs(window.fs.query(window.fs.collection(window.db, "users"), window.fs.where("email", "==", u.email)));
+                                    if(!userDoc.empty) {
+                                        const userData = userDoc.docs[0].data();
+                                        setUser({ ...u, ...userData });
+                                    } else {
+                                        setUser(u);
+                                    }
+                                } catch(e) { setUser(u); }
+                            } else {
+                                if(!isAdmin) setUser(u); 
+                            }
+                            setLoading(false); 
+                        });
                     }
                 }, 1000);
                 return () => clearTimeout(timer);
@@ -466,7 +550,7 @@
             const handleLogout = () => { if(isAdmin) { setIsAdmin(false); setUser(null); } else window.logOut(window.auth); };
 
             if (loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">시스템 연결중...</div>;
-            if (isAdmin) return <AdminPage products={products} onLogout={handleLogout} />;
+            if (isAdmin) return <AdminPage onLogout={handleLogout} />;
             if (user) return <ShopPage products={products} user={user} onLogout={handleLogout} />;
             return <LoginPage onAdminLogin={handleAdminLogin} />;
         };
