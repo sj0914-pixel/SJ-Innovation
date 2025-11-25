@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰</title>
+    <title>SJ 파트너스 몰 (Safety Mode)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -19,7 +19,7 @@
         import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // ★ 구형 프로젝트(SJ-Innovation) 키로 원상복구
+        // 구형 프로젝트 (SJ-Innovation) 키 복구
         const firebaseConfig = {
             apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqcYceZwUtI",
             authDomain: "sj-innovation-a8f6b.firebaseapp.com",
@@ -35,19 +35,20 @@
             window.auth = getAuth(app);
             window.db = getFirestore(app);
             
-            // 함수 전역 등록
+            // 전역 함수 등록 (로그인 오류 해결)
             window.createUser = createUserWithEmailAndPassword;
             window.signInUser = signInWithEmailAndPassword;
             window.logOut = signOut;
-            window.onAuthStateChanged = onAuthStateChanged; // ★ 이 부분 누락 수정됨 (로그인 에러 해결)
+            window.onAuthStateChanged = onAuthStateChanged;
             window.setPersistence = setPersistence;
             window.browserLocalPersistence = browserLocalPersistence;
             window.browserSessionPersistence = browserSessionPersistence;
-            
             window.fs = { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot };
-            console.log("Firebase Connected");
+            
+            window.isFirebaseReady = true; 
+            console.log("Firebase Safety Mode Connected");
         } catch (e) {
-            alert("연결 실패: " + e.message);
+            alert("연결 오류: " + e.message);
         }
     </script>
 
@@ -64,7 +65,7 @@
         const { useState, useEffect, useRef } = React;
 
         const useLucide = () => {
-            useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }); 
         };
 
         const Icon = ({ name, ...props }) => {
@@ -74,7 +75,7 @@
 
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // [이미지 업로드] ★ 용량 제한(700KB) 추가하여 DB 오류 방지
+        // [이미지 업로드] ★ 500KB 제한 (안전장치)
         const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             const fileInputRef = useRef(null);
             const [preview, setPreview] = useState(currentImage || "");
@@ -83,15 +84,17 @@
 
             const handleFile = (file) => {
                 if (!file) return;
-                // 700KB 제한 (Base64 변환 시 용량 증가 고려)
-                if (file.size > 700 * 1024) {
-                    alert("⛔ 오류 방지: 이미지가 너무 큽니다! (700KB 이하만 가능)\n용량을 줄여서 올려주세요.");
+                
+                // 500KB 제한 (Base64 변환 시 33% 증가하므로 500KB가 안전선)
+                if (file.size > 500 * 1024) {
+                    alert("⛔ [오류 방지] 이미지가 너무 큽니다! (500KB 이하만 가능)\n용량을 줄여서 다시 올려주세요.");
                     return;
                 }
+
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     setPreview(reader.result);
-                    onImageSelect(reader.result);
+                    onImageSelect(reader.result); 
                 };
                 reader.readAsDataURL(file);
             };
@@ -110,7 +113,7 @@
                         ) : (
                             <div className="text-center p-4">
                                 <div className="mx-auto bg-black text-white w-10 h-10 rounded-lg flex items-center justify-center mb-2"><Icon name="UploadCloud" className="w-6 h-6" /></div>
-                                <p className="text-sm text-slate-500 font-medium">클릭/드래그 (700KB 이하)</p>
+                                <p className="text-sm text-slate-500 font-medium">클릭/드래그 (500KB 이하)</p>
                             </div>
                         )}
                         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleFile(e.target.files[0])} />
@@ -119,6 +122,7 @@
             );
         };
 
+        // --- 상품 데이터 ---
         const INITIAL_PRODUCTS = [
             { id: "new_p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
             { id: "new_p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
@@ -137,13 +141,14 @@
         ];
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
+        // [마이페이지]
         const MyPage = ({ user, onClose }) => {
             const [orders, setOrders] = useState([]);
             const [tab, setTab] = useState("info");
             useLucide();
 
             useEffect(() => {
-                if(!window.fs || !window.auth.currentUser) return;
+                if(!window.fs) return;
                 const { collection, query, where, onSnapshot } = window.fs;
                 const q = query(collection(window.db, "orders"), where("userId", "==", window.auth.currentUser.uid));
                 return onSnapshot(q, snap => {
@@ -186,6 +191,7 @@
             );
         };
 
+        // 관리자 페이지
         const AdminPage = ({ onLogout }) => {
             const [products, setProducts] = useState([]);
             const [users, setUsers] = useState([]);
@@ -196,13 +202,14 @@
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [thumb, setThumb] = useState("");
             const [detail, setDetail] = useState("");
+            const [isSaving, setIsSaving] = useState(false);
             useLucide();
 
             useEffect(() => {
                 if(!window.fs) return;
                 const { collection, query, orderBy, onSnapshot } = window.fs;
-                // 데이터 컬렉션: products_simple_fixed
-                const unsubProd = onSnapshot(collection(window.db, "products_simple_fixed"), s => setProducts(s.docs.map(d=>({id:d.id, ...d.data()}))));
+                // 데이터 컬렉션: products_safety (새 컬렉션 사용)
+                const unsubProd = onSnapshot(collection(window.db, "products_safety"), s => setProducts(s.docs.map(d=>({id:d.id, ...d.data()}))));
                 const unsubUser = onSnapshot(collection(window.db, "users"), s => setUsers(s.docs.map(d=>({id:d.id, ...d.data()}))));
                 const unsubOrder = onSnapshot(collection(window.db, "orders"), s => setOrders(s.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>new Date(b.date)-new Date(a.date))));
                 return () => { unsubProd(); unsubUser(); unsubOrder(); };
@@ -213,22 +220,23 @@
             
             const handleSaveProduct = async (e) => {
                 e.preventDefault();
+                setIsSaving(true);
                 const f = e.target;
                 const data = {
                     name: f.n.value, category: f.c.value, price: +f.p.value, originPrice: +f.op.value, stock: +f.s.value,
                     minQty: +f.min.value, cartonQty: +f.cq.value, image: thumb, detailImage: detail, description: f.d.value
                 };
                 try {
-                    if(editProd) await window.fs.updateDoc(window.fs.doc(window.db, "products_simple_fixed", editProd.id), data);
-                    else await window.fs.addDoc(window.fs.collection(window.db, "products_simple_fixed"), data);
+                    if(editProd) await window.fs.updateDoc(window.fs.doc(window.db, "products_safety", editProd.id), data);
+                    else await window.fs.addDoc(window.fs.collection(window.db, "products_safety"), data);
                     setIsModalOpen(false); alert("저장됨");
                 } catch(err) { 
                     alert("오류: "+err.message); 
-                    if(err.message.includes("exceeds")) alert("❌ 이미지 용량이 1MB를 넘습니다! 700KB 이하로 줄여주세요.");
-                }
+                    if(err.message.includes("exceeds")) alert("❌ 이미지 용량이 1MB를 넘습니다! 500KB 이하로 줄여주세요.");
+                } finally { setIsSaving(false); }
             };
 
-            const handleDeleteProduct = async (id) => { if(confirm("삭제?")) try { await window.fs.deleteDoc(window.fs.doc(window.db, "products_simple_fixed", id)); } catch(e){} };
+            const handleDeleteProduct = async (id) => { if(confirm("삭제?")) try { await window.fs.deleteDoc(window.fs.doc(window.db, "products_safety", id)); } catch(e){} };
 
             const openAddModal = () => { setEditProd(null); setThumb(""); setDetail(""); setIsModalOpen(true); };
             const openEditModal = (p) => { setEditProd(p); setThumb(p.image); setDetail(p.detailImage); setIsModalOpen(true); };
@@ -241,11 +249,11 @@
                         <div className="bg-white rounded-xl shadow overflow-hidden overflow-x-auto min-h-[500px]">
                             {tab==="orders" && <table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-slate-100"><tr><th className="p-3">일시</th><th className="p-3">주문자</th><th className="p-3">내역</th><th className="p-3">금액</th><th className="p-3">상태</th></tr></thead><tbody>{orders.map(o=><tr key={o.id} className="hover:bg-slate-50"><td className="p-3 text-slate-500">{new Date(o.date).toLocaleDateString()}</td><td className="p-3">{o.userName}</td><td className="p-3 max-w-xs truncate">{o.items.length}건</td><td className="p-3 font-bold">{formatPrice(o.totalAmount)}</td><td className="p-3"><select value={o.status} onChange={e=>window.fs.updateDoc(window.fs.doc(window.db,"orders",o.id),{status:e.target.value})} className="border rounded"><option>접수대기</option><option>배송중</option><option>배송완료</option><option>주문취소</option></select></td></tr>)}</tbody></table>}
                             {tab==="users" && <table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-slate-100"><tr><th className="p-3">상호명</th><th className="p-3">대표자</th><th className="p-3">이메일</th><th className="p-3">관리</th></tr></thead><tbody>{users.map(u=><tr key={u.id} className="hover:bg-slate-50"><td className="p-3 font-bold">{u.storeName}</td><td className="p-3">{u.repName}</td><td className="p-3">{u.email}</td><td className="p-3 flex gap-1"><button onClick={()=>setSelUser(u)} className="bg-blue-100 text-blue-600 px-2 rounded text-xs">상세</button><button onClick={()=>{if(confirm("삭제?"))window.fs.deleteDoc(window.fs.doc(window.db,"users",u.id))}} className="bg-red-100 text-red-600 px-2 rounded text-xs">삭제</button></td></tr>)}</tbody></table>}
-                            {tab==="products" && <div className="p-4"><div className="flex justify-between mb-4"><h3 className="font-bold">상품 목록</h3><button onClick={()=>{setEditProd(null);setThumb("");setDetail("");setIsModalOpen(true);}} className="bg-indigo-600 text-white px-3 py-1 rounded text-sm">+ 등록</button></div><table className="w-full text-sm text-left"><thead className="bg-slate-100"><tr><th className="p-3">이미지</th><th className="p-3">상품명</th><th className="p-3">가격</th><th className="p-3">재고</th><th className="p-3">관리</th></tr></thead><tbody>{products.map(p=><tr key={p.id}><td className="p-3 text-2xl">{p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} className="w-8 h-8 rounded object-contain"/>:"📦"}</td><td className="p-3">{p.name}</td><td className="p-3">{formatPrice(p.price)}</td><td className="p-3 text-blue-600">{p.stock}</td><td className="p-3 flex gap-2"><button onClick={()=>{setEditProd(p);setThumb(p.image);setDetail(p.detailImage);setIsModalOpen(true);}} className="bg-slate-200 px-2 rounded text-xs">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-2 rounded text-xs">삭제</button></td></tr>)}</tbody></table></div>}
+                            {tab==="products" && <div className="p-4"><div className="flex justify-between mb-4"><h3 className="font-bold">상품 목록</h3><button onClick={()=>{setEditProd(null);setThumb("");setDetail("");setIsModalOpen(true);}} className="bg-indigo-600 text-white px-3 py-1 rounded text-sm">+ 등록</button></div><table className="w-full text-sm text-left"><thead className="bg-slate-100"><tr><th className="p-4">이미지</th><th className="p-4">상품명</th><th className="p-4">가격</th><th className="p-4">재고</th><th className="p-4">관리</th></tr></thead><tbody>{products.map(p=><tr key={p.id}><td className="p-3 text-2xl">{p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} className="w-8 h-8 rounded object-contain"/>:"📦"}</td><td className="p-3">{p.name}</td><td className="p-3">{formatPrice(p.price)}</td><td className="p-3 text-blue-600">{p.stock}</td><td className="p-3 flex gap-2"><button onClick={()=>{setEditProd(p);setThumb(p.image);setDetail(p.detailImage);setIsModalOpen(true);}} className="bg-slate-200 px-2 rounded text-xs">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-2 rounded text-xs">삭제</button></td></tr>)}</tbody></table></div>}
                         </div>
                     </div>
                     {selUser && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative"><button onClick={()=>setSelUser(null)} className="absolute top-4 right-4 p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button><h3 className="font-bold text-lg mb-4">회원 상세</h3><div className="text-sm space-y-2"><div>상호: {selUser.storeName}</div><div>대표: {selUser.repName}</div><div>연락처: {selUser.mobile}</div><div>사업자: {selUser.businessNumber}</div><div>주소: {selUser.address}</div></div></div></div>}
-                    {isModalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"><button onClick={()=>setIsModalOpen(false)} className="absolute top-4 right-4 p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button><h3 className="font-bold text-lg mb-4">{editProd?"상품 수정":"상품 등록"}</h3><form onSubmit={saveProd} className="space-y-2 text-sm"><div className="grid grid-cols-2 gap-2"><div><label>카테고리</label><select name="c" defaultValue={editProd?.category} className="w-full border p-2 rounded">{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div><div><label>재고</label><input name="s" type="number" defaultValue={editProd?.stock||0} className="w-full border p-2 rounded" required/></div></div><div><label>상품명</label><input name="n" defaultValue={editProd?.name} className="w-full border p-2 rounded" required/></div><div className="grid grid-cols-2 gap-2"><div><label>공급가</label><input name="p" type="number" defaultValue={editProd?.price} className="w-full border p-2 rounded" required/></div><div><label>권장가</label><input name="op" type="number" defaultValue={editProd?.originPrice} className="w-full border p-2 rounded" required/></div></div><div className="grid grid-cols-2 gap-2"><div><label>최소주문</label><input name="min" type="number" defaultValue={editProd?.minQty||20} className="w-full border p-2 rounded"/></div><div><label>1카톤 수량</label><input name="cq" type="number" defaultValue={editProd?.cartonQty||20} className="w-full border p-2 rounded"/></div></div><ImageUploader label="썸네일" currentImage={thumb} onImageSelect={setThumb}/><ImageUploader label="상세페이지" currentImage={detail} onImageSelect={setDetail}/><div><label>소개</label><textarea name="d" defaultValue={editProd?.description} className="w-full border p-2 rounded h-16"/></div><button className="w-full bg-indigo-600 text-white py-3 rounded font-bold mt-2">저장</button></form></div></div>}
+                    {isModalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"><button onClick={()=>setIsModalOpen(false)} className="absolute top-4 right-4 p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button><h3 className="font-bold text-lg mb-4">{editProd?"상품 수정":"상품 등록"}</h3><form onSubmit={saveProd} className="space-y-2 text-sm"><div className="grid grid-cols-2 gap-2"><div><label>카테고리</label><select name="c" defaultValue={editProd?.category} className="w-full border p-2 rounded">{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div><div><label>재고</label><input name="s" type="number" defaultValue={editProd?.stock||0} className="w-full border p-2 rounded" required/></div></div><div><label>상품명</label><input name="n" defaultValue={editProd?.name} className="w-full border p-2 rounded" required/></div><div className="grid grid-cols-2 gap-2"><div><label>공급가</label><input name="p" type="number" defaultValue={editProd?.price} className="w-full border p-2 rounded" required/></div><div><label>권장가</label><input name="op" type="number" defaultValue={editProd?.originPrice} className="w-full border p-2 rounded" required/></div></div><div className="grid grid-cols-2 gap-2"><div><label>최소주문</label><input name="min" type="number" defaultValue={editProd?.minQty||20} className="w-full border p-2 rounded"/></div><div><label>1카톤 수량</label><input name="cq" type="number" defaultValue={editProd?.cartonQty||20} className="w-full border p-2 rounded"/></div></div><ImageUploader label="썸네일 (500KB 이하)" currentImage={thumb} onImageSelect={setThumb}/><ImageUploader label="상세페이지 (500KB 이하)" currentImage={detail} onImageSelect={setDetail}/><div><label>소개</label><textarea name="d" defaultValue={editProd?.description} className="w-full border p-2 rounded h-16"/></div><button className="w-full bg-indigo-600 text-white py-3 rounded font-bold mt-2" disabled={isSaving}>{isSaving?"저장 중...":"저장"}</button></form></div></div>}
                 </div>
             );
         };
@@ -364,7 +372,7 @@
                     <div className="fixed inset-0 z-50 bg-white flex flex-col pb-20 animate-in slide-in-from-right">
                         <div className="p-4 border-b flex justify-between"><button onClick={back}><Icon name="ArrowLeft"/></button><span className="font-bold">상세</span><button onClick={back}><Icon name="X"/></button></div>
                         <div className="flex-1 overflow-y-auto p-4">
-                            <div className="bg-slate-50 aspect-square flex items-center justify-center mb-4">{p.image.startsWith('http')?<img src={p.image} className="w-full h-full object-contain"/>:<span className="text-6xl">{p.image}</span>}</div>
+                            <div className="bg-slate-50 aspect-square flex items-center justify-center mb-4">{p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} className="w-full h-full object-contain"/>:<span className="text-6xl">{p.image}</span>}</div>
                             <h2 className="text-xl font-bold mb-2">{p.name}</h2>
                             <div className="text-2xl font-bold mb-4">₩{formatPrice(p.price)}</div>
                             <div className="bg-indigo-50 p-3 rounded text-sm text-indigo-700 mb-4">최소 {p.minQty}개 (1카톤={p.cartonQty}개) / 최대 5박스</div>
@@ -388,12 +396,12 @@
                         <div className="flex gap-4"><button onClick={()=>setIsOpen(true)}><Icon name="Boxes"/>{cart.length>0 && <span className="bg-red-500 text-white text-xs rounded-full px-1 absolute top-3 right-14">{cart.length}</span>}</button><button onClick={()=>setMyPage(true)}><Icon name="User"/></button><button onClick={onLogout}><Icon name="LogOut"/></button></div>
                     </header>
                     <div className="p-4">
-                        <input className="w-full p-3 rounded border mb-4" placeholder="검색..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
+                        <input className="w-full p-3 rounded border mb-4" placeholder="검색..." value={term} onChange={e=>setTerm(e.target.value)} />
                         <div className="flex gap-2 overflow-x-auto pb-2 mb-4">{CATEGORIES.map(c=><button key={c} onClick={()=>setSelectedCategory(c)} className={`px-4 py-1 rounded-full border whitespace-nowrap ${selectedCategory===c?"bg-slate-800 text-white":"bg-white"}`}>{c}</button>)}</div>
                         <div className="grid grid-cols-2 gap-4">
                             {filtered.map(p=>(
                                 <div key={p.id} onClick={()=>setSelProd(p)} className="bg-white rounded shadow p-3">
-                                    <div className="aspect-square bg-slate-100 mb-2 flex items-center justify-center">{p.image.startsWith('http')?<img src={p.image} className="w-full h-full object-contain"/>:<span className="text-4xl">{p.image}</span>}</div>
+                                    <div className="aspect-square bg-slate-100 mb-2 flex items-center justify-center">{p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} className="w-full h-full object-contain"/>:<span className="text-4xl">{p.image}</span>}</div>
                                     <div className="font-bold text-sm truncate">{p.name}</div>
                                     <div className="flex justify-between mt-1"><span className="font-bold">₩{formatPrice(p.price)}</span><span className="text-xs bg-slate-100 px-1 rounded">재고 {p.stock}</span></div>
                                 </div>
@@ -426,10 +434,10 @@
                                 } catch(e) { setUser(u); }
                             } else { setUser(null); setIsAdmin(false); }
                             
-                            // 초기화: products_simple_fixed 컬렉션 사용
+                            // 초기화: products_safety 컬렉션 사용
                             try {
-                                const snap = await window.fs.getDocs(window.fs.collection(window.db, "products_simple_fixed"));
-                                if (snap.empty) await Promise.all(INITIAL_PRODUCTS.map(p => window.fs.setDoc(window.fs.doc(window.db, "products_simple_fixed", p.id), p)));
+                                const snap = await window.fs.getDocs(window.fs.collection(window.db, "products_safety"));
+                                if (snap.empty) await Promise.all(INITIAL_PRODUCTS.map(p => window.fs.setDoc(window.fs.doc(window.db, "products_safety", p.id), p)));
                                 setProducts(snap.docs.map(d => ({id:d.id, ...d.data()})));
                             } catch(e){}
                             
@@ -443,7 +451,7 @@
             // 실시간 구독 (App 레벨)
             useEffect(() => {
                 if(!window.fs || !window.db) return;
-                const unsub = window.fs.onSnapshot(window.fs.collection(window.db, "products_simple_fixed"), (snap) => {
+                const unsub = window.fs.onSnapshot(window.fs.collection(window.db, "products_safety"), (snap) => {
                      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                 });
                 return () => unsub();
