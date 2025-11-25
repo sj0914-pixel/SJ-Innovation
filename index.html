@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰</title>
+    <title>SJ 파트너스 몰 (Stable Release)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -12,15 +12,9 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 
-    <style>
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
-    </style>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } 
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -40,21 +34,27 @@
             window.auth = getAuth(app);
             window.db = getFirestore(app);
             
-            // 함수 전역 등록
             window.createUser = createUserWithEmailAndPassword;
             window.signInUser = signInWithEmailAndPassword;
             window.logOut = signOut;
             window.onAuthStateChanged = onAuthStateChanged;
             window.setPersistence = setPersistence;
             window.browserLocalPersistence = browserLocalPersistence;
-            
+            window.browserSessionPersistence = browserSessionPersistence;
             window.fs = { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot };
-            window.isFirebaseReady = true;
+            
+            window.isFirebaseReady = true; 
             console.log("Firebase Connected");
         } catch (e) {
-            console.error(e);
+            alert("연결 오류: " + e.message);
         }
     </script>
+
+    <style>
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans">
     <div id="root"></div>
@@ -63,7 +63,7 @@
         const { useState, useEffect, useRef } = React;
 
         const useLucide = () => {
-            useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }); 
         };
 
         const Icon = ({ name, ...props }) => {
@@ -73,7 +73,7 @@
 
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // [이미지 업로드] (700KB 제한 - 오류 방지용)
+        // [이미지 업로드] (700KB 제한)
         const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             const fileInputRef = useRef(null);
             const [preview, setPreview] = useState(currentImage || "");
@@ -82,8 +82,9 @@
 
             const handleFile = (file) => {
                 if (!file) return;
+                
                 if (file.size > 700 * 1024) {
-                    alert("이미지가 큽니다! (700KB 이하 권장)\n용량이 크면 저장이 안 될 수 있습니다.");
+                    alert("⛔ [오류 방지] 이미지가 너무 큽니다! (700KB 이하만 가능)\n용량을 줄여서 올려주세요.");
                     return;
                 }
                 const reader = new FileReader();
@@ -99,10 +100,12 @@
                     <label className="block mb-1 font-bold text-sm text-slate-700">{label}</label>
                     <div 
                         className="border-2 border-dashed border-slate-300 rounded-lg flex flex-col justify-center items-center h-32 cursor-pointer hover:bg-slate-100 bg-white"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => { e.preventDefault(); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
                         onClick={() => fileInputRef.current.click()}
                     >
                         {preview && !preview.includes("📦") ? (
-                            <img src={preview} className="h-full object-contain" />
+                            <img src={preview} className="absolute inset-0 w-full h-full object-contain bg-slate-50" />
                         ) : (
                             <div className="text-center p-4">
                                 <div className="mx-auto bg-black text-white w-10 h-10 rounded-lg flex items-center justify-center mb-2"><Icon name="UploadCloud" className="w-6 h-6" /></div>
@@ -115,7 +118,6 @@
             );
         };
 
-        // --- 상품 데이터 ---
         const INITIAL_PRODUCTS = [
             { id: "p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
             { id: "p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20 },
@@ -134,7 +136,7 @@
         ];
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-        // [마이페이지] (팝업 X 버튼 포함)
+        // [마이페이지]
         const MyPage = ({ user, onClose }) => {
             const [orders, setOrders] = useState([]);
             const [tab, setTab] = useState("info");
@@ -142,19 +144,21 @@
 
             useEffect(() => {
                 if(!window.fs) return;
-                const q = window.fs.query(window.fs.collection(window.db, "orders"), window.fs.where("userId", "==", window.auth.currentUser.uid));
-                return window.fs.onSnapshot(q, snap => {
+                const { collection, query, where, onSnapshot } = window.fs;
+                const q = query(collection(window.db, "orders"), where("userId", "==", window.auth.currentUser.uid));
+                return onSnapshot(q, snap => {
                     setOrders(snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(b.date) - new Date(a.date)));
                 });
             }, []);
 
+            const cancelOrder = async (id) => {
+                if(confirm("취소하시겠습니까?")) await window.fs.updateDoc(window.fs.doc(window.db, "orders", id), { status: "주문취소" });
+            };
+
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white w-full max-w-2xl h-[80vh] rounded-xl flex flex-col shadow-2xl overflow-hidden">
-                        <div className="p-4 border-b flex justify-between items-center bg-slate-50">
-                            <h2 className="font-bold text-xl">마이페이지</h2>
-                            <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full"><Icon name="X" /></button>
-                        </div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all">
+                    <div className="bg-white w-full max-w-2xl h-[80vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in duration-200">
+                        <div className="p-4 border-b flex justify-between items-center bg-slate-50"><h2 className="font-bold text-xl">마이페이지</h2><button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full"><Icon name="X" /></button></div>
                         <div className="flex border-b"><button onClick={()=>setTab("info")} className={`flex-1 py-3 font-bold ${tab==="info"?"border-b-2 border-black":""}`}>내 정보</button><button onClick={()=>setTab("orders")} className={`flex-1 py-3 font-bold ${tab==="orders"?"border-b-2 border-black":""}`}>주문 내역</button></div>
                         <div className="flex-1 overflow-y-auto p-6">
                             {tab==="info" ? (
@@ -162,15 +166,16 @@
                                     <div className="p-3 bg-slate-50 rounded"><b>상호명:</b> {user.storeName}</div>
                                     <div className="p-3 bg-slate-50 rounded"><b>대표자:</b> {user.repName}</div>
                                     <div className="p-3 bg-slate-50 rounded"><b>이메일:</b> {user.email}</div>
+                                    <div className="p-3 bg-slate-50 rounded"><b>연락처:</b> {user.mobile}</div>
                                     <div className="p-3 bg-slate-50 rounded"><b>주소:</b> {user.address}</div>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    {orders.map(o=>(
+                                    {orders.length===0 ? <div className="text-center py-10 text-slate-400">내역 없음</div> : orders.map(o=>(
                                         <div key={o.id} className="border p-4 rounded-xl shadow-sm">
-                                            <div className="flex justify-between border-b pb-2 mb-2"><span className="text-xs">{new Date(o.date).toLocaleString()}</span><span className="font-bold text-xs">{o.status}</span></div>
+                                            <div className="flex justify-between border-b pb-2 mb-2"><span className="text-xs text-slate-500">{new Date(o.date).toLocaleString()}</span><span className="font-bold text-xs">{o.status}</span></div>
                                             <div className="text-sm space-y-1">{o.items.map((i,idx)=><div key={idx} className="flex justify-between"><span>{i.name}</span><span>{i.quantity}개</span></div>)}</div>
-                                            <div className="flex justify-between pt-2 mt-2 border-t"><span className="font-bold">{formatPrice(o.totalAmount)}원</span></div>
+                                            <div className="flex justify-between pt-2 mt-2 border-t"><span className="font-bold">{formatPrice(o.totalAmount)}원</span>{o.status==="접수대기" && <button onClick={()=>cancelOrder(o.id)} className="bg-slate-200 px-2 rounded text-xs">취소</button>}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -181,38 +186,55 @@
             );
         };
 
-        // [관리자 페이지]
+        // 관리자 페이지
         const AdminPage = ({ onLogout }) => {
             const [products, setProducts] = useState([]);
             const [users, setUsers] = useState([]);
             const [orders, setOrders] = useState([]);
             const [tab, setTab] = useState("orders");
-            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [selUser, setSelUser] = useState(null);
             const [editProd, setEditProd] = useState(null);
+            const [isModalOpen, setIsModalOpen] = useState(false);
             const [thumb, setThumb] = useState("");
             const [detail, setDetail] = useState("");
+            const [isSaving, setIsSaving] = useState(false);
             useLucide();
 
             useEffect(() => {
                 if(!window.fs) return;
-                const unsubProd = window.fs.onSnapshot(window.fs.collection(window.db, "products_fixed"), s => setProducts(s.docs.map(d=>({id:d.id, ...d.data()}))));
-                const unsubUser = window.fs.onSnapshot(window.fs.collection(window.db, "users"), s => setUsers(s.docs.map(d=>({id:d.id, ...d.data()}))));
-                const unsubOrder = window.fs.onSnapshot(window.fs.collection(window.db, "orders"), s => setOrders(s.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>new Date(b.date)-new Date(a.date))));
+                const { collection, onSnapshot } = window.fs;
+                // products_final_release 컬렉션 사용
+                const unsubProd = onSnapshot(collection(window.db, "products_final_release"), s => setProducts(s.docs.map(d=>({id:d.id, ...d.data()}))));
+                const unsubUser = onSnapshot(collection(window.db, "users"), s => setUsers(s.docs.map(d=>({id:d.id, ...d.data()}))));
+                const unsubOrder = onSnapshot(collection(window.db, "orders"), s => setOrders(s.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>new Date(b.date)-new Date(a.date))));
                 return () => { unsubProd(); unsubUser(); unsubOrder(); };
             }, []);
 
-            const saveProd = async (e) => {
+            const handleDeleteUser = async (id) => { if(confirm("삭제?")) try { await window.fs.deleteDoc(window.fs.doc(window.db, "users", id)); } catch(e) {alert(e.message);} };
+            const handleOrderStatus = async (id, st) => { try { await window.fs.updateDoc(window.fs.doc(window.db, "orders", id), {status:st}); } catch(e){} };
+            
+            const handleSaveProduct = async (e) => {
                 e.preventDefault();
+                setIsSaving(true);
                 const f = e.target;
-                const data = { name: f.n.value, category: f.c.value, price: +f.p.value, originPrice: +f.op.value, stock: +f.s.value, minQty: +f.min.value, cartonQty: +f.cq.value, image: thumb, detailImage: detail, description: f.d.value };
+                const data = {
+                    name: f.n.value, category: f.c.value, price: +f.p.value, originPrice: +f.op.value, stock: +f.s.value,
+                    minQty: +f.min.value, cartonQty: +f.cq.value, image: thumb, detailImage: detail, description: f.d.value
+                };
                 try {
-                    if(editProd) await window.fs.updateDoc(window.fs.doc(window.db, "products_fixed", editProd.id), data);
-                    else await window.fs.addDoc(window.fs.collection(window.db, "products_fixed"), data);
+                    if(editProd) await window.fs.updateDoc(window.fs.doc(window.db, "products_final_release", editProd.id), data);
+                    else await window.fs.addDoc(window.fs.collection(window.db, "products_final_release"), data);
                     setIsModalOpen(false); alert("저장됨");
-                } catch(err) { alert("오류: "+err.message); }
+                } catch(err) { 
+                    alert("오류: "+err.message); 
+                    if(err.message.includes("exceeds")) alert("❌ 이미지 용량이 1MB를 넘습니다! 700KB 이하로 줄여주세요.");
+                } finally { setIsSaving(false); }
             };
 
-            const delProd = async (id) => { if(confirm("삭제?")) try { await window.fs.deleteDoc(window.fs.doc(window.db, "products_fixed", id)); } catch(e){} };
+            const handleDeleteProduct = async (id) => { if(confirm("삭제?")) try { await window.fs.deleteDoc(window.fs.doc(window.db, "products_final_release", id)); } catch(e){} };
+
+            const openAddModal = () => { setEditProd(null); setThumb(""); setDetail(""); setIsModalOpen(true); };
+            const openEditModal = (p) => { setEditProd(p); setThumb(p.image); setDetail(p.detailImage); setIsModalOpen(true); };
 
             return (
                 <div className="min-h-screen bg-slate-100">
@@ -220,17 +242,18 @@
                     <div className="p-4 max-w-7xl mx-auto">
                         <div className="flex gap-2 mb-4 overflow-x-auto"><button onClick={()=>setTab("orders")} className={`px-4 py-2 rounded font-bold ${tab==="orders"?"bg-slate-800 text-white":"bg-white"}`}>주문</button><button onClick={()=>setTab("users")} className={`px-4 py-2 rounded font-bold ${tab==="users"?"bg-slate-800 text-white":"bg-white"}`}>회원</button><button onClick={()=>setTab("products")} className={`px-4 py-2 rounded font-bold ${tab==="products"?"bg-slate-800 text-white":"bg-white"}`}>상품</button></div>
                         <div className="bg-white rounded-xl shadow overflow-hidden overflow-x-auto min-h-[500px]">
-                            {tab==="orders" && <table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-slate-100"><tr><th className="p-3">일시</th><th className="p-3">주문자</th><th className="p-3">금액</th><th className="p-3">상태</th></tr></thead><tbody>{orders.map(o=><tr key={o.id} className="hover:bg-slate-50"><td className="p-3">{new Date(o.date).toLocaleDateString()}</td><td className="p-3">{o.userName}</td><td className="p-3 font-bold">{formatPrice(o.totalAmount)}</td><td className="p-3">{o.status}</td></tr>)}</tbody></table>}
-                            {tab==="users" && <table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-slate-100"><tr><th className="p-3">상호명</th><th className="p-3">대표자</th><th className="p-3">이메일</th></tr></thead><tbody>{users.map(u=><tr key={u.id} className="hover:bg-slate-50"><td className="p-3 font-bold">{u.storeName}</td><td className="p-3">{u.repName}</td><td className="p-3">{u.email}</td></tr>)}</tbody></table>}
-                            {tab==="products" && <div className="p-4"><div className="flex justify-between mb-4"><h3 className="font-bold">상품 목록</h3><button onClick={()=>{setEditProd(null);setThumb("");setDetail("");setIsModalOpen(true);}} className="bg-indigo-600 text-white px-3 py-1 rounded text-sm">+ 등록</button></div><table className="w-full text-sm text-left"><thead className="bg-slate-100"><tr><th className="p-3">이미지</th><th className="p-3">상품명</th><th className="p-3">가격</th><th className="p-3">재고</th><th className="p-3">관리</th></tr></thead><tbody>{products.map(p=><tr key={p.id}><td className="p-3 text-2xl">{p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} className="w-8 h-8 rounded object-contain"/>:"📦"}</td><td className="p-3">{p.name}</td><td className="p-3">{formatPrice(p.price)}</td><td className="p-3 text-blue-600">{p.stock}</td><td className="p-3 flex gap-2"><button onClick={()=>{setEditProd(p);setThumb(p.image);setDetail(p.detailImage);setIsModalOpen(true);}} className="bg-slate-200 px-2 rounded text-xs">수정</button><button onClick={()=>delProd(p.id)} className="bg-red-100 text-red-500 px-2 rounded text-xs">삭제</button></td></tr>)}</tbody></table></div>}
+                            {tab==="orders" && <table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-slate-100"><tr><th className="p-3">일시</th><th className="p-3">주문자</th><th className="p-3">내역</th><th className="p-3">금액</th><th className="p-3">상태</th></tr></thead><tbody>{orders.map(o=><tr key={o.id} className="hover:bg-slate-50"><td className="p-3 text-slate-500">{new Date(o.date).toLocaleDateString()}</td><td className="p-3">{o.userName}</td><td className="p-3 max-w-xs truncate">{o.items.length}건</td><td className="p-3 font-bold">{formatPrice(o.totalAmount)}</td><td className="p-3"><select value={o.status} onChange={e=>window.fs.updateDoc(window.fs.doc(window.db,"orders",o.id),{status:e.target.value})} className="border rounded"><option>접수대기</option><option>배송중</option><option>배송완료</option><option>주문취소</option></select></td></tr>)}</tbody></table>}
+                            {tab==="users" && <table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-slate-100"><tr><th className="p-3">상호명</th><th className="p-3">대표자</th><th className="p-3">이메일</th><th className="p-3">관리</th></tr></thead><tbody>{users.map(u=><tr key={u.id} className="hover:bg-slate-50"><td className="p-3 font-bold">{u.storeName}</td><td className="p-3">{u.repName}</td><td className="p-3">{u.email}</td><td className="p-3 flex gap-1"><button onClick={()=>setSelUser(u)} className="bg-blue-100 text-blue-600 px-2 rounded text-xs">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-2 rounded text-xs">삭제</button></td></tr>)}</tbody></table>}
+                            {tab==="products" && <div className="p-4"><div className="flex justify-between mb-4"><h3 className="font-bold">상품 목록</h3><button onClick={openAddModal} className="bg-indigo-600 text-white px-3 py-1 rounded text-sm">+ 등록</button></div><table className="w-full text-sm text-left"><thead className="bg-slate-100"><tr><th className="p-3">이미지</th><th className="p-3">상품명</th><th className="p-3">가격</th><th className="p-3">재고</th><th className="p-3">관리</th></tr></thead><tbody>{products.map(p=><tr key={p.id}><td className="p-3 text-2xl">{p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} className="w-8 h-8 rounded object-contain"/>:"📦"}</td><td className="p-3">{p.name}</td><td className="p-3">{formatPrice(p.price)}</td><td className="p-3 text-blue-600">{p.stock}</td><td className="p-3 flex gap-2"><button onClick={()=>openEditModal(p)} className="bg-slate-200 px-2 rounded text-xs">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-2 rounded text-xs">삭제</button></td></tr>)}</tbody></table></div>}
                         </div>
                     </div>
-                    {isModalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"><button onClick={()=>setIsModalOpen(false)} className="absolute top-4 right-4 p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button><h3 className="font-bold text-lg mb-4">{editProd?"상품 수정":"상품 등록"}</h3><form onSubmit={saveProd} className="space-y-2 text-sm"><div className="grid grid-cols-2 gap-2"><div><label>카테고리</label><select name="c" defaultValue={editProd?.category} className="w-full border p-2 rounded">{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div><div><label>재고</label><input name="s" type="number" defaultValue={editProd?.stock||0} className="w-full border p-2 rounded" required/></div></div><div><label>상품명</label><input name="n" defaultValue={editProd?.name} className="w-full border p-2 rounded" required/></div><div className="grid grid-cols-2 gap-2"><div><label>공급가</label><input name="p" type="number" defaultValue={editProd?.price} className="w-full border p-2 rounded" required/></div><div><label>권장가</label><input name="op" type="number" defaultValue={editProd?.originPrice} className="w-full border p-2 rounded" required/></div></div><div className="grid grid-cols-2 gap-2"><div><label>최소주문</label><input name="min" type="number" defaultValue={editProd?.minQty||20} className="w-full border p-2 rounded"/></div><div><label>1카톤 수량</label><input name="cq" type="number" defaultValue={editProd?.cartonQty||20} className="w-full border p-2 rounded"/></div></div><ImageUploader label="썸네일 (700KB 이하)" currentImage={thumb} onImageSelect={setThumb}/><ImageUploader label="상세페이지 (700KB 이하)" currentImage={detail} onImageSelect={setDetail}/><div><label>소개</label><textarea name="d" defaultValue={editProd?.description} className="w-full border p-2 rounded h-16"/></div><button className="w-full bg-indigo-600 text-white py-3 rounded font-bold mt-2">저장</button></form></div></div>}
+                    {selUser && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative"><button onClick={()=>setSelUser(null)} className="absolute top-4 right-4 p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button><h3 className="font-bold text-lg mb-4">회원 상세</h3><div className="text-sm space-y-2"><div>상호: {selUser.storeName}</div><div>대표: {selUser.repName}</div><div>연락처: {selUser.mobile}</div><div>사업자: {selUser.businessNumber}</div><div>주소: {selUser.address}</div></div></div></div>}
+                    {isModalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"><button onClick={()=>setIsModalOpen(false)} className="absolute top-4 right-4 p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button><h3 className="font-bold text-lg mb-4">{editProd?"상품 수정":"상품 등록"}</h3><form onSubmit={handleSaveProduct} className="space-y-2 text-sm"><div className="grid grid-cols-2 gap-2"><div><label>카테고리</label><select name="c" defaultValue={editProd?.category} className="w-full border p-2 rounded">{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div><div><label>재고</label><input name="s" type="number" defaultValue={editProd?.stock||0} className="w-full border p-2 rounded" required/></div></div><div><label>상품명</label><input name="n" defaultValue={editProd?.name} className="w-full border p-2 rounded" required/></div><div className="grid grid-cols-2 gap-2"><div><label>공급가</label><input name="p" type="number" defaultValue={editProd?.price} className="w-full border p-2 rounded" required/></div><div><label>권장가</label><input name="op" type="number" defaultValue={editProd?.originPrice} className="w-full border p-2 rounded" required/></div></div><div className="grid grid-cols-2 gap-2"><div><label>최소주문</label><input name="min" type="number" defaultValue={editProd?.minQty||20} className="w-full border p-2 rounded"/></div><div><label>1카톤 수량</label><input name="cq" type="number" defaultValue={editProd?.cartonQty||20} className="w-full border p-2 rounded"/></div></div><ImageUploader label="썸네일 (700KB 이하)" currentImage={thumb} onImageSelect={setThumb}/><ImageUploader label="상세페이지 (700KB 이하)" currentImage={detail} onImageSelect={setDetail}/><div><label>소개</label><textarea name="d" defaultValue={editProd?.description} className="w-full border p-2 rounded h-16"/></div><button className="w-full bg-indigo-600 text-white py-3 rounded font-bold mt-2" disabled={isSaving}>{isSaving?"저장 중...":"저장"}</button></form></div></div>}
                 </div>
             );
         };
 
-        // [로그인 페이지] (완성.txt 디자인 100% 복구 + 기능 연결)
+        // [로그인 페이지]
         const LoginPage = ({ onAdminLogin }) => {
             const [isLoginMode, setIsLoginMode] = useState(true);
             const [isAddrOpen, setIsAddrOpen] = useState(false);
@@ -243,24 +266,31 @@
             useEffect(() => {
                 if(isAddrOpen && addrWrapRef.current && window.daum) {
                     addrWrapRef.current.innerHTML = '';
-                    new window.daum.Postcode({ oncomplete: function(d) { let a = d.userSelectedType==='R'?d.roadAddress:d.jibunAddress; if(d.buildingName) a+=` (${d.buildingName})`; setData(p=>({...p, zip:d.zonecode, addr:a})); setIsAddrOpen(false); }, width:'100%', height:'100%' }).embed(addrWrapRef.current);
+                    new window.daum.Postcode({
+                        oncomplete: function(data) {
+                            let addr = data.userSelectedType==='R'?data.roadAddress:data.jibunAddress;
+                            if(data.buildingName) addr+=` (${data.buildingName})`;
+                            setFormData(prev=>({...prev, zipcode: data.zonecode, address: addr}));
+                            setIsAddrOpen(false); 
+                        }, width: '100%', height: '100%'
+                    }).embed(addrWrapRef.current);
                 }
             }, [isAddrOpen]);
 
             const handleSubmit = async (e) => {
-                e.preventDefault(); setLoading(true);
-                if(isLoginMode && formData.username === 'sj' && formData.password === '0914') { onAdminLogin(); return; }
+                e.preventDefault();
+                setLoading(true);
                 
+                if(isLoginMode && formData.username === 'sj' && formData.password === '0914') { onAdminLogin(); return; }
+
                 try {
                     if(isLoginMode) {
-                        // 로그인 유지 설정
                         const persistence = rememberMe ? window.browserLocalPersistence : window.browserSessionPersistence;
                         await window.setPersistence(window.auth, persistence);
                         await window.signInUser(window.auth, formData.username, formData.password);
                     } else {
                         if(formData.password !== formData.confirmPassword) { alert("비밀번호 불일치"); setLoading(false); return; }
                         const cred = await window.createUser(window.auth, formData.email, formData.password);
-                        // 사용자 정보 저장
                         await window.fs.setDoc(window.fs.doc(window.db, "users", cred.user.uid), {
                             email: formData.email, displayId: formData.username, name: formData.name, mobile: formData.mobile,
                             address: `${formData.address} ${formData.addressDetail}`, businessType: formData.businessType,
@@ -296,11 +326,11 @@
                                         <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">필수정보 <span className="text-red-500 text-sm">*</span></h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div><label className="block text-sm font-medium text-slate-700 mb-1">이름(실명)</label><input name="name" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">아이디(표시용)</label><input name="username" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">아이디</label><div className="flex gap-2"><input name="username" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /><button type="button" className="bg-slate-600 text-white text-xs px-3 rounded hover:bg-slate-700 whitespace-nowrap">중복확인</button></div></div>
                                             <div><label className="block text-sm font-medium text-slate-700 mb-1">비밀번호</label><input name="password" type="password" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
                                             <div><label className="block text-sm font-medium text-slate-700 mb-1">비밀번호 확인</label><input name="confirmPassword" type="password" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
                                             <div><label className="block text-sm font-medium text-slate-700 mb-1">휴대폰 번호</label><input name="mobile" type="tel" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">이메일(로그인용)</label><input name="email" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required placeholder="example@naver.com" /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">이메일</label><input name="email" type="email" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required placeholder="example@naver.com" /></div>
                                         </div>
                                         <div className="mt-4">
                                             <label className="block text-sm font-medium text-slate-700 mb-1">기본 배송지 주소</label>
@@ -325,10 +355,11 @@
                                             <div><label className="block text-sm font-medium text-slate-700 mb-1">상호명(법인명)</label><input name="storeName" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
                                             <div><label className="block text-sm font-medium text-slate-700 mb-1">대표자명</label><input name="repName" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
                                             <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">사업자 등록번호</label><input name="businessNumber" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">업태</label><input name="businessCategory" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">종목</label><input name="businessItem" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">세금계산서 이메일</label><input name="taxEmail" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">업태</label><input name="businessCategory" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">종목</label><input name="businessItem" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">세금계산서 이메일</label><input name="taxEmail" type="email" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
                                         </div>
+                                        <div className="mt-4 p-3 bg-slate-50 rounded-lg text-xs text-slate-700 flex items-start gap-2 border border-slate-200"><Icon name="Check" className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-500" /><span>허위 정보 기재 시 법적 문제가 발생할 수 있으며, 부정확한 정보 입력 시 정회원 승인이 거절될 수 있습니다.</span></div>
                                     </section>
                                 </div>
                             )}
@@ -337,7 +368,7 @@
                         <div className="mt-6 text-center border-t border-slate-100 pt-6"><p className="text-sm text-slate-600">{isLoginMode ? "아직 파트너 회원이 아니신가요?" : "이미 아이디가 있으신가요?"}<button onClick={() => setIsLoginMode(!isLoginMode)} className="ml-2 font-bold text-slate-800 hover:underline focus:outline-none">{isLoginMode ? "사업자 회원가입" : "로그인하기"}</button></p></div>
                         <p className="mt-8 text-center text-xs text-slate-400">copyright (c) SJ Innovation. All rights reserved.</p>
                     </div>
-                    {isAddrOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative shadow-2xl flex flex-col"><div className="p-3 border-b flex justify-between font-bold bg-slate-50"><span>주소 검색</span><button onClick={()=>setIsAddrOpen(false)} className="hover:bg-slate-100 p-2 rounded-full"><Icon name="X"/></button></div><div ref={addrWrapRef} className="flex-1 w-full bg-slate-100 relative"></div></div></div>}
+                    {isAddrOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative shadow-2xl flex flex-col"><div className="p-4 border-b flex justify-between items-center bg-slate-50"><h3 className="font-bold text-lg">주소 검색</h3><button onClick={() => setIsAddrOpen(false)} className="p-1 hover:bg-slate-200 rounded-full"><Icon name="X" className="w-6 h-6 text-slate-500" /></button></div><div ref={addrWrapRef} className="flex-1 w-full bg-slate-100 relative"></div></div></div>}
                 </div>
             );
         };
@@ -380,16 +411,13 @@
                 };
                 return (
                     <div className="fixed inset-0 z-50 bg-white flex flex-col pb-20 animate-in slide-in-from-right">
-                        <div className="sticky top-0 bg-white z-20 border-b p-4 flex justify-between"><button onClick={back} className="p-1 hover:bg-slate-100 rounded-full"><Icon name="ArrowLeft"/></button><div onClick={goHome} className="font-bold bg-slate-800 text-white px-2 rounded cursor-pointer">SJ</div><button onClick={back} className="p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button></div>
+                        <div className="sticky top-0 bg-white z-20 border-b p-4 flex justify-between"><button onClick={back} className="p-1 hover:bg-slate-100 rounded-full"><Icon name="ArrowLeft"/></button><span className="font-bold">상세</span><button onClick={back} className="p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button></div>
                         <div className="flex-1 overflow-y-auto p-4">
                             <div className="bg-slate-50 aspect-square flex items-center justify-center mb-4">{p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} className="w-full h-full object-contain"/>:<span className="text-6xl">{p.image}</span>}</div>
-                            <div className="px-4">
-                                <div className="text-xs font-bold text-slate-500 mb-1">{p.category}</div>
-                                <h2 className="text-xl font-bold mb-2">{p.name}</h2>
-                                <div className="flex items-end gap-2 mb-4"><span className="text-2xl font-bold">₩{formatPrice(p.price)}</span><span className="text-slate-400 line-through text-sm">₩{formatPrice(p.originPrice)}</span><span className="text-red-500 text-xs font-bold ml-auto">{Math.round((1-p.price/p.originPrice)*100)}% OFF</span></div>
-                                <div className="bg-indigo-50 p-3 rounded text-sm text-indigo-700 mb-6 font-bold"><div>최소 {p.minQty}개 (1카톤={p.cartonQty}개)</div><div className="text-xs font-normal mt-1">최대 5박스 한정</div></div>
-                                <div className="text-slate-600 mb-8 space-y-4"><div><h3 className="font-bold text-black mb-1">상품 설명</h3><p>{p.description}</p></div>{p.detailImage && <img src={p.detailImage} className="w-full rounded"/>}</div>
-                            </div>
+                            <h2 className="text-xl font-bold mb-2">{p.name}</h2>
+                            <div className="text-2xl font-bold mb-4">₩{formatPrice(p.price)}</div>
+                            <div className="bg-indigo-50 p-3 rounded text-sm text-indigo-700 mb-6 font-bold"><div>최소 {p.minQty}개 (1카톤={p.cartonQty}개)</div><div className="text-xs font-normal mt-1">최대 5박스 한정</div></div>
+                            <div className="text-slate-600 mb-8 space-y-4"><div><h3 className="font-bold text-black mb-1">상품 설명</h3><p>{p.description}</p></div>{p.detailImage && <img src={p.detailImage} className="w-full rounded"/>}</div>
                         </div>
                         <div className="fixed bottom-0 w-full bg-white border-t p-4 flex gap-3 safe-area-bottom">
                             <div className="flex items-center bg-slate-100 rounded"><button onClick={()=>change(-1)} className="p-3"><Icon name="Minus" size={16}/></button><span className="w-8 text-center font-bold">{q}</span><button onClick={()=>change(1)} className="p-3"><Icon name="Plus" size={16}/></button></div>
@@ -404,8 +432,8 @@
             return (
                 <div className="min-h-screen bg-slate-50 pb-20">
                     <header className="sticky top-0 bg-white shadow p-4 flex justify-between items-center z-40">
-                        <div className="flex items-center gap-2 cursor-pointer" onClick={goHome}><div className="bg-slate-800 w-8 h-8 rounded flex items-center justify-center text-white font-bold">S</div><span className="font-bold text-lg hidden sm:block">SJ Innovation</span></div>
-                        <div className="flex gap-3"><button onClick={()=>setIsOpen(true)} className="relative p-1"><Icon name="Boxes"/>{cart.length>0 && <span className="bg-red-500 text-white text-xs rounded-full px-1 absolute -top-1 -right-1">{cart.length}</span>}</button><button onClick={()=>setMyPage(true)} className="p-1"><Icon name="User"/></button><button onClick={onLogout} className="text-xs font-bold border px-2 py-1 rounded">로그아웃</button></div>
+                        <div className="flex items-center gap-2 cursor-pointer" onClick={()=>{setSelectedCategory("전체");setSearchTerm("");}}><div className="bg-slate-800 w-8 h-8 rounded flex items-center justify-center text-white font-bold">S</div><span className="font-bold text-lg hidden sm:block">SJ Innovation</span></div>
+                        <div className="flex gap-4"><button onClick={()=>setIsOpen(true)} className="relative p-1"><Icon name="Boxes"/>{cart.length>0 && <span className="bg-red-500 text-white text-xs rounded-full px-1 absolute -top-1 -right-1">{cart.length}</span>}</button><button onClick={()=>setMyPage(true)} className="p-1"><Icon name="User"/></button><button onClick={onLogout} className="text-xs font-bold border px-2 py-1 rounded">로그아웃</button></div>
                     </header>
                     <main className="p-4 max-w-7xl mx-auto">
                         <div className="bg-slate-900 rounded-xl p-6 mb-6 text-white shadow-lg flex justify-between items-center"><div><span className="bg-white/20 px-2 py-1 rounded text-xs font-bold">SJ Partner</span><h2 className="text-2xl font-bold mt-1">겨울 신상 입고</h2></div><div className="text-right"><div className="text-3xl font-bold">NEW</div><div className="text-xs opacity-70">시즌 상품</div></div></div>
@@ -415,7 +443,7 @@
                             {filtered.map(p=>(
                                 <div key={p.id} onClick={()=>setSelProd(p)} className="bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition">
                                     <div className="aspect-[4/3] bg-slate-100 relative flex items-center justify-center overflow-hidden">
-                                        {p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} className="w-full h-full object-contain"/>:<span className="text-5xl">{p.image}</span>}
+                                        {p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} alt={p.name} className="w-full h-full object-contain"/>:<span className="text-5xl">{p.image}</span>}
                                         <div className="absolute top-2 left-2 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded">HOT</div>
                                     </div>
                                     <div className="p-3">
@@ -448,7 +476,6 @@
                         clearInterval(check);
                         window.onAuthStateChanged(window.auth, async (u) => {
                             if (u) {
-                                if (u.email === null) { /* sj login */ }
                                 try {
                                     const q = window.fs.query(window.fs.collection(window.db, "users"), window.fs.where("email", "==", u.email));
                                     const snap = await window.fs.getDocs(q);
@@ -456,10 +483,11 @@
                                 } catch(e) { setUser(u); }
                             } else { setUser(null); setIsAdmin(false); }
                             
-                            // 초기화: products_fixed 컬렉션 사용
+                            // 초기화: products_final_release 컬렉션 사용 (가장 안정적인 이름)
                             try {
-                                const snap = await window.fs.getDocs(window.fs.collection(window.db, "products_fixed"));
-                                if (snap.empty) await Promise.all(INITIAL_PRODUCTS.map(p => window.fs.setDoc(window.fs.doc(window.db, "products_fixed", p.id), p)));
+                                const snap = await window.fs.getDocs(window.fs.collection(window.db, "products_final_release"));
+                                if (snap.empty) await Promise.all(INITIAL_PRODUCTS.map(p => window.fs.setDoc(window.fs.doc(window.db, "products_final_release", p.id), p)));
+                                setProducts(snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => a.name.localeCompare(b.name)));
                             } catch(e){}
                             
                             setLoading(false);
@@ -471,8 +499,8 @@
 
             useEffect(() => {
                 if(!window.fs || !window.db) return;
-                const unsub = window.fs.onSnapshot(window.fs.collection(window.db, "products_fixed"), (snap) => {
-                     setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                const unsub = window.fs.onSnapshot(window.fs.collection(window.db, "products_final_release"), (snap) => {
+                     setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name)));
                 });
                 return () => unsub();
             }, [loading]);
