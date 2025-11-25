@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (Stable Release)</title>
+    <title>SJ 파트너스 몰 (Stable)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -19,6 +19,7 @@
         import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // SJ-Innovation (한국) 키
         const firebaseConfig = {
             apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqcYceZwUtI",
             authDomain: "sj-innovation-a8f6b.firebaseapp.com",
@@ -41,10 +42,10 @@
             window.setPersistence = setPersistence;
             window.browserLocalPersistence = browserLocalPersistence;
             window.browserSessionPersistence = browserSessionPersistence;
+            
             window.fs = { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot };
             
-            window.isFirebaseReady = true; 
-            console.log("Firebase Connected");
+            window.isFirebaseReady = true;
         } catch (e) {
             alert("연결 오류: " + e.message);
         }
@@ -82,9 +83,8 @@
 
             const handleFile = (file) => {
                 if (!file) return;
-                
                 if (file.size > 700 * 1024) {
-                    alert("⛔ [오류 방지] 이미지가 너무 큽니다! (700KB 이하만 가능)\n용량을 줄여서 올려주세요.");
+                    alert("⛔ 이미지 용량이 너무 큽니다! (700KB 이하만 가능)\n용량을 줄여서 올려주세요.");
                     return;
                 }
                 const reader = new FileReader();
@@ -156,7 +156,7 @@
             };
 
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white w-full max-w-2xl h-[80vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in duration-200">
                         <div className="p-4 border-b flex justify-between items-center bg-slate-50"><h2 className="font-bold text-xl">마이페이지</h2><button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full"><Icon name="X" /></button></div>
                         <div className="flex border-b"><button onClick={()=>setTab("info")} className={`flex-1 py-3 font-bold ${tab==="info"?"border-b-2 border-black":""}`}>내 정보</button><button onClick={()=>setTab("orders")} className={`flex-1 py-3 font-bold ${tab==="orders"?"border-b-2 border-black":""}`}>주문 내역</button></div>
@@ -203,12 +203,19 @@
             useEffect(() => {
                 if(!window.fs) return;
                 const { collection, onSnapshot } = window.fs;
-                // products_final_release 컬렉션 사용
                 const unsubProd = onSnapshot(collection(window.db, "products_final_release"), s => setProducts(s.docs.map(d=>({id:d.id, ...d.data()}))));
                 const unsubUser = onSnapshot(collection(window.db, "users"), s => setUsers(s.docs.map(d=>({id:d.id, ...d.data()}))));
                 const unsubOrder = onSnapshot(collection(window.db, "orders"), s => setOrders(s.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>new Date(b.date)-new Date(a.date))));
                 return () => { unsubProd(); unsubUser(); unsubOrder(); };
             }, []);
+
+            const handleReset = async () => {
+                if(!confirm("상품 데이터가 안 보이나요? 초기 데이터를 복구하시겠습니까?")) return;
+                try {
+                    await Promise.all(INITIAL_PRODUCTS.map(p => window.fs.setDoc(window.fs.doc(window.db, "products_final_release", p.id), p)));
+                    alert("복구 완료! 새로고침 해주세요.");
+                } catch(e) { alert("복구 실패: " + e.message); }
+            };
 
             const handleDeleteUser = async (id) => { if(confirm("삭제?")) try { await window.fs.deleteDoc(window.fs.doc(window.db, "users", id)); } catch(e) {alert(e.message);} };
             const handleOrderStatus = async (id, st) => { try { await window.fs.updateDoc(window.fs.doc(window.db, "orders", id), {status:st}); } catch(e){} };
@@ -242,9 +249,9 @@
                     <div className="p-4 max-w-7xl mx-auto">
                         <div className="flex gap-2 mb-4 overflow-x-auto"><button onClick={()=>setTab("orders")} className={`px-4 py-2 rounded font-bold ${tab==="orders"?"bg-slate-800 text-white":"bg-white"}`}>주문</button><button onClick={()=>setTab("users")} className={`px-4 py-2 rounded font-bold ${tab==="users"?"bg-slate-800 text-white":"bg-white"}`}>회원</button><button onClick={()=>setTab("products")} className={`px-4 py-2 rounded font-bold ${tab==="products"?"bg-slate-800 text-white":"bg-white"}`}>상품</button></div>
                         <div className="bg-white rounded-xl shadow overflow-hidden overflow-x-auto min-h-[500px]">
-                            {tab==="orders" && <table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-slate-100"><tr><th className="p-3">일시</th><th className="p-3">주문자</th><th className="p-3">내역</th><th className="p-3">금액</th><th className="p-3">상태</th></tr></thead><tbody>{orders.map(o=><tr key={o.id} className="hover:bg-slate-50"><td className="p-3 text-slate-500">{new Date(o.date).toLocaleDateString()}</td><td className="p-3">{o.userName}</td><td className="p-3 max-w-xs truncate">{o.items.length}건</td><td className="p-3 font-bold">{formatPrice(o.totalAmount)}</td><td className="p-3"><select value={o.status} onChange={e=>window.fs.updateDoc(window.fs.doc(window.db,"orders",o.id),{status:e.target.value})} className="border rounded"><option>접수대기</option><option>배송중</option><option>배송완료</option><option>주문취소</option></select></td></tr>)}</tbody></table>}
+                            {tab==="orders" && <table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-slate-100"><tr><th className="p-3">일시</th><th className="p-3">주문자</th><th className="p-3">금액</th><th className="p-3">상태</th></tr></thead><tbody>{orders.map(o=><tr key={o.id} className="hover:bg-slate-50"><td className="p-3 text-slate-500">{new Date(o.date).toLocaleDateString()}</td><td className="p-3">{o.userName}</td><td className="p-3 font-bold">{formatPrice(o.totalAmount)}</td><td className="p-3"><select value={o.status} onChange={e=>handleOrderStatus(o.id,e.target.value)} className="border rounded"><option>접수대기</option><option>배송중</option><option>배송완료</option><option>주문취소</option></select></td></tr>)}</tbody></table>}
                             {tab==="users" && <table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-slate-100"><tr><th className="p-3">상호명</th><th className="p-3">대표자</th><th className="p-3">이메일</th><th className="p-3">관리</th></tr></thead><tbody>{users.map(u=><tr key={u.id} className="hover:bg-slate-50"><td className="p-3 font-bold">{u.storeName}</td><td className="p-3">{u.repName}</td><td className="p-3">{u.email}</td><td className="p-3 flex gap-1"><button onClick={()=>setSelUser(u)} className="bg-blue-100 text-blue-600 px-2 rounded text-xs">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-2 rounded text-xs">삭제</button></td></tr>)}</tbody></table>}
-                            {tab==="products" && <div className="p-4"><div className="flex justify-between mb-4"><h3 className="font-bold">상품 목록</h3><button onClick={openAddModal} className="bg-indigo-600 text-white px-3 py-1 rounded text-sm">+ 등록</button></div><table className="w-full text-sm text-left"><thead className="bg-slate-100"><tr><th className="p-3">이미지</th><th className="p-3">상품명</th><th className="p-3">가격</th><th className="p-3">재고</th><th className="p-3">관리</th></tr></thead><tbody>{products.map(p=><tr key={p.id}><td className="p-3 text-2xl">{p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} className="w-8 h-8 rounded object-contain"/>:"📦"}</td><td className="p-3">{p.name}</td><td className="p-3">{formatPrice(p.price)}</td><td className="p-3 text-blue-600">{p.stock}</td><td className="p-3 flex gap-2"><button onClick={()=>openEditModal(p)} className="bg-slate-200 px-2 rounded text-xs">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-2 rounded text-xs">삭제</button></td></tr>)}</tbody></table></div>}
+                            {tab==="products" && <div className="p-4"><div className="flex justify-between mb-4"><h3 className="font-bold">상품 목록</h3><button onClick={openAddModal} className="bg-indigo-600 text-white px-3 py-1 rounded text-sm">+ 등록</button><button onClick={handleReset} className="bg-yellow-500 text-white px-3 py-1 rounded text-sm">🔄 초기 데이터 복구</button></div><table className="w-full text-sm text-left"><thead className="bg-slate-100"><tr><th className="p-3">이미지</th><th className="p-3">상품명</th><th className="p-3">가격</th><th className="p-3">재고</th><th className="p-3">관리</th></tr></thead><tbody>{products.map(p=><tr key={p.id}><td className="p-3 text-2xl">{p.image.startsWith('http')||p.image.startsWith('data')?<img src={p.image} className="w-8 h-8 rounded object-contain"/>:"📦"}</td><td className="p-3">{p.name}</td><td className="p-3">{formatPrice(p.price)}</td><td className="p-3 text-blue-600">{p.stock}</td><td className="p-3 flex gap-2"><button onClick={()=>openEditModal(p)} className="bg-slate-200 px-2 rounded text-xs">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-2 rounded text-xs">삭제</button></td></tr>)}</tbody></table></div>}
                         </div>
                     </div>
                     {selUser && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative"><button onClick={()=>setSelUser(null)} className="absolute top-4 right-4 p-1 hover:bg-slate-100 rounded-full"><Icon name="X"/></button><h3 className="font-bold text-lg mb-4">회원 상세</h3><div className="text-sm space-y-2"><div>상호: {selUser.storeName}</div><div>대표: {selUser.repName}</div><div>연락처: {selUser.mobile}</div><div>사업자: {selUser.businessNumber}</div><div>주소: {selUser.address}</div></div></div></div>}
@@ -253,7 +260,7 @@
             );
         };
 
-        // [로그인 페이지]
+        // [로그인]
         const LoginPage = ({ onAdminLogin }) => {
             const [isLoginMode, setIsLoginMode] = useState(true);
             const [isAddrOpen, setIsAddrOpen] = useState(false);
@@ -336,9 +343,10 @@
                                             <label className="block text-sm font-medium text-slate-700 mb-1">기본 배송지 주소</label>
                                             <div className="flex gap-2 mb-2"><input name="zipcode" value={formData.zipcode} readOnly className="w-24 px-3 py-2 rounded border border-slate-300 bg-slate-100 text-sm" placeholder="우편번호" /><button type="button" onClick={() => setIsAddrOpen(true)} className="bg-slate-600 text-white text-xs px-3 rounded hover:bg-slate-700">주소검색</button></div>
                                             <input name="address" value={formData.address} readOnly className="w-full px-3 py-2 rounded border border-slate-300 bg-slate-100 mb-2" placeholder="기본 주소" />
-                                            <input name="addressDetail" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" placeholder="나머지 주소 (상세주소)" onChange={handleChange} />
+                                            <input name="addressDetail" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" placeholder="나머지 주소 (상세주소)" onChange={handleChange} />
                                         </div>
                                     </section>
+
                                     <section className="bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200">
                                         <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">사업자 필수정보 <span className="text-red-500 text-sm">*</span></h3>
                                         <div className="mb-4">
@@ -352,9 +360,9 @@
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">상호명(법인명)</label><input name="storeName" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">대표자명</label><input name="repName" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
-                                            <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">사업자 등록번호</label><input name="businessNumber" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">상호명(법인명)</label><input name="storeName" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-medium text-slate-700 mb-1">대표자명</label><input name="repName" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
+                                            <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">사업자 등록번호</label><input name="businessNumber" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
                                             <div><label className="block text-sm font-medium text-slate-700 mb-1">업태</label><input name="businessCategory" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
                                             <div><label className="block text-sm font-medium text-slate-700 mb-1">종목</label><input name="businessItem" type="text" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
                                             <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">세금계산서 이메일</label><input name="taxEmail" type="email" className="w-full px-3 py-2 rounded border border-slate-300 focus:border-slate-500 outline-none" onChange={handleChange} required /></div>
@@ -483,7 +491,7 @@
                                 } catch(e) { setUser(u); }
                             } else { setUser(null); setIsAdmin(false); }
                             
-                            // 초기화: products_final_release 컬렉션 사용 (가장 안정적인 이름)
+                            // 초기화: products_final_release 컬렉션 사용
                             try {
                                 const snap = await window.fs.getDocs(window.fs.collection(window.db, "products_final_release"));
                                 if (snap.empty) await Promise.all(INITIAL_PRODUCTS.map(p => window.fs.setDoc(window.fs.doc(window.db, "products_final_release", p.id), p)));
@@ -497,6 +505,7 @@
                 return () => clearInterval(check);
             }, []);
 
+            // 실시간 구독 (App 레벨)
             useEffect(() => {
                 if(!window.fs || !window.db) return;
                 const unsub = window.fs.onSnapshot(window.fs.collection(window.db, "products_final_release"), (snap) => {
