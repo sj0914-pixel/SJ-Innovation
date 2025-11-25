@@ -60,127 +60,33 @@
 
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // --- 초기 데이터 ---
+        // --- 최종 상품 데이터 (MOQ 적용됨) ---
         const INITIAL_PRODUCTS = [
-            { id: "p1", name: "캐치티니핑 하츄핑 방한용품 모음전", category: "유아동의류", price: 11900, originPrice: 23000, rating: 4.9, image: "🧣", description: "겨울 시즌 필수 아이템! 아이들이 좋아하는 하츄핑 캐릭터가 그려진 따뜻한 방한 장갑과 목도리 세트입니다.", stock: 100 },
-            { id: "p2", name: "티니핑 마스크 시즌3 새부리형 소형 (20매)", category: "생활/건강", price: 12900, originPrice: 15900, rating: 4.8, image: "😷", description: "숨쉬기 편한 새부리형 구조의 어린이용 마스크입니다.", stock: 500 },
-            { id: "p3", name: "슈팅스타 캐치티니핑 시즌5 하츄핑 유아 털목도리", category: "유아동의류", price: 12900, originPrice: 21900, rating: 4.9, image: "🧣", description: "포근한 감촉의 유아용 털목도리입니다.", stock: 50 },
-            { id: "p4", name: "슈팅스타 캐치티니핑 패딩 벙어리 장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수 기능이 있는 패딩 소재의 벙어리 장갑입니다.", stock: 60 },
-            { id: "p5", name: "슈팅스타 캐치티니핑 모자목도리 세트", category: "유아동의류", price: 16900, originPrice: 29900, rating: 5.0, image: "🧢", description: "모자와 목도리가 하나로! 일체형 방한 모자입니다.", stock: 40 },
-            { id: "p6", name: "이탈리안 브레인롯 랜덤 딱지 (25팩)", category: "완구/교구", price: 22900, originPrice: 39900, rating: 4.8, image: "🎲", description: "초등학생 대유행! 랜덤 팩 세트.", stock: 200 },
-            { id: "p7", name: "슈팅스타 자석 글자 한글플러스", category: "완구/교구", price: 39900, originPrice: 49900, rating: 4.9, image: "🧲", description: "자석 교구.", stock: 30 },
-            { id: "p8", name: "캐치티니핑 올인원 교정 젓가락 스푼 포크 세트", category: "주방/식기", price: 13900, originPrice: 17500, rating: 4.8, image: "🥢", description: "교정 젓가락.", stock: 150 },
-            { id: "p9", name: "슈팅스타 캐치티니핑 논슬립 스텐컵 (왕자핑)", category: "주방/식기", price: 9900, originPrice: 15000, rating: 4.7, image: "🥛", description: "미끄럼 방지.", stock: 80 },
-            { id: "p10", name: "위시캣 유아 어린이 안심락 스트랩 보틀", category: "주방/식기", price: 8900, originPrice: 12500, rating: 4.6, image: "🍼", description: "원터치 오픈.", stock: 120 },
-            { id: "p11", name: "새콤달콤 캐치티니핑 시즌4 플레이팅 자석 소꿉놀이", category: "완구/교구", price: 23500, originPrice: 27000, rating: 4.8, image: "🏰", description: "소꿉놀이 세트.", stock: 50 },
-            { id: "p12", name: "아산제약 hCG 임신테스트기 진단 키트 (25회분)", category: "생활/건강", price: 23900, originPrice: 47000, rating: 4.9, image: "⚕️", description: "진단 키트.", stock: 100 },
-            { id: "p13", name: "참존 KF94 톤업핏 블랙라벨 마스크 중형", category: "생활/건강", price: 10900, originPrice: 20000, rating: 4.5, image: "😷", description: "KF94 마스크.", stock: 300 },
-            { id: "p14", name: "젠바디 코로나 자가 진단 키트 (10회분)", category: "생활/건강", price: 9350, originPrice: 13500, rating: 4.6, image: "🩺", description: "자가 검사 키트.", stock: 500 },
-            { id: "p15", name: "헬로카봇 시즌15 무소음 교정젓가락 케이스 세트", category: "주방/식기", price: 14900, originPrice: 19000, rating: 4.7, image: "🤖", description: "무소음 케이스.", stock: 70 },
-            { id: "p16", name: "위시캣 하트 손잡이 휴대용 보틀 380ml", category: "주방/식기", price: 8950, originPrice: 11000, rating: 4.5, image: "🥤", description: "투명 물병.", stock: 90 },
-            { id: "p17", name: "반짝핑 수저세트 교정 젓가락 (어린이집용)", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.7, image: "✨", description: "반짝핑 수저.", stock: 60 },
-            { id: "p18", name: "빛나핑 수저세트 교정 젓가락 (유치원용)", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.8, image: "🌟", description: "빛나핑 수저.", stock: 60 },
-            { id: "p19", name: "초롱핑 수저세트 교정 젓가락 올인원", category: "주방/식기", price: 13900, originPrice: 17900, rating: 4.6, image: "🎋", description: "초롱핑 수저.", stock: 60 },
-            { id: 20, name: "새콤달콤 캐치티니핑 디저트샵 자석 소꿉놀이", category: "완구/교구", price: 27000, originPrice: 35000, rating: 4.9, image: "🍰", description: "디저트 가게 놀이.", stock: 40 }
+            { id: "p1", name: "브레인롯 랜덤딱지 1박스 (25팩)", category: "완구/교구", price: 22900, originPrice: 39900, rating: 4.8, image: "🎲", description: "대용량 랜덤 딱지 1박스 (총 125개입).", stock: 200, minQty: 10, maxQty: 50 },
+            { id: "p2", name: "티니핑 마스크 시즌3 새부리형 소형", category: "생활/건강", price: 12900, originPrice: 15900, rating: 4.8, image: "😷", description: "숨쉬기 편한 새부리형 마스크 (20개입).", stock: 500, minQty: 20, maxQty: 50 },
+            { id: "p3", name: "참존 KF94 톤업핏 마스크 중형", category: "생활/건강", price: 10900, originPrice: 20000, rating: 4.5, image: "😷", description: "스타일리시한 핏의 KF94 마스크 (16개입).", stock: 300, minQty: 16, maxQty: 50 },
+            { id: "p4", name: "올인원 교정젓가락세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, rating: 4.8, image: "🥢", description: "올바른 젓가락질 습관 세트.", stock: 150, minQty: 20, maxQty: 50 },
+            { id: "p5", name: "슈팅스타 하츄핑 모자목도리 세트", category: "유아동의류", price: 16900, originPrice: 29900, rating: 5.0, image: "🧣", description: "모자와 목도리가 하나로! 일체형 방한 모자.", stock: 40, minQty: 20, maxQty: 50 },
+            { id: "p6", name: "슈팅스타 패딩 벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수 기능이 있는 패딩 소재의 벙어리 장갑.", stock: 60, minQty: 20, maxQty: 50 },
+            { id: "p7", name: "슈팅스타 하트레이스 스키장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "방수/방한 기능의 스키장갑.", stock: 30, minQty: 20, maxQty: 50 },
+            { id: "p8", name: "슈팅스타 베이직손가락장갑", category: "유아동의류", price: 16900, originPrice: 29900, rating: 4.5, image: "🧤", description: "베이직 디자인의 손가락 장갑.", stock: 40, minQty: 20, maxQty: 50 },
+            { id: "p9", name: "슈팅스타 하츄핑 벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, rating: 4.7, image: "🧤", description: "하츄핑 캐릭터 벙어리장갑.", stock: 60, minQty: 20, maxQty: 50 },
+            { id: "p10", name: "젠바디 코로나 자가 진단 키트", category: "생활/건강", price: 9350, originPrice: 13500, rating: 4.6, image: "🩺", description: "빠르고 간편한 자가 검사 키트.", stock: 500, minQty: 20, maxQty: 50 },
+            { id: "p11", name: "논슬립 스텐컵 (왕자핑)", category: "주방/식기", price: 9900, originPrice: 15000, rating: 4.7, image: "🥛", description: "미끄럼 방지 처리.", stock: 80, minQty: 20, maxQty: 50 },
+            { id: "p12", name: "위시캣 유아 어린이 안심락 스트랩 보틀", category: "주방/식기", price: 8900, originPrice: 12500, rating: 4.6, image: "🍼", description: "원터치 오픈.", stock: 120, minQty: 20, maxQty: 50 }
         ];
 
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
         // --------------------------------------------------------
-        // [NEW] 마이페이지 컴포넌트
-        // --------------------------------------------------------
-        const MyPage = ({ user, onClose }) => {
-            const [myOrders, setMyOrders] = useState([]);
-            const [tab, setTab] = useState("info");
-
-            useEffect(() => {
-                const fetchMyOrders = async () => {
-                    if(!window.fs || !window.auth.currentUser) return;
-                    const { collection, query, where, getDocs } = window.fs;
-                    try {
-                        const q = query(collection(window.db, "orders"), where("userId", "==", window.auth.currentUser.uid));
-                        const snap = await getDocs(q);
-                        const list = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.date) - new Date(a.date));
-                        setMyOrders(list);
-                    } catch(e) { console.error(e); }
-                };
-                fetchMyOrders();
-                lucide.createIcons();
-            }, []);
-
-            const handleCancelOrder = async (id) => {
-                if(!confirm("주문을 취소하시겠습니까? (접수대기 상태만 취소 가능)")) return;
-                try {
-                    await window.fs.updateDoc(window.fs.doc(window.db, "orders", id), { status: "주문취소" });
-                    setMyOrders(prev => prev.map(o => o.id === id ? { ...o, status: "주문취소" } : o));
-                    alert("주문이 취소되었습니다.");
-                } catch(e) { alert("취소 실패: " + e.message); }
-            };
-
-            return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300">
-                    <div className="bg-white w-full max-w-2xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in duration-200">
-                        <div className="p-4 border-b flex justify-between items-center bg-slate-50">
-                            <h2 className="font-bold text-xl">마이페이지</h2>
-                            <button onClick={onClose} className="hover:bg-slate-200 p-2 rounded-full"><Icon name="X" className="w-6 h-6" /></button>
-                        </div>
-                        <div className="flex border-b">
-                            <button onClick={()=>setTab("info")} className={`flex-1 py-3 font-bold transition-all ${tab==="info"?"border-b-2 border-slate-800 text-slate-900":"text-slate-400"}`}>내 정보</button>
-                            <button onClick={()=>setTab("orders")} className={`flex-1 py-3 font-bold transition-all ${tab==="orders"?"border-b-2 border-slate-800 text-slate-900":"text-slate-400"}`}>주문 내역</button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-6">
-                            {tab === "info" ? (
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                        <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">상호명</div><div className="font-bold">{user.storeName}</div></div>
-                                        <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">대표자</div><div className="font-bold">{user.repName}</div></div>
-                                        <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">이메일</div><div className="font-bold">{user.email}</div></div>
-                                        <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">연락처</div><div className="font-bold">{user.mobile}</div></div>
-                                        <div className="col-span-2 p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">주소</div><div className="font-bold">{user.address}</div></div>
-                                        <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">사업자번호</div><div className="font-bold">{user.businessNumber}</div></div>
-                                        <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">세금계산서 이메일</div><div className="font-bold">{user.taxEmail}</div></div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {myOrders.length === 0 ? <div className="text-center text-slate-400 py-10">주문 내역이 없습니다.</div> : 
-                                    myOrders.map(order => (
-                                        <div key={order.id} className="border rounded-xl p-4 shadow-sm transition-all hover:shadow-md">
-                                            <div className="flex justify-between items-center mb-2 border-b pb-2">
-                                                <span className="text-xs text-slate-500">{new Date(order.date).toLocaleString()}</span>
-                                                <span className={`text-xs font-bold px-2 py-1 rounded ${order.status==='접수대기'?'bg-blue-100 text-blue-600':order.status==='주문취소'?'bg-red-100 text-red-600':'bg-green-100 text-green-600'}`}>{order.status}</span>
-                                            </div>
-                                            <div className="space-y-1 mb-3">
-                                                {order.items.map((item, i) => (
-                                                    <div key={i} className="flex justify-between text-sm">
-                                                        <span className="truncate w-2/3">{item.name}</span>
-                                                        <span className="text-slate-500">{item.quantity}개</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="flex justify-between items-center pt-2 border-t">
-                                                <span className="font-bold">총 {formatPrice(order.totalAmount)}원</span>
-                                                {order.status === "접수대기" && <button onClick={()=>handleCancelOrder(order.id)} className="text-xs bg-slate-200 px-3 py-1 rounded hover:bg-slate-300 transition-colors">주문취소</button>}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        // --------------------------------------------------------
-        // [1] 관리자 페이지 (회원 상세 보기 개선)
+        // [1] 관리자 페이지
         // --------------------------------------------------------
         const AdminPage = ({ onLogout }) => {
             const [products, setProducts] = useState([]);
             const [users, setUsers] = useState([]);
             const [orders, setOrders] = useState([]);
             const [tab, setTab] = useState("orders");
-            const [selectedUser, setSelectedUser] = useState(null); // 회원 상세 팝업용
+            const [selectedUser, setSelectedUser] = useState(null);
 
             useEffect(() => { fetchData(); }, [tab]);
 
@@ -217,6 +123,7 @@
                 try {
                     await window.fs.deleteDoc(window.fs.doc(window.db, "users", id));
                     setUsers(prev => prev.filter(u => u.id !== id));
+                    alert("회원이 삭제되었습니다.");
                 } catch(e) { alert("오류: " + e.message); }
             };
 
@@ -234,13 +141,13 @@
                             <span className="bg-red-500 text-xs px-2 py-1 rounded font-bold">ADMIN</span>
                             <span className="font-bold text-lg">SJ 관리자 모드</span>
                         </div>
-                        <button onClick={onLogout} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold text-sm transition-colors">로그아웃</button>
+                        <button onClick={onLogout} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold text-sm transition-all duration-300">로그아웃</button>
                     </nav>
                     <div className="max-w-7xl mx-auto p-4 sm:p-6">
                         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                            <button onClick={()=>setTab("orders")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all ${tab==="orders"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>📦 주문 현황</button>
-                            <button onClick={()=>setTab("users")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all ${tab==="users"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>👥 회원 관리</button>
-                            <button onClick={()=>setTab("products")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all ${tab==="products"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>🏷️ 상품 관리</button>
+                            <button onClick={()=>setTab("orders")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all duration-300 ${tab==="orders"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>📦 주문 현황</button>
+                            <button onClick={()=>setTab("users")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all duration-300 ${tab==="users"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>👥 회원 관리</button>
+                            <button onClick={()=>setTab("products")} className={`px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all duration-300 ${tab==="products"?"bg-slate-800 text-white":"bg-white text-slate-600 shadow-sm"}`}>🏷️ 상품 관리</button>
                         </div>
 
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
@@ -249,14 +156,14 @@
                                     <table className="w-full text-left text-sm whitespace-nowrap">
                                         <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">주문일시</th><th className="p-4">주문자</th><th className="p-4">내역</th><th className="p-4">금액</th><th className="p-4">상태</th></tr></thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {orders.length===0?<tr><td colSpan="5" className="p-8 text-center text-slate-400">주문이 없습니다.</td></tr> : orders.map(o=>(
-                                                <tr key={o.id} className="hover:bg-slate-50 transition-all">
+                                            {orders.length === 0 ? <tr><td colSpan="5" className="p-8 text-center text-slate-400">주문 내역이 없습니다.</td></tr> : orders.map(o=>(
+                                                <tr key={o.id} className="hover:bg-slate-50 transition-all duration-150">
                                                     <td className="p-4 text-slate-500">{new Date(o.date).toLocaleString()}</td>
                                                     <td className="p-4 font-bold">{o.userName}<div className="text-xs font-normal text-slate-400">{o.userEmail}</div></td>
                                                     <td className="p-4 max-w-xs truncate">{o.items.length}건: {o.items[0].name} 등</td>
                                                     <td className="p-4 font-bold text-indigo-600">₩{formatPrice(o.totalAmount)}</td>
                                                     <td className="p-4">
-                                                        <select value={o.status} onChange={(e)=>handleOrderStatus(o.id, e.target.value)} className={`p-1 rounded text-xs font-bold border transition-colors ${o.status==='주문취소'?'text-red-500':''}`}>
+                                                        <select value={o.status} onChange={(e)=>handleOrderStatus(o.id, e.target.value)} className="border p-1 rounded text-xs font-bold transition-all">
                                                             <option value="접수대기">접수대기</option><option value="배송중">배송중</option><option value="배송완료">배송완료</option><option value="주문취소">주문취소</option>
                                                         </select>
                                                     </td>
@@ -270,13 +177,13 @@
                                         <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">관리</th></tr></thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {users.map(u => (
-                                                <tr key={u.id} className="hover:bg-slate-50 transition-all">
+                                                <tr key={u.id} className="hover:bg-slate-50 transition-all duration-150">
                                                     <td className="p-4 font-bold">{u.storeName}</td>
                                                     <td className="p-4">{u.repName}</td>
                                                     <td className="p-4 text-slate-500">{u.email}</td>
                                                     <td className="p-4 flex gap-2">
-                                                        <button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs hover:bg-blue-200 transition-colors">상세</button>
-                                                        <button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs hover:bg-red-200 transition-colors">삭제</button>
+                                                        <button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs hover:bg-blue-200 transition-colors duration-150">상세</button>
+                                                        <button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs hover:bg-red-200 transition-colors duration-150">삭제</button>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -288,7 +195,7 @@
                                         <thead className="bg-slate-100 uppercase text-xs font-bold text-slate-500"><tr><th className="p-4">상품명</th><th className="p-4 w-32">재고</th></tr></thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {products.map(p => (
-                                                <tr key={p.id} className="hover:bg-slate-50 transition-all">
+                                                <tr key={p.id} className="hover:bg-slate-50 transition-all duration-150">
                                                     <td className="p-4 font-medium">{p.name}</td>
                                                     <td className="p-4"><input type="number" value={p.stock} onChange={(e) => handleStockUpdate(p.id, e.target.value)} className="w-20 border border-slate-300 rounded text-center p-1 focus:ring-2 focus:ring-blue-500 outline-none transition-colors" /></td>
                                                 </tr>
@@ -302,8 +209,8 @@
                     {/* 회원 상세 팝업 */}
                     {selectedUser && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300">
-                            <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative animate-in zoom-in duration-200">
-                                <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100"><Icon name="X" className="w-6 h-6" /></button>
+                            <div className className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative animate-in zoom-in duration-200">
+                                <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 transition-colors"><Icon name="X" className="w-6 h-6" /></button>
                                 <h3 className="font-bold text-lg mb-4 border-b pb-2">회원 상세 정보</h3>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">상호명</span><span className="font-bold">{selectedUser.storeName}</span></div>
@@ -311,6 +218,7 @@
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">이메일</span><span>{selectedUser.email}</span></div>
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">연락처</span><span>{selectedUser.mobile}</span></div>
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">사업자번호</span><span>{selectedUser.businessNumber}</span></div>
+                                    <div className="flex border-b pb-1"><span className="w-24 text-slate-500">업태/종목</span><span>{selectedUser.businessCategory} / {selectedUser.businessItem}</span></div>
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">주소</span><span>{selectedUser.address}</span></div>
                                     <div className="flex border-b pb-1"><span className="w-24 text-slate-500">가입일</span><span>{new Date(selectedUser.joinedAt).toLocaleDateString()}</span></div>
                                 </div>
@@ -420,7 +328,7 @@
                         </form>
                         <div className="mt-6 text-center text-sm"><button onClick={()=>setIsLoginMode(!isLoginMode)} className="underline font-bold text-slate-600 hover:text-slate-900 transition-colors">{isLoginMode?"사업자 회원가입":"로그인하기"}</button></div>
                     </div>
-                    {isAddrOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300"><div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative shadow-2xl flex flex-col"><div className="p-3 border-b flex justify-between font-bold bg-slate-50"><span>주소 검색</span><button onClick={()=>setIsAddrOpen(false)} className="hover:bg-slate-100 p-1 rounded-full"><Icon name="X"/></button></div><div ref={addrWrapRef} className="flex-1 w-full bg-slate-100 relative"></div></div></div>}
+                    {isAddrOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300"><div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative shadow-2xl flex flex-col"><div className="p-3 border-b flex justify-between font-bold bg-slate-50"><span>주소 검색</span><button onClick={()=>setIsAddrOpen(false)} className="hover:bg-slate-100 p-2 rounded-full"><Icon name="X"/></button></div><div ref={addrWrapRef} className="flex-1 w-full bg-slate-100 relative"></div></div></div>}
                 </div>
             );
         };
@@ -440,7 +348,7 @@
                 setSelectedCategory("전체");
                 setSearchTerm("");
                 setSelectedProduct(null);
-                setShowMyPage(false); // 마이페이지 닫기
+                setShowMyPage(false);
                 window.scrollTo(0, 0);
             };
 
@@ -480,29 +388,44 @@
                 return matchCat && matchSearch;
             });
 
-            // 상세 페이지 (X 닫기 버튼 추가 및 Logo Home 링크 추가)
+            // 상세 페이지 (뒤로가기 개선)
             const ProductDetail = ({ product, onBack, onAddToCart }) => {
-                const [qty, setQty] = useState(1);
+                const [qty, setQty] = useState(product.minQty || 1); // MOQ 적용
+                
+                const handleQuantityChange = (delta) => {
+                    const min = product.minQty || 1;
+                    const max = product.maxQty || 50; // 최대 50개 한정 
+                    const newQuantity = qty + delta;
+
+                    if (delta > 0) {
+                        if (newQuantity <= max) setQty(newQuantity);
+                        else alert(`최대 발주 수량은 ${max}개입니다. `);
+                    } else {
+                        if (newQuantity >= min) setQty(newQuantity);
+                        else alert(`최소 주문 수량은 ${min}개입니다. `);
+                    }
+                };
+
                 return (
                     <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-right duration-300 min-h-screen flex flex-col pb-[80px]">
                         <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center justify-between">
-                            <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full"><Icon name="ArrowLeft" className="w-7 h-7 text-slate-800" /></button>
+                            <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="ArrowLeft" className="w-7 h-7 text-slate-800" /></button>
                             <div className="flex-1 flex justify-center"><div className="font-bold text-lg bg-slate-800 text-white px-3 py-1 rounded cursor-pointer" onClick={goHome}>SJ Innovation</div></div>
-                            <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full"><Icon name="X" className="w-6 h-6 text-slate-600" /></button>
+                            <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="X" className="w-6 h-6 text-slate-600" /></button>
                         </div>
                         <div className="flex-1 overflow-y-auto">
                             <div className="max-w-3xl mx-auto">
                                 <div className="bg-slate-50 aspect-square w-full flex items-center justify-center mb-6"><span className="text-[8rem] drop-shadow-2xl">{product.image}</span></div>
                                 <div className="px-5 pb-8">
                                     <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100"><span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{formatPrice(product.price)}</span><span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{formatPrice(product.originPrice)}</span><span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">{Math.round((1-product.price/product.originPrice)*100)}% OFF</span></div>
-                                    <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100"><Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" /><div><span className="font-bold block text-sm">최소 1카톤 발주 가능</span></div></div>
-                                    <div className="space-y-8"><div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3><p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">{product.description}</p></div></div>
+                                    <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100"><Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" /><div><span className="font-bold block text-sm">최소 {product.minQty}개 발주 가능</span><span className="text-xs text-indigo-700 mt-1 block">도매 전용 상품 (최대 50개 한정, 카톤 단위 출고)</span></div></div>
+                                    <div className="space-y-8"><div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3><p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">{product.description}</p></div><div><h3 className="text-lg font-bold text-slate-900 mb-3">배송 정보</h3><div className="bg-slate-50 p-5 rounded-xl space-y-3 text-sm text-slate-600 border border-slate-100"><div className="flex gap-3 items-center"><Icon name="Truck" className="w-5 h-5 text-slate-400" /><span>평일 14시 이전 주문 시 당일 출고</span></div><div className="flex gap-3 items-center"><Icon name="Boxes" className="w-5 h-5 text-slate-400" /><span>대량 발주는 문의 남기기 </span></div></div></div></div>
                                 </div>
                             </div>
                         </div>
                         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 sm:p-4 shadow z-30 safe-area-bottom transition-all duration-300">
                             <div className="max-w-3xl mx-auto flex gap-3">
-                                <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1"><button onClick={()=>setQty(q=>Math.max(1,q-1))} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center"><Icon name="Minus" className="w-4 h-4"/></button><span className="font-bold w-8 text-center">{qty}</span><button onClick={()=>setQty(q=>q+1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center"><Icon name="Plus" className="w-4 h-4"/></button></div>
+                                <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1"><button onClick={()=>handleQuantityChange(-1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Minus" className="w-4 h-4"/></button><span className="font-bold w-8 text-center">{qty}</span><button onClick={()=>handleQuantityChange(1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Plus" className="w-4 h-4"/></button></div>
                                 <button onClick={()=>{onAddToCart(product,qty); onBack();}} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-slate-900"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
                             </div>
                         </div>
@@ -528,7 +451,7 @@
                                 <button onClick={()=>setIsCartOpen(true)} className="relative p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="Boxes" className="w-6 h-6" />{cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}</button>
                                 <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
                                 <button onClick={()=>setShowMyPage(true)} className="flex items-center gap-2 text-sm font-medium hover:bg-slate-100 p-2 rounded-full transition-all"><div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center"><Icon name="User" className="w-4 h-4" /></div><span className="hidden sm:block">{user.storeName || "내 정보"}</span></button>
-                                <button onClick={onLogout} className="bg-slate-200 hover:bg-red-500 hover:text-white px-3 py-1 rounded font-bold text-sm transition-all">로그아웃</button>
+                                <button onClick={onLogout} className="bg-slate-200 hover:bg-red-500 hover:text-white px-3 py-1 rounded font-bold text-sm transition-all duration-300">로그아웃</button>
                             </div>
                         </div>
                     </header>
@@ -541,7 +464,7 @@
 
                         <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide">
                             {CATEGORIES.map(cat => (
-                                <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button>
+                                <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all duration-300 ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button>
                             ))}
                         </div>
 
@@ -580,7 +503,7 @@
                                                 <h4 className="font-medium line-clamp-1">{item.name}</h4>
                                                 <div className="flex justify-between mt-1 text-sm"><span className="bg-slate-100 px-2 rounded">수량: {item.quantity}</span><span className="font-bold">₩{formatPrice(item.price * item.quantity)}</span></div>
                                             </div>
-                                            <button onClick={()=>{const nc=[...cart]; nc.splice(idx,1); setCart(nc);}} className="text-slate-400 hover:text-red-500 transition-colors"><Icon name="X" className="w-4 h-4" /></button>
+                                            <button onClick={()=>{const nc=[...cart]; nc.splice(idx,1); setCart(nc);}} className="text-slate-400 hover:text-red-500 transition-colors duration-150"><Icon name="X" className="w-4 h-4" /></button>
                                         </div>
                                     ))}
                                 </div>
