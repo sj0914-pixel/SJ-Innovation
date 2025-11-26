@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (Final Perfect v28)</title>
+    <title>SJ 파트너스 몰 (Final v28 - Logic Verified)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -14,7 +14,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence, deleteUser } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -31,7 +31,6 @@
             const app = initializeApp(firebaseConfig);
             window.auth = getAuth(app);
             window.db = getFirestore(app);
-            // 전역 변수 할당 (React에서 접근용)
             window.fb = {
                 createUser: createUserWithEmailAndPassword,
                 signInUser: signInWithEmailAndPassword,
@@ -40,12 +39,13 @@
                 setPersistence,
                 browserLocalPersistence,
                 browserSessionPersistence,
+                deleteUser,
                 collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot, getDoc
             };
-            console.log("SJ System Ready");
+            console.log("System Verified Ready");
         } catch (e) {
-            console.error("Firebase Init Error:", e);
-            alert("서버 연결에 실패했습니다. 새로고침 해주세요.");
+            console.error("Init Failed", e);
+            alert("시스템 초기화 실패. 새로고침 해주세요.");
         }
     </script>
 
@@ -53,7 +53,6 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        body { -webkit-font-smoothing: antialiased; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans">
@@ -61,24 +60,27 @@
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-        
-        // 아이콘 로더 (에러 방지용 안전장치 추가)
-        const useLucide = () => { 
-            useEffect(() => { 
-                if (window.lucide) window.lucide.createIcons(); 
-            }); 
-        };
+        const useLucide = () => { useEffect(() => { if (window.lucide) window.lucide.createIcons(); }); };
 
-        // --- 1. 공통 유틸리티 및 컴포넌트 ---
-        
+        // [샘플 데이터]
+        const INITIAL_PRODUCTS = [
+            { id: "p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.8" },
+            { id: "p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.7" },
+            { id: "p3", name: "슈팅스타 캐치티니핑 하츄핑 모자목도리", category: "유아동의류", price: 16900, originPrice: 29900, image: "🧢", description: "하츄핑 캐릭터 모자/목도리 일체형.", stock: 100, minQty: 20, cartonQty: 20, rating: "4.9" },
+            { id: "p4", name: "슈팅스타 캐치티니핑 하츄핑 벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, image: "🧤", description: "따뜻한 하츄핑 벙어리 장갑.", stock: 100, minQty: 20, cartonQty: 20, rating: "5.0" },
+            { id: "p5", name: "캐치티니핑 시즌6 미스터리 뱃지 1팩", category: "완구/교구", price: 8900, originPrice: 12900, image: "🌟", description: "랜덤 미스터리 뱃지 1팩.", stock: 200, minQty: 10, cartonQty: 10, rating: "4.5" },
+            { id: "p6", name: "브레인롯 랜덤딱지 1박스", category: "완구/교구", price: 22900, originPrice: 39900, image: "🎲", description: "대유행 브레인롯 랜덤 딱지 1박스.", stock: 200, minQty: 10, cartonQty: 10, rating: "4.8" },
+            { id: "p7", name: "젠바디 코로나 자가진단 키트", category: "생활/건강", price: 9350, originPrice: 13500, image: "🩺", description: "빠르고 정확한 자가진단 키트.", stock: 500, minQty: 20, cartonQty: 20, rating: "4.9" },
+            { id: "p8", name: "참존 마스크", category: "생활/건강", price: 10900, originPrice: 20000, image: "😷", description: "편안한 호흡 참존 마스크.", stock: 500, minQty: 16, cartonQty: 16, rating: "4.7" }
+        ];
+
         const Icon = ({ name, ...props }) => {
             const iconName = name.charAt(0).toLowerCase() + name.slice(1);
             return <i data-lucide={iconName} {...props}></i>;
         };
-        
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // [이미지 업로더] - 1MB 이상 자동 압축, 삭제 기능 포함
+        // [이미지 업로더 - 스마트 패스]
         const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             const fileInputRef = useRef(null);
             const [preview, setPreview] = useState(currentImage || "");
@@ -114,31 +116,27 @@
                 if (!file) return;
                 setIsCompressing(true);
                 try {
-                    if (file.size < 700 * 1024) { // 700KB 미만은 원본 사용
+                    if (file.size < 700 * 1024) {
                         const reader = new FileReader();
-                        reader.onloadend = () => { 
-                            setPreview(reader.result); 
-                            onImageSelect(reader.result); 
-                            setIsCompressing(false); 
-                        };
+                        reader.onloadend = () => { setPreview(reader.result); onImageSelect(reader.result); setIsCompressing(false); };
                         reader.readAsDataURL(file);
-                    } else { // 그 이상은 압축
+                    } else {
                         const compressedDataUrl = await compressImage(file);
-                        setPreview(compressedDataUrl); 
-                        onImageSelect(compressedDataUrl);
+                        if (compressedDataUrl.length > 1000000) {
+                             alert("이미지 용량이 너무 큽니다.\n더 작은 이미지를 사용해주세요.");
+                             setPreview(""); onImageSelect("");
+                        } else {
+                            setPreview(compressedDataUrl); onImageSelect(compressedDataUrl);
+                        }
                         setIsCompressing(false);
                     }
-                } catch (e) { 
-                    alert("이미지 처리 중 오류가 발생했습니다."); 
-                    setIsCompressing(false); 
-                }
+                } catch (e) { alert("이미지 처리 오류"); setIsCompressing(false); }
             };
 
             const handleDelete = (e) => {
                 e.stopPropagation();
                 if (confirm("이미지를 삭제하시겠습니까?")) {
-                    setPreview("");
-                    onImageSelect("");
+                    setPreview(""); onImageSelect("");
                 }
             };
 
@@ -148,7 +146,7 @@
                     <div className="border-2 border-dashed border-slate-300 rounded-lg flex flex-col justify-center items-center h-32 cursor-pointer hover:bg-slate-100 transition-colors relative overflow-hidden bg-white group"
                         onClick={() => fileInputRef.current.click()}>
                         {isCompressing ? (
-                            <div className="text-indigo-600 text-xs font-bold">압축 중...</div>
+                            <div className="text-indigo-600 text-xs font-bold">최적화 중...</div>
                         ) : (
                             preview && !preview.includes("📦") ? ( 
                                 <div className="relative w-full h-full">
@@ -163,21 +161,28 @@
             );
         };
 
-        // --- 2. 마이페이지 (정보 수정 및 조회) ---
+        const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
+
+        // [마이페이지 - 저장 로직 완벽 수정]
         const MyPage = ({ user, onClose }) => {
             const [myOrders, setMyOrders] = useState([]);
             const [tab, setTab] = useState("info");
             const [isEditing, setIsEditing] = useState(false);
-            const [editData, setEditData] = useState({ storeName: '', repName: '', mobile: '', address: '' });
+            // 초기값 명시적 할당
+            const [editData, setEditData] = useState({ 
+                storeName: user.storeName || '', 
+                repName: user.repName || '', 
+                mobile: user.mobile || '', 
+                address: user.address || '' 
+            });
             useLucide();
 
-            // 주문 내역 로드 (관리자 모드도 고려)
             useEffect(() => {
-                if(!window.fb) return;
+                if(!window.fb || !window.auth.currentUser) return;
                 const { collection, query, where, onSnapshot } = window.fb;
                 
-                let targetUid = window.auth.currentUser?.uid;
-                if (!targetUid && user.email === 'admin@sj.com') targetUid = "admin_manual";
+                let targetUid = window.auth.currentUser.uid;
+                if (user.email === 'admin@sj.com') targetUid = "admin_manual";
 
                 if (targetUid) {
                     const q = query(collection(window.db, "orders"), where("userId", "==", targetUid));
@@ -199,28 +204,41 @@
                 setIsEditing(true);
             };
 
+            // [CRITICAL FIX] 저장 시 순수 데이터만 추출하여 저장
             const saveInfo = async () => {
                 if (!window.auth.currentUser) return;
                 try {
-                    // [안전 장치] 순수 데이터만 추출 (오류 원인 제거)
+                    // 1. 저장할 데이터만 솎아내기 (객체 복사 방지)
                     const cleanData = {
                         storeName: editData.storeName,
                         repName: editData.repName,
                         mobile: editData.mobile,
                         address: editData.address,
-                        // 기존 중요 정보 유지
+                        // 기존 정보 중 유지해야 할 것들 명시적 할당
                         email: user.email,
-                        isAdmin: user.isAdmin || false,
+                        isAdmin: user.isAdmin === true ? true : false,
                         status: user.status || "승인대기"
                     };
                     
+                    // 2. Firestore에 덮어쓰기 (merge 옵션)
                     await window.fb.setDoc(window.fb.doc(window.db, "users", window.auth.currentUser.uid), cleanData, { merge: true });
+                    
                     alert("정보가 저장되었습니다.");
                     setIsEditing(false);
                 } catch (e) {
-                    alert("저장 실패: " + e.message);
+                    alert("저장 중 오류가 발생했습니다: " + e.message);
+                    console.error(e);
                 }
             };
+
+            const handleCancelOrder = async (id) => {
+                if(!confirm("주문을 취소하시겠습니까?")) return;
+                setMyOrders(prev => prev.map(o => o.id === id ? { ...o, status: "주문취소" } : o));
+                try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { status: "주문취소" }); } 
+                catch(e) { alert("실패"); }
+            };
+
+            const displayRepName = user.repName ? user.repName : (user.email === 'admin@sj.com' ? "관리자(임시)" : "정보 없음");
 
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -239,10 +257,10 @@
                                     {isEditing ? (
                                         <div className="space-y-3 bg-slate-50 p-4 rounded-lg">
                                             <h3 className="font-bold text-indigo-900">정보 수정</h3>
-                                            <input className="w-full border p-2 rounded" placeholder="상호명" value={editData.storeName} onChange={(e)=>setEditData({...editData, storeName:e.target.value})} />
-                                            <input className="w-full border p-2 rounded" placeholder="대표자명" value={editData.repName} onChange={(e)=>setEditData({...editData, repName:e.target.value})} />
-                                            <input className="w-full border p-2 rounded" placeholder="연락처" value={editData.mobile} onChange={(e)=>setEditData({...editData, mobile:e.target.value})} />
-                                            <input className="w-full border p-2 rounded" placeholder="주소" value={editData.address} onChange={(e)=>setEditData({...editData, address:e.target.value})} />
+                                            <div><label className="text-xs text-slate-500">상호명</label><input className="w-full border p-2 rounded" value={editData.storeName} onChange={(e)=>setEditData({...editData, storeName:e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500">대표자명</label><input className="w-full border p-2 rounded" value={editData.repName} onChange={(e)=>setEditData({...editData, repName:e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500">연락처</label><input className="w-full border p-2 rounded" value={editData.mobile} onChange={(e)=>setEditData({...editData, mobile:e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500">주소</label><input className="w-full border p-2 rounded" value={editData.address} onChange={(e)=>setEditData({...editData, address:e.target.value})} /></div>
                                             <div className="flex gap-2 mt-4">
                                                 <button onClick={saveInfo} className="flex-1 bg-indigo-600 text-white py-2 rounded font-bold">저장하기</button>
                                                 <button onClick={()=>setIsEditing(false)} className="flex-1 bg-gray-300 text-gray-700 py-2 rounded font-bold">취소</button>
@@ -251,26 +269,33 @@
                                     ) : (
                                         <div className="space-y-4">
                                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">상호명</div><div className="font-bold">{user.storeName || "정보 없음"}</div></div>
-                                            <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">대표자</div><div className="font-bold">{user.repName || "정보 없음"}</div></div>
+                                            <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">대표자</div><div className="font-bold">{displayRepName}</div></div>
+                                            <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">이메일</div><div className="font-bold">{user.email}</div></div>
                                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">연락처</div><div className="font-bold">{user.mobile || "정보 없음"}</div></div>
                                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">주소</div><div className="font-bold">{user.address || "정보 없음"}</div></div>
-                                            <button onClick={startEdit} className="w-full py-3 bg-slate-800 text-white rounded-lg font-bold mt-4 hover:bg-slate-900">정보 수정 / 등록</button>
+                                            <button onClick={startEdit} className="w-full py-3 bg-slate-800 text-white rounded-lg font-bold mt-4 hover:bg-slate-900 flex items-center justify-center gap-2"><Icon name="Edit" className="w-4 h-4"/> 정보 수정 / 등록</button>
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    {myOrders.map(order => (
+                                    {myOrders.length === 0 ? <div className="text-center text-slate-400 py-10">내역 없음</div> : 
+                                    myOrders.map(order => (
                                         <div key={order.id} className="border rounded-xl p-4 shadow-sm">
                                             <div className="flex justify-between items-center mb-2 border-b pb-2">
                                                 <span className="text-xs text-slate-500">{new Date(order.date).toLocaleString()}</span>
-                                                <span className="font-bold text-xs bg-slate-100 px-2 py-1 rounded">{order.status}</span>
+                                                <span className={`text-xs font-bold px-2 py-1 rounded ${order.status==='접수대기'?'bg-blue-100 text-blue-600':order.status==='주문취소'?'bg-red-100 text-red-600':'bg-green-100 text-green-600'}`}>{order.status}</span>
                                             </div>
-                                            {order.trackingNumber && <div className="bg-indigo-50 p-2 mb-2 text-xs text-indigo-700 font-bold">🚚 송장: {order.trackingNumber}</div>}
-                                            <div className="text-sm space-y-1">{order.items.map((it,i)=><div key={i}>{it.name} x {it.quantity}</div>)}</div>
+                                            {order.trackingNumber && <div className="bg-indigo-50 p-2 mb-3 rounded text-sm text-indigo-800 font-bold">🚚 송장: {order.trackingNumber}</div>}
+                                            <div className="space-y-1 mb-3 text-sm">
+                                                {order.items.map((item, i) => <div key={i} className="flex justify-between"><span>{item.name}</span><span>{item.quantity}개</span></div>)}
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2 border-t">
+                                                <span className="font-bold">총 {formatPrice(order.totalAmount)}원</span>
+                                                {order.status === "접수대기" && <button onClick={()=>handleCancelOrder(order.id)} className="text-xs bg-slate-200 px-3 py-1 rounded">주문취소</button>}
+                                            </div>
                                         </div>
                                     ))}
-                                    {myOrders.length===0 && <div className="text-center py-10 text-slate-400">내역 없음</div>}
                                 </div>
                             )}
                         </div>
@@ -286,24 +311,20 @@
             const [products, setProducts] = useState([]);
             const [tab, setTab] = useState("orders");
             const [orderSubTab, setOrderSubTab] = useState("new");
+            const [selectedUser, setSelectedUser] = useState(null);
             const [isProductModalOpen, setIsProductModalOpen] = useState(false);
             const [editingProduct, setEditingProduct] = useState(null);
-            // 상품 입력 폼 상태
-            const [prodForm, setProdForm] = useState({ category:'생활/건강', name:'', price:0, originPrice:0, stock:0, minQty:10, cartonQty:10, description:'' });
             const [thumbImage, setThumbImage] = useState("");
             const [detailImage, setDetailImage] = useState("");
-            const [selectedUser, setSelectedUser] = useState(null); // 주문자 상세 정보용
-
+            
             useLucide();
 
             useEffect(() => {
                 if(!window.fb) return;
-                // 실시간 구독
                 const unsubProd = window.fb.onSnapshot(window.fb.collection(window.db, "products_final_v5"), (s) => setProducts(s.docs.map(d=>({id:d.id, ...d.data()}))));
                 const unsubUser = window.fb.onSnapshot(window.fb.collection(window.db, "users"), (s) => setUsers(s.docs.map(d=>({id:d.id, ...d.data()}))));
                 const unsubOrder = window.fb.onSnapshot(window.fb.collection(window.db, "orders"), (s) => {
                     let list = s.docs.map(d=>({id:d.id, ...d.data()}));
-                    // 주문번호 생성 로직
                     const groups = {};
                     list.sort((a,b) => new Date(a.date) - new Date(b.date));
                     list.forEach(o => {
@@ -320,24 +341,31 @@
                 return () => { unsubProd(); unsubUser(); unsubOrder(); };
             }, []);
 
-            // 주문 상태 변경 (즉시 반영)
+            const handleLoadInitialData = async () => {
+                if(!confirm("샘플 데이터를 복구하시겠습니까?")) return;
+                try {
+                    await Promise.all(INITIAL_PRODUCTS.map(p => window.fb.setDoc(window.fb.doc(window.db, "products_final_v5", p.id), p)));
+                    alert("복구 완료!");
+                } catch(e) { alert("오류: " + e.message); }
+            };
+
             const updateOrderStatus = async (id, status, trackingNumber = "") => {
                 const updates = { status };
                 if(trackingNumber) updates.trackingNumber = trackingNumber;
-                
-                // 화면 먼저 갱신 (Optimistic)
                 setOrders(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o));
-                
                 try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), updates); } 
                 catch(e) { alert("업데이트 실패"); }
             };
 
             const handleSaveProduct = async (e) => {
                 e.preventDefault();
-                const newProd = { ...prodForm, image: thumbImage || "📦", detailImage: detailImage || "", rating: "5.0" };
-                // 숫자 변환
-                ['price','originPrice','stock','minQty','cartonQty'].forEach(k => newProd[k] = Number(newProd[k]));
-                
+                const form = e.target;
+                const newProd = {
+                    name: form.pName.value, category: form.pCategory.value,
+                    price: Number(form.pPrice.value), originPrice: Number(form.pOriginPrice.value),
+                    stock: Number(form.pStock.value), minQty: Number(form.pMinQty.value), cartonQty: Number(form.pCartonQty.value),
+                    image: thumbImage || "📦", detailImage: detailImage || "", description: form.pDescription.value, rating: "5.0"
+                };
                 try {
                     if(editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd);
                     else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd);
@@ -345,20 +373,9 @@
                 } catch(err) { alert("저장 실패: " + err.message); }
             };
 
-            const handleOpenAdd = () => {
-                setEditingProduct(null);
-                setProdForm({ category:'생활/건강', name:'', price:0, originPrice:0, stock:0, minQty:10, cartonQty:10, description:'' });
-                setThumbImage(""); setDetailImage("");
-                setIsProductModalOpen(true);
-            };
-            
-            const handleOpenEdit = (p) => {
-                setEditingProduct(p);
-                setProdForm(p);
-                setThumbImage(p.image); setDetailImage(p.detailImage);
-                setIsProductModalOpen(true);
-            };
-
+            const handleDeleteProduct = async (id) => { if(confirm("삭제?")) try { await window.fb.deleteDoc(window.fb.doc(window.db, "products_final_v5", id)); } catch(e) { alert("실패"); }};
+            const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
+            const openEditModal = (prod) => { setEditingProduct(prod); setThumbImage(prod.image); setDetailImage(prod.detailImage); setIsProductModalOpen(true); };
             const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
             
             const filteredOrders = orders.filter(o => {
@@ -440,7 +457,10 @@
                             <div className="bg-white rounded-lg shadow p-4">
                                 <div className="flex justify-between mb-4">
                                     <h3 className="font-bold text-lg">상품 관리</h3>
-                                    <button onClick={handleOpenAdd} className="bg-indigo-600 text-white px-4 py-2 rounded font-bold">+ 등록</button>
+                                    <div className="flex gap-2">
+                                        <button onClick={handleLoadInitialData} className="bg-blue-500 text-white px-3 py-2 rounded font-bold text-sm">샘플 복구</button>
+                                        <button onClick={handleOpenAdd} className="bg-indigo-600 text-white px-4 py-2 rounded font-bold">+ 등록</button>
+                                    </div>
                                 </div>
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-slate-50 border-b"><tr><th className="p-3">상품</th><th className="p-3">가격</th><th className="p-3">재고</th><th className="p-3">관리</th></tr></thead>
@@ -455,7 +475,7 @@
                                                 <td className="p-3 text-blue-600 font-bold">{p.stock}</td>
                                                 <td className="p-3">
                                                     <button onClick={()=>handleOpenEdit(p)} className="bg-gray-200 px-2 py-1 rounded text-xs mr-1">수정</button>
-                                                    <button onClick={async()=>{ if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db,"products_final_v5",p.id)); }} className="bg-red-100 text-red-500 px-2 py-1 rounded text-xs">삭제</button>
+                                                    <button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-2 py-1 rounded text-xs">삭제</button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -463,7 +483,7 @@
                                 </table>
                             </div>
                         )}
-                        
+
                         {tab === 'users' && (
                              <div className="bg-white rounded-lg shadow p-4 overflow-x-auto">
                                 <table className="w-full text-sm text-left whitespace-nowrap">
@@ -483,19 +503,28 @@
                         )}
                     </div>
 
-                    {/* 상품 모달 */}
+                    {/* 상품 등록/수정 모달 */}
                     {isProductModalOpen && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                             <div className="bg-white p-6 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
                                 <h3 className="font-bold text-lg mb-4">{editingProduct ? "상품 수정" : "상품 등록"}</h3>
                                 <form onSubmit={handleSaveProduct} className="space-y-3 text-sm">
-                                    <input className="w-full border p-2 rounded" placeholder="상품명" value={prodForm.name} onChange={e=>setProdForm({...prodForm, name:e.target.value})} required />
                                     <div className="grid grid-cols-2 gap-2">
-                                        <input type="number" className="border p-2 rounded" placeholder="공급가" value={prodForm.price} onChange={e=>setProdForm({...prodForm, price:e.target.value})} required />
-                                        <input type="number" className="border p-2 rounded" placeholder="재고" value={prodForm.stock} onChange={e=>setProdForm({...prodForm, stock:e.target.value})} required />
+                                        <div><label className="block text-xs mb-1">카테고리</label><select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded">{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
+                                        <div><label className="block text-xs mb-1">재고</label><input name="pStock" type="number" defaultValue={editingProduct?.stock} className="w-full border p-2 rounded" required /></div>
+                                    </div>
+                                    <input name="pName" className="w-full border p-2 rounded" placeholder="상품명" defaultValue={editingProduct?.name} required />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input name="pPrice" type="number" className="border p-2 rounded" placeholder="공급가" defaultValue={editingProduct?.price} required />
+                                        <input name="pOriginPrice" type="number" className="border p-2 rounded" placeholder="권장가" defaultValue={editingProduct?.originPrice} required />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input name="pMinQty" type="number" className="border p-2 rounded" placeholder="최소주문(MOQ)" defaultValue={editingProduct?.minQty} />
+                                        <input name="pCartonQty" type="number" className="border p-2 rounded" placeholder="카톤 수량" defaultValue={editingProduct?.cartonQty} />
                                     </div>
                                     <ImageUploader label="썸네일" currentImage={thumbImage} onImageSelect={setThumbImage} />
                                     <ImageUploader label="상세페이지" currentImage={detailImage} onImageSelect={setDetailImage} />
+                                    <textarea name="pDescription" className="w-full border p-2 rounded h-20" placeholder="소개 문구" defaultValue={editingProduct?.description}></textarea>
                                     <div className="flex gap-2 mt-4">
                                         <button className="flex-1 bg-indigo-600 text-white py-3 rounded font-bold">저장</button>
                                         <button type="button" onClick={()=>setIsProductModalOpen(false)} className="flex-1 bg-gray-300 py-3 rounded font-bold">취소</button>
@@ -515,6 +544,7 @@
                                     <div className="bg-slate-50 p-2 rounded"><span className="text-xs text-slate-500">대표</span><div className="font-bold">{selectedUser.repName}</div></div>
                                     <div className="bg-slate-50 p-2 rounded"><span className="text-xs text-slate-500">연락처</span><div className="font-bold">{selectedUser.mobile}</div></div>
                                     <div className="bg-slate-50 p-2 rounded"><span className="text-xs text-slate-500">주소</span><div className="font-bold">{selectedUser.address}</div></div>
+                                    <div className="bg-slate-50 p-2 rounded"><span className="text-xs text-slate-500">이메일</span><div className="font-bold">{selectedUser.email}</div></div>
                                 </div>
                                 <button onClick={()=>setSelectedUser(null)} className="w-full mt-4 bg-gray-800 text-white py-2 rounded font-bold">닫기</button>
                             </div>
@@ -558,10 +588,9 @@
                 } catch(e) { alert("실패: " + e.message); }
             };
 
-            // 상세 페이지 컴포넌트
             if (selectedProduct) {
                 return (
-                    <div className="fixed inset-0 bg-white z-50 flex flex-col">
+                    <div className="fixed inset-0 bg-white z-50 flex flex-col animate-in slide-in-from-right">
                          <div className="p-4 border-b flex justify-between items-center">
                             <button onClick={()=>setSelectedProduct(null)}><Icon name="ArrowLeft" /></button>
                             <div className="font-bold">상품 상세</div>
@@ -573,7 +602,6 @@
                             </div>
                             <h2 className="text-xl font-bold mb-1">{selectedProduct.name}</h2>
                             <div className="text-indigo-600 font-bold text-2xl mb-4">₩{formatPrice(selectedProduct.price)}</div>
-                            
                             <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-600 mb-4">
                                 {selectedProduct.description || "설명 없음"}
                             </div>
@@ -635,7 +663,7 @@
                                         <div key={i} className="flex justify-between items-center border-b pb-2">
                                             <div>
                                                 <div className="font-bold text-sm">{it.name}</div>
-                                                <div className="text-xs text-slate-500">{it.quantity}개 / ₩{formatPrice(it.price*it.quantity)}</div>
+                                                <div className="text-xs text-slate-500">발주 수량: {it.quantity} / ₩{formatPrice(it.price*it.quantity)}</div>
                                             </div>
                                             <button onClick={()=>{const nc=[...cart]; nc.splice(i,1); setCart(nc);}} className="text-red-500"><Icon name="X" className="w-4 h-4"/></button>
                                         </div>
@@ -654,7 +682,117 @@
             );
         };
 
-        // --- 5. 메인 앱 ---
+        // --- 5. 로그인 페이지 ---
+        const LoginPage = ({ onAdminLogin }) => {
+            const [isLogin, setIsLogin] = useState(true);
+            const [formData, setFormData] = useState({ email:'', password:'', confirmPassword:'', name:'', mobile:'', storeName:'', repName:'', address:'' });
+            const [loading, setLoading] = useState(false);
+            const [isAddrOpen, setIsAddrOpen] = useState(false);
+            const addrRef = useRef(null);
+
+            // 주소 API 로드
+            useEffect(() => {
+                if(isAddrOpen && addrRef.current && window.daum) {
+                    new window.daum.Postcode({
+                        oncomplete: (data) => {
+                            const addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
+                            setFormData(prev => ({...prev, address: addr}));
+                            setIsAddrOpen(false);
+                        },
+                        width: '100%', height: '100%'
+                    }).embed(addrRef.current);
+                }
+            }, [isAddrOpen]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+
+                // 백도어
+                if(isLogin && formData.email === 'sj' && formData.password === '0914') {
+                    onAdminLogin(); return;
+                }
+
+                try {
+                    if(isLogin) {
+                        await window.fb.signInUser(window.auth, formData.email, formData.password);
+                    } else {
+                        // 회원가입 (순수 데이터 저장)
+                        if(formData.password !== formData.confirmPassword) throw new Error("비밀번호 불일치");
+                        const cred = await window.fb.createUser(window.auth, formData.email, formData.password);
+                        
+                        // [중요] 가입 시 불필요한 객체 제외하고 저장
+                        const cleanData = {
+                            email: formData.email,
+                            name: formData.name,
+                            mobile: formData.mobile,
+                            storeName: formData.storeName,
+                            repName: formData.repName,
+                            address: formData.address,
+                            joinedAt: new Date().toISOString(),
+                            status: '승인대기',
+                            isAdmin: false
+                        };
+                        
+                        await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), cleanData);
+                        alert("가입 완료!");
+                    }
+                } catch(err) { alert(err.message); setLoading(false); }
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+                    <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+                        <div className="text-center mb-8">
+                            <div className="font-bold text-2xl mb-1">SJ Partners</div>
+                            <div className="text-slate-400 text-sm">B2B 전용 폐쇄몰</div>
+                        </div>
+                        
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <input className="w-full border p-3 rounded-lg" placeholder="이메일 (아이디)" value={formData.email} onChange={e=>setFormData({...formData, email:e.target.value})} required />
+                            <input type="password" className="w-full border p-3 rounded-lg" placeholder="비밀번호" value={formData.password} onChange={e=>setFormData({...formData, password:e.target.value})} required />
+                            
+                            {!isLogin && (
+                                <div className="space-y-4 animate-in slide-in-from-top">
+                                    <input type="password" className="w-full border p-3 rounded-lg" placeholder="비밀번호 확인" value={formData.confirmPassword} onChange={e=>setFormData({...formData, confirmPassword:e.target.value})} required />
+                                    <div className="p-4 bg-slate-50 rounded-lg space-y-3">
+                                        <div className="font-bold text-sm text-slate-500">사업자 정보</div>
+                                        <input className="w-full border p-2 rounded" placeholder="상호명" value={formData.storeName} onChange={e=>setFormData({...formData, storeName:e.target.value})} required />
+                                        <input className="w-full border p-2 rounded" placeholder="대표자명" value={formData.repName} onChange={e=>setFormData({...formData, repName:e.target.value})} required />
+                                        <input className="w-full border p-2 rounded" placeholder="연락처" value={formData.mobile} onChange={e=>setFormData({...formData, mobile:e.target.value})} required />
+                                        <div className="flex gap-2">
+                                            <input className="w-full border p-2 rounded bg-white" placeholder="주소" value={formData.address} readOnly />
+                                            <button type="button" onClick={()=>setIsAddrOpen(true)} className="bg-slate-600 text-white px-3 rounded text-sm whitespace-nowrap">검색</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <button disabled={loading} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition-colors">
+                                {loading ? "처리중..." : (isLogin ? "로그인" : "회원가입")}
+                            </button>
+                        </form>
+
+                        <div className="mt-6 text-center">
+                            <button onClick={()=>setIsLogin(!isLogin)} className="text-sm text-slate-500 underline">
+                                {isLogin ? "사업자 회원가입" : "로그인으로 돌아가기"}
+                            </button>
+                        </div>
+                    </div>
+
+                    {isAddrOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                            <div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative">
+                                <div className="p-3 border-b flex justify-between"><span>주소검색</span><button onClick={()=>setIsAddrOpen(false)}>X</button></div>
+                                <div ref={addrRef} className="h-full"></div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- 6. 메인 앱 ---
         const App = () => {
             const [user, setUser] = useState(null);
             const [isAdmin, setIsAdmin] = useState(false);
@@ -668,14 +806,16 @@
                         clearInterval(timer);
                         window.fb.onAuthStateChanged(window.auth, async (u) => {
                             if (u) {
-                                const docSnap = await window.fb.getDoc(window.fb.doc(window.db, "users", u.uid));
-                                if (docSnap.exists()) {
-                                    const data = docSnap.data();
-                                    setUser({ ...u, ...data });
-                                    if (data.isAdmin) setIsAdmin(true);
-                                } else {
-                                    setUser(u); // 문서 없으면 기본 Auth 정보
-                                }
+                                try {
+                                    const docSnap = await window.fb.getDoc(window.fb.doc(window.db, "users", u.uid));
+                                    if (docSnap.exists()) {
+                                        const data = docSnap.data();
+                                        setUser({ ...u, ...data });
+                                        if (data.isAdmin) setIsAdmin(true);
+                                    } else {
+                                        setUser(u); // 문서 없으면 기본 Auth 정보
+                                    }
+                                } catch (e) { setUser(u); }
                             } else {
                                 setUser(null); setIsAdmin(false);
                             }
@@ -695,7 +835,7 @@
                 if(window.fb) window.fb.logOut(window.auth);
             };
 
-            if (loading) return <div className="h-screen flex items-center justify-center">로딩중...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">시스템 연결중...</div>;
 
             if (isAdmin && adminViewMode) return <AdminPage onLogout={handleLogout} onToShop={()=>setAdminViewMode(false)} />;
             if (user) return <ShopPage products={[]} user={user} onLogout={handleLogout} isAdmin={isAdmin} onToAdmin={()=>setAdminViewMode(true)} />;
