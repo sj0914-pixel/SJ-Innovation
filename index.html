@@ -27,27 +27,27 @@
         import { getFirestore, collection, addDoc, getDoc, setDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-        // 사장님이 보내주신 이미지의 키값을 그대로 입력했습니다.
+        // 🔴🔴🔴 [여기서부터] 🔴🔴🔴
+        // 파이어베이스 사이트에서 복사한 내용을 이 아래에 '붙여넣기' 해주세요!
+        // (기존의 const firebaseConfig = { ... }; 부분을 지우고 덮어쓰셔도 됩니다)
+        
         const firebaseConfig = {
-            apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqCYceZwUtI",
+            apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqCYceZwUtI", // (이게 틀린 키일 수 있음)
             authDomain: "sj-innovation-a8f6b.firebaseapp.com",
-            projectId: "sj-innovation-a8f6b",
-            storageBucket: "sj-innovation-a8f6b.firebasestorage.app",
-            messagingSenderId: "449389360798",
-            appId: "1:449389360798:web:d1b490aa9c75807903ed8f",
+            // ... 나머지 줄들 ...
             measurementId: "G-NED86350PH"
         };
+        
+        // 🔴🔴🔴 [여기까지] 🔴🔴🔴
 
         // 파이어베이스 시작
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // logic.js가 사용할 수 있게 전역 변수(window)에 연결
+        // logic.js 연동 설정
         window.db = db;
         window.auth = auth;
-        
-        // logic.js에서 사용하는 이름(window.fb)으로 기능 맵핑
         window.fb = {
             collection, addDoc, getDoc, setDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot,
             createUser: createUserWithEmailAndPassword,
@@ -57,7 +57,7 @@
             browserLocalPersistence, browserSessionPersistence
         };
 
-        console.log("Firebase가 성공적으로 연결되었습니다!");
+        console.log("Firebase 설정 완료");
     </script>
 
     <script type="text/babel" src="./logic.js"></script>
