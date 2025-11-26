@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (Delivery System v16)</title>
+    <title>SJ 파트너스 몰 (Final v17)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -60,7 +60,6 @@
         const { useState, useEffect, useRef } = React;
         const useLucide = () => { useEffect(() => { if (window.lucide) window.lucide.createIcons(); }); };
 
-        // [복구용 샘플 데이터]
         const INITIAL_PRODUCTS = [
             { id: "p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.8" },
             { id: "p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.7" },
@@ -72,16 +71,12 @@
             { id: "p8", name: "참존 마스크", category: "생활/건강", price: 10900, originPrice: 20000, image: "😷", description: "편안한 호흡 참존 마스크.", stock: 500, minQty: 16, cartonQty: 16, rating: "4.7" }
         ];
 
-        // ----------------------------------------------------
-        // [1] 공통 컴포넌트
-        // ----------------------------------------------------
         const Icon = ({ name, ...props }) => {
             const iconName = name.charAt(0).toLowerCase() + name.slice(1);
             return <i data-lucide={iconName} {...props}></i>;
         };
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // [스마트 패스 + 삭제 기능 추가된 업로더]
         const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             const fileInputRef = useRef(null);
             const [preview, setPreview] = useState(currentImage || "");
@@ -167,9 +162,6 @@
 
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-        // ----------------------------------------------------
-        // [2] 마이페이지 (수정됨: 송장번호 노출)
-        // ----------------------------------------------------
         const MyPage = ({ user, onClose }) => {
             const [myOrders, setMyOrders] = useState([]);
             const [tab, setTab] = useState("info");
@@ -222,7 +214,6 @@
                                                 <span className="text-xs text-slate-500">{new Date(order.date).toLocaleString()}</span>
                                                 <span className={`text-xs font-bold px-2 py-1 rounded ${order.status==='접수대기'?'bg-blue-100 text-blue-600':order.status==='주문취소'?'bg-red-100 text-red-600':'bg-green-100 text-green-600'}`}>{order.status}</span>
                                             </div>
-                                            {/* 송장번호 표시 */}
                                             {order.trackingNumber && (
                                                 <div className="bg-indigo-50 p-2 mb-3 rounded flex items-center gap-2 text-sm text-indigo-800">
                                                     <Icon name="Truck" className="w-4 h-4"/>
@@ -248,15 +239,12 @@
             );
         };
 
-        // ----------------------------------------------------
-        // [3] 관리자 페이지 (수정됨: 주문 관리 탭 분리 및 송장 등록)
-        // ----------------------------------------------------
         const AdminPage = ({ onLogout, onToShop }) => {
             const [products, setProducts] = useState([]);
             const [users, setUsers] = useState([]);
             const [orders, setOrders] = useState([]);
             const [tab, setTab] = useState("orders");
-            const [orderSubTab, setOrderSubTab] = useState("new"); // new, shipping, cancel
+            const [orderSubTab, setOrderSubTab] = useState("new");
             const [selectedUser, setSelectedUser] = useState(null);
             const [isProductModalOpen, setIsProductModalOpen] = useState(false);
             const [editingProduct, setEditingProduct] = useState(null);
@@ -301,13 +289,11 @@
 
             const handleDeleteUser = async (id) => { if(confirm("삭제?")) try { await window.fb.deleteDoc(window.fb.doc(window.db, "users", id)); } catch(e) { alert(e.message); }};
             
-            // [배송 처리 로직]
             const handleDispatch = async (id) => {
                 const trackingInput = document.getElementById(`track-${id}`);
                 const trackingNum = trackingInput ? trackingInput.value : "";
                 if(!trackingNum) { alert("송장번호를 입력해주세요."); return; }
                 if(!confirm(`송장번호 [${trackingNum}]으로 발송 처리하시겠습니까?`)) return;
-                
                 try { 
                     await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { 
                         status: "배송중",
@@ -317,7 +303,6 @@
                 } catch(e) { alert("실패: " + e.message); }
             };
 
-            // [배송 완료 처리]
             const handleComplete = async (id) => {
                 if(!confirm("배송 완료 처리하시겠습니까?")) return;
                 try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { status: "배송완료" }); } catch(e) { alert("실패"); }
@@ -344,7 +329,6 @@
             const openEditModal = (prod) => { setEditingProduct(prod); setThumbImage(prod.image); setDetailImage(prod.detailImage); setIsProductModalOpen(true); };
             const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
 
-            // [주문 필터링]
             const filteredOrders = orders.filter(o => {
                 if (orderSubTab === 'new') return o.status === '접수대기';
                 if (orderSubTab === 'shipping') return o.status === '배송중' || o.status === '배송완료';
@@ -368,7 +352,6 @@
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200 overflow-x-auto min-h-[500px]">
                             {tab === "orders" && (
                                 <div>
-                                    {/* 주문 상태별 탭 */}
                                     <div className="flex border-b bg-slate-50">
                                         <button onClick={()=>setOrderSubTab("new")} className={`flex-1 py-3 font-bold text-sm ${orderSubTab==="new"?"bg-white border-t-2 border-indigo-500 text-indigo-600":"text-slate-500 hover:text-slate-700"}`}>📦 신규 주문 (접수대기)</button>
                                         <button onClick={()=>setOrderSubTab("shipping")} className={`flex-1 py-3 font-bold text-sm ${orderSubTab==="shipping"?"bg-white border-t-2 border-indigo-500 text-indigo-600":"text-slate-500 hover:text-slate-700"}`}>🚚 배송 관리 (배송중/완료)</button>
@@ -527,9 +510,6 @@
             );
         };
 
-        // ----------------------------------------------------
-        // [4] 로그인 페이지
-        // ----------------------------------------------------
         const LoginPage = ({ onAdminLogin }) => {
             const [isLoginMode, setIsLoginMode] = useState(true);
             const [isAddrOpen, setIsAddrOpen] = useState(false);
@@ -557,7 +537,6 @@
                 e.preventDefault();
                 setLoading(true);
 
-                // [백도어]
                 if(isLoginMode && formData.username === 'sj' && formData.password === '0914') {
                     onAdminLogin(); 
                     return;
@@ -630,17 +609,25 @@
             );
         };
 
-        // ----------------------------------------------------
-        // [5] 쇼핑몰 페이지 (ShopPage)
-        // ----------------------------------------------------
         const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
-            const [cart, setCart] = useState([]);
+            // [개선] 장바구니 로컬스토리지 연동
+            const [cart, setCart] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('sj_cart');
+                    return saved ? JSON.parse(saved) : [];
+                } catch { return []; }
+            });
             const [isCartOpen, setIsCartOpen] = useState(false);
             const [selectedCategory, setSelectedCategory] = useState("전체");
             const [searchTerm, setSearchTerm] = useState("");
             const [selectedProduct, setSelectedProduct] = useState(null);
             const [showMyPage, setShowMyPage] = useState(false);
             useLucide();
+
+            // 장바구니 변경 시 자동 저장
+            useEffect(() => {
+                localStorage.setItem('sj_cart', JSON.stringify(cart));
+            }, [cart]);
 
             const goHome = () => { setSelectedCategory("전체"); setSearchTerm(""); setSelectedProduct(null); setShowMyPage(false); window.scrollTo(0, 0); };
             const addToCart = (product, quantity = 1) => {
@@ -660,7 +647,10 @@
                         userId: uid, userEmail: user.email, userName: user.storeName || "미등록상점",
                         items: cart, totalAmount: cart.reduce((a,c)=>a+c.price*c.quantity,0), date: new Date().toISOString(), status: "접수대기"
                     });
-                    alert("발주가 접수되었습니다."); setCart([]); setIsCartOpen(false);
+                    alert("발주가 접수되었습니다."); 
+                    setCart([]); 
+                    localStorage.removeItem('sj_cart'); // 주문 완료 시 장바구니 비우기
+                    setIsCartOpen(false);
                 } catch(e) { alert("실패: " + e.message); }
             };
             const filteredProducts = products.filter(p => {
@@ -685,7 +675,6 @@
 
             const handleClose = () => window.history.back();
 
-            // 내부 상세 페이지
             const ProductDetail = ({ product, onBack, onAddToCart }) => {
                 const [qty, setQty] = useState(product.minQty || 1);
                 useLucide();
@@ -797,7 +786,7 @@
                                             </div>
                                             <div className="flex-1">
                                                 <h4 className="font-medium line-clamp-1">{item.name}</h4>
-                                                <div className="flex justify-between mt-1 text-sm"><span className="bg-slate-100 px-2 rounded">수량: {item.quantity}</span><span className="font-bold">₩{formatPrice(item.price * item.quantity)}</span></div>
+                                                <div className="flex justify-between mt-1 text-sm"><span className="bg-slate-100 px-2 rounded">발주 수량: {item.quantity}</span><span className="font-bold">₩{formatPrice(item.price * item.quantity)}</span></div>
                                             </div>
                                             <button onClick={()=>{const nc=[...cart]; nc.splice(idx,1); setCart(nc);}} className="text-slate-400 hover:text-red-500 transition-colors duration-150"><Icon name="X" className="w-4 h-4" /></button>
                                         </div>
@@ -812,13 +801,10 @@
             );
         };
 
-        // ----------------------------------------------------
-        // [6] 메인 앱 (수정됨: 뷰 전환 로직 추가)
-        // ----------------------------------------------------
         const App = () => {
             const [user, setUser] = useState(null);
             const [isAdmin, setIsAdmin] = useState(false);
-            const [adminViewMode, setAdminViewMode] = useState(false); // false: Shop, true: Admin
+            const [adminViewMode, setAdminViewMode] = useState(false);
             const [products, setProducts] = useState([]);
             const [loading, setLoading] = useState(true);
 
@@ -843,14 +829,12 @@
                             }
                         } catch (e) { setUser(u); }
                     } else {
-                        // 로그아웃됨
                     }
                     setLoading(false);
                 });
                 return () => { unsub(); authUnsub(); };
             }, []);
 
-            // [백도어] 로그인 성공 시 관리자 권한 부여, 뷰는 쇼핑몰 유지
             const handleForceAdmin = () => {
                 setIsAdmin(true);
                 setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' });
@@ -865,20 +849,18 @@
 
             if (loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">시스템 연결중...</div>;
             
-            // 관리자이고, '관리자 뷰 모드'가 켜져있을 때만 AdminPage 렌더링
             if (isAdmin && adminViewMode) {
                 return <AdminPage onLogout={handleLogout} onToShop={() => setAdminViewMode(false)} />;
             }
             
-            // 그 외에는 항상 ShopPage 렌더링 (일반유저 or 관리자이지만 쇼핑몰 보는 중)
             if (user) {
                 return (
                     <ShopPage 
                         products={products} 
                         user={user} 
                         onLogout={handleLogout} 
-                        isAdmin={isAdmin} // ShopPage에 관리자 여부 전달
-                        onToAdmin={() => setAdminViewMode(true)} // 관리자 페이지로 가는 함수 전달
+                        isAdmin={isAdmin}
+                        onToAdmin={() => setAdminViewMode(true)}
                     />
                 );
             }
