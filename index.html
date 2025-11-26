@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (Final v17)</title>
+    <title>SJ 파트너스 몰 (MyPage Fix v18)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -162,23 +162,35 @@
 
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
+        // ----------------------------------------------------
+        // [2] 마이페이지 (수정됨: 관리자 백도어 주문내역 연동)
+        // ----------------------------------------------------
         const MyPage = ({ user, onClose }) => {
             const [myOrders, setMyOrders] = useState([]);
             const [tab, setTab] = useState("info");
             useLucide();
 
             useEffect(() => {
-                if(!window.fb || !window.auth.currentUser) return;
+                if(!window.fb) return;
                 const { collection, query, where, onSnapshot } = window.fb;
-                if(window.auth.currentUser.uid) {
-                    const q = query(collection(window.db, "orders"), where("userId", "==", window.auth.currentUser.uid));
+                
+                // [핵심 수정] 로그인한 유저의 UID 또는 백도어용 ID("admin_manual")를 식별
+                let targetUid = null;
+                if (window.auth.currentUser) {
+                    targetUid = window.auth.currentUser.uid;
+                } else if (user.email === 'admin@sj.com') {
+                    targetUid = "admin_manual";
+                }
+
+                if (targetUid) {
+                    const q = query(collection(window.db, "orders"), where("userId", "==", targetUid));
                     const unsub = onSnapshot(q, (snap) => {
                         const list = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.date) - new Date(a.date));
                         setMyOrders(list);
                     });
                     return () => unsub();
                 }
-            }, []);
+            }, [user]); // user 정보가 바뀌면 재실행
 
             const handleCancelOrder = async (id) => {
                 if(!confirm("주문을 취소하시겠습니까?")) return;
@@ -200,7 +212,7 @@
                             {tab === "info" ? (
                                 <div className="space-y-4 text-sm">
                                     <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">상호명</div><div className="font-bold">{user.storeName}</div></div>
-                                    <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">대표자</div><div className="font-bold">{user.repName}</div></div>
+                                    <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">대표자</div><div className="font-bold">{user.repName || "관리자(임시)"}</div></div>
                                     <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">이메일</div><div className="font-bold">{user.email}</div></div>
                                     <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">연락처</div><div className="font-bold">{user.mobile || "정보 없음"}</div></div>
                                     <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">주소</div><div className="font-bold">{user.address || "정보 없음"}</div></div>
