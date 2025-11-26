@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SJ Innovation - 파트너몰</title>
     
+    <!-- 필수 라이브러리 -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -22,14 +23,16 @@
 <body class="bg-slate-50">
     <div id="root"></div>
 
+    <!-- 파이어베이스 연결 설정 (웹사이트용 전체 주소 적용됨) -->
     <script type="module">
+        // ⚠️ 중요: 웹에서는 이렇게 'https://...' 로 시작하는 주소를 써야 작동합니다.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDoc, setDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-
-        // ✅ 사장님 이미지 보고 제가 직접 타이핑했습니다.
+        
+        // 사장님이 찾으신 정확한 키값입니다.
         const firebaseConfig = {
-            apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqCYceZwUtI",
+            apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqcYceZwUtI",
             authDomain: "sj-innovation-a8f6b.firebaseapp.com",
             projectId: "sj-innovation-a8f6b",
             storageBucket: "sj-innovation-a8f6b.firebasestorage.app",
@@ -38,26 +41,30 @@
             measurementId: "G-NED86350PH"
         };
 
-        // 파이어베이스 시작
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        try {
+            // 파이어베이스 시작
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            const auth = getAuth(app);
 
-        // 로직 파일 연결
-        window.db = db;
-        window.auth = auth;
-        window.fb = {
-            collection, addDoc, getDoc, setDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot,
-            createUser: createUserWithEmailAndPassword,
-            signInUser: signInWithEmailAndPassword,
-            logOut: signOut,
-            setPersistence, onAuthStateChanged,
-            browserLocalPersistence, browserSessionPersistence
-        };
-
-        console.log("Firebase 연결 완료");
+            // logic.js가 사용할 수 있게 연결
+            window.db = db;
+            window.auth = auth;
+            window.fb = {
+                collection, addDoc, getDoc, setDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot,
+                createUser: createUserWithEmailAndPassword,
+                signInUser: signInWithEmailAndPassword,
+                logOut: signOut,
+                setPersistence, onAuthStateChanged,
+                browserLocalPersistence, browserSessionPersistence
+            };
+            console.log("Firebase 연결 성공!");
+        } catch (error) {
+            alert("설정 오류: " + error.message);
+        }
     </script>
 
+    <!-- 로직 파일 실행 -->
     <script type="text/babel" src="./logic.js"></script>
 </body>
 </html>
