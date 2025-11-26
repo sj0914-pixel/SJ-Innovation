@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (Star Rating v11)</title>
+    <title>SJ 파트너스 몰 (Data Recovery v12)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -59,6 +59,18 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
         const useLucide = () => { useEffect(() => { if (window.lucide) window.lucide.createIcons(); }); };
+
+        // [복구용 샘플 데이터]
+        const INITIAL_PRODUCTS = [
+            { id: "p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.8" },
+            { id: "p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.7" },
+            { id: "p3", name: "슈팅스타 캐치티니핑 하츄핑 모자목도리", category: "유아동의류", price: 16900, originPrice: 29900, image: "🧢", description: "하츄핑 캐릭터 모자/목도리 일체형.", stock: 100, minQty: 20, cartonQty: 20, rating: "4.9" },
+            { id: "p4", name: "슈팅스타 캐치티니핑 하츄핑 벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, image: "🧤", description: "따뜻한 하츄핑 벙어리 장갑.", stock: 100, minQty: 20, cartonQty: 20, rating: "5.0" },
+            { id: "p5", name: "캐치티니핑 시즌6 미스터리 뱃지 1팩", category: "완구/교구", price: 8900, originPrice: 12900, image: "🌟", description: "랜덤 미스터리 뱃지 1팩.", stock: 200, minQty: 10, cartonQty: 10, rating: "4.5" },
+            { id: "p6", name: "브레인롯 랜덤딱지 1박스", category: "완구/교구", price: 22900, originPrice: 39900, image: "🎲", description: "대유행 브레인롯 랜덤 딱지 1박스.", stock: 200, minQty: 10, cartonQty: 10, rating: "4.8" },
+            { id: "p7", name: "젠바디 코로나 자가진단 키트", category: "생활/건강", price: 9350, originPrice: 13500, image: "🩺", description: "빠르고 정확한 자가진단 키트.", stock: 500, minQty: 20, cartonQty: 20, rating: "4.9" },
+            { id: "p8", name: "참존 마스크", category: "생활/건강", price: 10900, originPrice: 20000, image: "😷", description: "편안한 호흡 참존 마스크.", stock: 500, minQty: 16, cartonQty: 16, rating: "4.7" }
+        ];
 
         // ----------------------------------------------------
         // [1] 공통 컴포넌트
@@ -256,6 +268,15 @@
                 return () => { unsubProd(); unsubUser(); unsubOrder(); };
             }, []);
 
+            const handleLoadInitialData = async () => {
+                if(!confirm("상품 목록이 비어있을 때만 사용하는 기능입니다.\n샘플 데이터를 복구하시겠습니까?")) return;
+                try {
+                    const { doc, setDoc } = window.fb;
+                    await Promise.all(INITIAL_PRODUCTS.map(p => setDoc(doc(window.db, "products_final_v5", p.id), p)));
+                    alert("복구 완료! 상품 목록을 확인하세요.");
+                } catch(e) { alert("오류: " + e.message); }
+            };
+
             const handleDeleteUser = async (id) => { if(confirm("삭제?")) try { await window.fb.deleteDoc(window.fb.doc(window.db, "users", id)); } catch(e) { alert(e.message); }};
             const handleOrderStatus = async (id, newStatus) => { try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { status: newStatus }); } catch(e) { alert("실패"); }};
             const handleSaveProduct = async (e) => {
@@ -270,6 +291,7 @@
                     name: form.pName.value, category: form.pCategory.value, price: Number(form.pPrice.value), originPrice: Number(form.pOriginPrice.value),
                     stock: Number(form.pStock.value), minQty: Number(form.pMinQty.value), cartonQty: Number(form.pCartonQty.value),
                     image: thumbImage || "📦", detailImage: detailImage || "", description: form.pDescription.value,
+                    rating: "5.0"
                 };
                 try {
                     if (editingProduct) { await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); alert("수정됨"); } 
@@ -313,7 +335,13 @@
                             )}
                             {tab === "products" && (
                                 <div className="p-4">
-                                    <div className="flex justify-between mb-4"><h3 className="font-bold text-lg">상품 목록</h3><button onClick={openAddModal} className="bg-indigo-600 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button></div>
+                                    <div className="flex justify-between mb-4">
+                                        <h3 className="font-bold text-lg">상품 목록</h3>
+                                        <div className="flex gap-2">
+                                            <button onClick={handleLoadInitialData} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm flex gap-1 items-center"><Icon name="RefreshCw" className="w-4 h-4"/>샘플 데이터 복구</button>
+                                            <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button>
+                                        </div>
+                                    </div>
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">이미지</th><th className="p-4">상품명</th><th className="p-4">가격</th><th className="p-4">재고</th><th className="p-4">관리</th></tr></thead>
                                         <tbody className="divide-y divide-slate-100">
