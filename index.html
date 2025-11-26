@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (v23 - Info Recovery)</title>
+    <title>SJ 파트너스 몰 (Perfect v24 - Self Healing)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -14,7 +14,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence, deleteUser } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -39,9 +39,10 @@
                 setPersistence,
                 browserLocalPersistence,
                 browserSessionPersistence,
+                deleteUser, // 가입 실패 시 롤백용
                 collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot, getDoc
             };
-            console.log("Firebase Connected");
+            console.log("Firebase Connected System Ready");
         } catch (e) {
             console.error("Connection Failed", e);
         }
@@ -60,7 +61,6 @@
         const { useState, useEffect, useRef } = React;
         const useLucide = () => { useEffect(() => { if (window.lucide) window.lucide.createIcons(); }); };
 
-        // [복구용 샘플 데이터]
         const INITIAL_PRODUCTS = [
             { id: "p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.8" },
             { id: "p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.7" },
@@ -78,6 +78,7 @@
         };
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
+        // [스마트 패스 + 삭제 기능 업로더]
         const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             const fileInputRef = useRef(null);
             const [preview, setPreview] = useState(currentImage || "");
@@ -163,12 +164,14 @@
 
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-        // [마이페이지 & 정보 복구 기능]
+        // ----------------------------------------------------
+        // [2] 마이페이지 (완벽한 실시간 연동 및 수정 기능)
+        // ----------------------------------------------------
         const MyPage = ({ user, onClose }) => {
             const [myOrders, setMyOrders] = useState([]);
             const [tab, setTab] = useState("info");
-            const [isEditing, setIsEditing] = useState(false); // 수정 모드
-            const [editData, setEditData] = useState({}); // 수정 데이터
+            const [isEditing, setIsEditing] = useState(false);
+            const [editData, setEditData] = useState({});
             useLucide();
 
             useEffect(() => {
@@ -192,7 +195,6 @@
                 }
             }, [user]);
 
-            // 수정 모드 진입 시 기존 데이터 로드
             const startEdit = () => {
                 setEditData({
                     storeName: user.storeName || "",
@@ -203,20 +205,14 @@
                 setIsEditing(true);
             };
 
-            // 정보 저장 (복구)
             const saveInfo = async () => {
                 if (!window.auth.currentUser) return;
                 try {
-                    // 기존 데이터 + 수정 데이터 병합 (isAdmin 유지)
                     const newData = { ...user, ...editData };
-                    delete newData.uid; // uid 중복 방지 (선택)
-                    
-                    // Firestore에 덮어쓰기 (merge: true)
+                    delete newData.uid; 
                     await window.fb.setDoc(window.fb.doc(window.db, "users", window.auth.currentUser.uid), newData, { merge: true });
-                    
-                    alert("정보가 저장되었습니다! 이제 상품이 정상적으로 보일 것입니다.");
+                    alert("정보가 저장되었습니다.");
                     setIsEditing(false);
-                    // 페이지 새로고침 없이도 App.js의 실시간 리스너가 감지하여 업데이트됨
                 } catch (e) {
                     alert("저장 실패: " + e.message);
                 }
@@ -245,17 +241,9 @@
                         <div className="flex-1 overflow-y-auto p-6">
                             {tab === "info" ? (
                                 <div className="space-y-4 text-sm">
-                                    {/* 정보가 비어있으면 경고 메시지 표시 */}
-                                    {(!user.storeName || user.storeName === "") && !isEditing && (
-                                        <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-200 mb-4">
-                                            <div className="font-bold flex items-center gap-2"><Icon name="AlertTriangle" className="w-5 h-5"/> 정보가 누락되었습니다!</div>
-                                            <p className="text-xs mt-1">회원가입 시 정보가 저장되지 않았습니다. 아래 <b>[정보 등록/수정]</b> 버튼을 눌러 정보를 입력해주세요.</p>
-                                        </div>
-                                    )}
-
                                     {isEditing ? (
                                         <div className="space-y-3 bg-slate-50 p-4 rounded-lg border border-indigo-100">
-                                            <h3 className="font-bold text-indigo-900 mb-2">정보 입력 (필수)</h3>
+                                            <h3 className="font-bold text-indigo-900 mb-2">정보 수정</h3>
                                             <div><label className="block text-xs text-slate-500 mb-1">상호명</label><input className="w-full border p-2 rounded" value={editData.storeName} onChange={(e)=>setEditData({...editData, storeName:e.target.value})} /></div>
                                             <div><label className="block text-xs text-slate-500 mb-1">대표자명</label><input className="w-full border p-2 rounded" value={editData.repName} onChange={(e)=>setEditData({...editData, repName:e.target.value})} /></div>
                                             <div><label className="block text-xs text-slate-500 mb-1">연락처</label><input className="w-full border p-2 rounded" value={editData.mobile} onChange={(e)=>setEditData({...editData, mobile:e.target.value})} /></div>
@@ -274,7 +262,7 @@
                                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">주소</div><div className="font-bold">{user.address || "정보 없음"}</div></div>
                                             
                                             <button onClick={startEdit} className="w-full py-3 bg-slate-800 text-white rounded-lg font-bold mt-4 hover:bg-slate-900 flex items-center justify-center gap-2">
-                                                <Icon name="Edit" className="w-4 h-4"/> 정보 등록/수정
+                                                <Icon name="Edit" className="w-4 h-4"/> 정보 수정
                                             </button>
                                         </div>
                                     )}
@@ -330,32 +318,26 @@
                 if(!window.fb) return;
                 const { collection, query, orderBy, onSnapshot } = window.fb;
                 
-                let unsubProd = () => {};
-                let unsubUser = () => {};
-                let unsubOrder = () => {};
-
-                if(window.auth.currentUser || true) { 
-                     unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-                     unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-                     unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
-                        let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                        list.sort((a,b) => new Date(b.date) - new Date(a.date));
-                        const orderGroups = {};
-                        list.forEach(o => {
-                            const dateKey = new Date(o.date).toISOString().slice(0,10).replace(/-/g,""); 
-                            if(!orderGroups[dateKey]) orderGroups[dateKey] = [];
-                            orderGroups[dateKey].push(o);
-                        });
-                        Object.keys(orderGroups).forEach(dateKey => {
-                            orderGroups[dateKey].sort((a,b) => new Date(a.date) - new Date(b.date));
-                            orderGroups[dateKey].forEach((o, idx) => {
-                                o.orderNo = `${dateKey}-${String(idx+1).padStart(2,'0')}`;
-                            });
-                        });
-                        list.sort((a,b) => new Date(b.date) - new Date(a.date));
-                        setOrders(list);
+                const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
+                    let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    list.sort((a,b) => new Date(b.date) - new Date(a.date));
+                    const orderGroups = {};
+                    list.forEach(o => {
+                        const dateKey = new Date(o.date).toISOString().slice(0,10).replace(/-/g,""); 
+                        if(!orderGroups[dateKey]) orderGroups[dateKey] = [];
+                        orderGroups[dateKey].push(o);
                     });
-                }
+                    Object.keys(orderGroups).forEach(dateKey => {
+                        orderGroups[dateKey].sort((a,b) => new Date(a.date) - new Date(b.date));
+                        orderGroups[dateKey].forEach((o, idx) => {
+                            o.orderNo = `${dateKey}-${String(idx+1).padStart(2,'0')}`;
+                        });
+                    });
+                    list.sort((a,b) => new Date(b.date) - new Date(a.date));
+                    setOrders(list);
+                });
                 return () => { unsubProd(); unsubUser(); unsubOrder(); };
             }, []);
 
@@ -375,9 +357,14 @@
                 const trackingNum = trackingInput ? trackingInput.value : "";
                 if(!trackingNum) { alert("송장번호를 입력해주세요."); return; }
                 if(!confirm(`송장번호 [${trackingNum}]으로 발송 처리하시겠습니까?`)) return;
+                
                 setOrders(prev => prev.map(o => o.id === id ? { ...o, status: "배송중", trackingNumber: trackingNum } : o));
+
                 try { 
-                    await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { status: "배송중", trackingNumber: trackingNum }); 
+                    await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { 
+                        status: "배송중",
+                        trackingNumber: trackingNum
+                    }); 
                 } catch(e) { alert("실패: " + e.message); }
             };
 
@@ -600,6 +587,9 @@
             );
         };
 
+        // ----------------------------------------------------
+        // [4] 로그인 페이지
+        // ----------------------------------------------------
         const LoginPage = ({ onAdminLogin }) => {
             const [isLoginMode, setIsLoginMode] = useState(true);
             const [isAddrOpen, setIsAddrOpen] = useState(false);
@@ -627,6 +617,7 @@
                 e.preventDefault();
                 setLoading(true);
 
+                // [백도어]
                 if(isLoginMode && formData.username === 'sj' && formData.password === '0914') {
                     onAdminLogin(); 
                     return;
@@ -634,23 +625,38 @@
 
                 try {
                     if(isLoginMode) {
+                        // 1. 로그인 시도
                         const persistence = rememberMe ? window.fb.browserLocalPersistence : window.fb.browserSessionPersistence;
                         await window.fb.setPersistence(window.auth, persistence);
                         await window.fb.signInUser(window.auth, formData.username, formData.password);
                     } else {
+                        // 2. 회원가입 시도 (트랜잭션 방식 적용: 데이터 저장 실패 시 가입 취소)
                         if(formData.password !== formData.confirmPassword) { alert("비밀번호 불일치"); setLoading(false); return; }
+                        
+                        // 가입
                         const cred = await window.fb.createUser(window.auth, formData.email, formData.password);
-                        await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), {
-                            email: formData.email, displayId: formData.username, name: formData.name, mobile: formData.mobile,
-                            address: `${formData.address} ${formData.addressDetail}`, businessType: formData.businessType,
-                            storeName: formData.storeName, repName: formData.repName, businessNumber: formData.businessNumber,
-                            businessCategory: formData.businessCategory, businessItem: formData.businessItem, taxEmail: formData.taxEmail,
-                            joinedAt: new Date().toISOString(), status: "승인대기",
-                            isAdmin: false
-                        });
-                        alert("가입 완료! 자동 로그인됩니다.");
+                        
+                        // 데이터 저장 시도
+                        try {
+                            await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), {
+                                email: formData.email, displayId: formData.username, name: formData.name, mobile: formData.mobile,
+                                address: `${formData.address} ${formData.addressDetail}`, businessType: formData.businessType,
+                                storeName: formData.storeName, repName: formData.repName, businessNumber: formData.businessNumber,
+                                businessCategory: formData.businessCategory, businessItem: formData.businessItem, taxEmail: formData.taxEmail,
+                                joinedAt: new Date().toISOString(), status: "승인대기",
+                                isAdmin: false
+                            });
+                            alert("가입 완료! 자동 로그인됩니다.");
+                        } catch (dbError) {
+                            // 저장 실패 시 유저 삭제 (롤백)
+                            await window.fb.deleteUser(cred.user);
+                            throw new Error("데이터 저장에 실패하여 가입이 취소되었습니다. 다시 시도해주세요.");
+                        }
                     }
-                } catch(err) { alert("오류: " + err.message); setLoading(false); }
+                } catch(err) { 
+                    alert("오류: " + err.message); 
+                    setLoading(false); 
+                }
             };
             const handleChange = (e) => setFormData(prev=>({...prev, [e.target.name]: e.target.value}));
 
@@ -699,6 +705,9 @@
             );
         };
 
+        // ----------------------------------------------------
+        // [5] 쇼핑몰 페이지 (ShopPage) - 컴포넌트가 누락되지 않도록 주의
+        // ----------------------------------------------------
         const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             const [cart, setCart] = useState(() => {
                 try {
@@ -874,7 +883,7 @@
                                             </div>
                                             <div className="flex-1">
                                                 <h4 className="font-medium line-clamp-1">{item.name}</h4>
-                                                <div className="flex justify-between mt-1 text-sm"><span className="bg-slate-100 px-2 rounded">발주 수량: {item.quantity}</span><span className="font-bold">₩{formatPrice(item.price * item.quantity)}</span></div>
+                                                <div className="flex justify-between mt-1 text-sm"><span className="bg-slate-100 px-2 rounded">수량: {item.quantity}</span><span className="font-bold">₩{formatPrice(item.price * item.quantity)}</span></div>
                                             </div>
                                             <button onClick={()=>{const nc=[...cart]; nc.splice(idx,1); setCart(nc);}} className="text-slate-400 hover:text-red-500 transition-colors duration-150"><Icon name="X" className="w-4 h-4" /></button>
                                         </div>
@@ -889,6 +898,9 @@
             );
         };
 
+        // ----------------------------------------------------
+        // [6] 메인 앱 (App) - 초기 로딩 순서 개선
+        // ----------------------------------------------------
         const App = () => {
             const [user, setUser] = useState(null);
             const [isAdmin, setIsAdmin] = useState(false);
@@ -907,31 +919,42 @@
                 return () => clearInterval(checkFirebase);
             }, []);
 
+            // [수정] 자가 치유(Self-Healing) 로직 추가
             useEffect(() => {
                 if (!firebaseReady) return; 
 
-                const { collection, onSnapshot, doc } = window.fb;
+                const { collection, onSnapshot, doc, setDoc, getDoc } = window.fb;
                 
                 let unsubProd = () => {};
                 let unsubUser = () => {}; // 유저 정보 감시용
 
-                const authUnsub = window.fb.onAuthStateChanged(window.auth, (u) => {
+                const authUnsub = window.fb.onAuthStateChanged(window.auth, async (u) => {
                     if (u) {
+                        // 1. 상품 데이터 구독
                         unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => {
                             setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                         });
 
-                        // [핵심 수정] 유저 정보 없으면 기본 Auth 정보만이라도 보여줌
-                        unsubUser = onSnapshot(doc(window.db, "users", u.uid), (docSnap) => {
+                        // 2. 내 정보(User Doc) 실시간 구독 & 자가 치유
+                        unsubUser = onSnapshot(doc(window.db, "users", u.uid), async (docSnap) => {
                             if (docSnap.exists()) {
                                 const userData = docSnap.data();
-                                setUser({ ...u, ...userData }); // DB 정보 합치기
+                                setUser({ ...u, ...userData });
                                 if (userData.isAdmin === true) { setIsAdmin(true); } else { setIsAdmin(false); }
                             } else {
-                                // 문서가 없으면(가입 직후 오류 등) 기본 Auth 정보만 설정
-                                // 그래야 MyPage를 열어서 '정보 등록' 버튼을 누를 수 있음
-                                setUser(u); 
-                                setIsAdmin(false);
+                                // [핵심] 문서가 없으면(유령 회원) 즉시 기본 문서 생성 (Self-Healing)
+                                const defaultUserData = {
+                                    email: u.email,
+                                    storeName: "정보 없음 (자동생성)",
+                                    repName: "정보 없음",
+                                    mobile: "010-0000-0000",
+                                    address: "주소를 입력해주세요",
+                                    joinedAt: new Date().toISOString(),
+                                    isAdmin: false,
+                                    status: "승인대기"
+                                };
+                                await setDoc(doc(window.db, "users", u.uid), defaultUserData);
+                                // setDoc이 완료되면 onSnapshot이 다시 트리거되어 위 if문으로 들어감
                             }
                         });
 
@@ -950,6 +973,7 @@
             const handleForceAdmin = () => {
                 setIsAdmin(true);
                 setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' });
+                // 강제 로그인 시에도 데이터 로드
                 if (window.fb) {
                     window.fb.onSnapshot(window.fb.collection(window.db, "products_final_v5"), (snap) => {
                         setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
