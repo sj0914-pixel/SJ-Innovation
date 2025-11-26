@@ -23,13 +23,13 @@
 <body class="bg-slate-50">
     <div id="root"></div>
 
-    <!-- 파이어베이스 연결 설정 (웹사이트용 전체 주소 적용됨) -->
+    <!-- 파이어베이스 연결 설정 (웹사이트용 주소 적용 완료) -->
     <script type="module">
-        // ⚠️ 중요: 웹에서는 이렇게 'https://...' 로 시작하는 주소를 써야 작동합니다.
+        // ⚠️ 여기 주소가 https://... 로 시작해야 웹에서 작동합니다. (수정 완료)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDoc, setDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-        
+
         // 사장님이 찾으신 정확한 키값입니다.
         const firebaseConfig = {
             apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqcYceZwUtI",
