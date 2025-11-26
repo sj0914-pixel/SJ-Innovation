@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (Final Complete v22)</title>
+    <title>SJ 파트너스 몰 (v23 - Info Recovery)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -72,16 +72,12 @@
             { id: "p8", name: "참존 마스크", category: "생활/건강", price: 10900, originPrice: 20000, image: "😷", description: "편안한 호흡 참존 마스크.", stock: 500, minQty: 16, cartonQty: 16, rating: "4.7" }
         ];
 
-        // ----------------------------------------------------
-        // [1] 공통 컴포넌트
-        // ----------------------------------------------------
         const Icon = ({ name, ...props }) => {
             const iconName = name.charAt(0).toLowerCase() + name.slice(1);
             return <i data-lucide={iconName} {...props}></i>;
         };
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // [스마트 패스 + 삭제 기능 추가된 업로더]
         const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             const fileInputRef = useRef(null);
             const [preview, setPreview] = useState(currentImage || "");
@@ -167,12 +163,12 @@
 
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-        // ----------------------------------------------------
-        // [2] 마이페이지 (회원정보 실시간 연동)
-        // ----------------------------------------------------
+        // [마이페이지 & 정보 복구 기능]
         const MyPage = ({ user, onClose }) => {
             const [myOrders, setMyOrders] = useState([]);
             const [tab, setTab] = useState("info");
+            const [isEditing, setIsEditing] = useState(false); // 수정 모드
+            const [editData, setEditData] = useState({}); // 수정 데이터
             useLucide();
 
             useEffect(() => {
@@ -195,6 +191,36 @@
                     return () => unsub();
                 }
             }, [user]);
+
+            // 수정 모드 진입 시 기존 데이터 로드
+            const startEdit = () => {
+                setEditData({
+                    storeName: user.storeName || "",
+                    repName: user.repName || "",
+                    mobile: user.mobile || "",
+                    address: user.address || ""
+                });
+                setIsEditing(true);
+            };
+
+            // 정보 저장 (복구)
+            const saveInfo = async () => {
+                if (!window.auth.currentUser) return;
+                try {
+                    // 기존 데이터 + 수정 데이터 병합 (isAdmin 유지)
+                    const newData = { ...user, ...editData };
+                    delete newData.uid; // uid 중복 방지 (선택)
+                    
+                    // Firestore에 덮어쓰기 (merge: true)
+                    await window.fb.setDoc(window.fb.doc(window.db, "users", window.auth.currentUser.uid), newData, { merge: true });
+                    
+                    alert("정보가 저장되었습니다! 이제 상품이 정상적으로 보일 것입니다.");
+                    setIsEditing(false);
+                    // 페이지 새로고침 없이도 App.js의 실시간 리스너가 감지하여 업데이트됨
+                } catch (e) {
+                    alert("저장 실패: " + e.message);
+                }
+            };
 
             const handleCancelOrder = async (id) => {
                 if(!confirm("주문을 취소하시겠습니까?")) return;
@@ -219,11 +245,39 @@
                         <div className="flex-1 overflow-y-auto p-6">
                             {tab === "info" ? (
                                 <div className="space-y-4 text-sm">
-                                    <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">상호명</div><div className="font-bold">{user.storeName || "정보 없음"}</div></div>
-                                    <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">대표자</div><div className="font-bold">{displayRepName}</div></div>
-                                    <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">이메일</div><div className="font-bold">{user.email}</div></div>
-                                    <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">연락처</div><div className="font-bold">{user.mobile || "정보 없음"}</div></div>
-                                    <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">주소</div><div className="font-bold">{user.address || "정보 없음"}</div></div>
+                                    {/* 정보가 비어있으면 경고 메시지 표시 */}
+                                    {(!user.storeName || user.storeName === "") && !isEditing && (
+                                        <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-200 mb-4">
+                                            <div className="font-bold flex items-center gap-2"><Icon name="AlertTriangle" className="w-5 h-5"/> 정보가 누락되었습니다!</div>
+                                            <p className="text-xs mt-1">회원가입 시 정보가 저장되지 않았습니다. 아래 <b>[정보 등록/수정]</b> 버튼을 눌러 정보를 입력해주세요.</p>
+                                        </div>
+                                    )}
+
+                                    {isEditing ? (
+                                        <div className="space-y-3 bg-slate-50 p-4 rounded-lg border border-indigo-100">
+                                            <h3 className="font-bold text-indigo-900 mb-2">정보 입력 (필수)</h3>
+                                            <div><label className="block text-xs text-slate-500 mb-1">상호명</label><input className="w-full border p-2 rounded" value={editData.storeName} onChange={(e)=>setEditData({...editData, storeName:e.target.value})} /></div>
+                                            <div><label className="block text-xs text-slate-500 mb-1">대표자명</label><input className="w-full border p-2 rounded" value={editData.repName} onChange={(e)=>setEditData({...editData, repName:e.target.value})} /></div>
+                                            <div><label className="block text-xs text-slate-500 mb-1">연락처</label><input className="w-full border p-2 rounded" value={editData.mobile} onChange={(e)=>setEditData({...editData, mobile:e.target.value})} /></div>
+                                            <div><label className="block text-xs text-slate-500 mb-1">주소</label><input className="w-full border p-2 rounded" value={editData.address} onChange={(e)=>setEditData({...editData, address:e.target.value})} /></div>
+                                            <div className="flex gap-2 mt-4">
+                                                <button onClick={saveInfo} className="flex-1 bg-indigo-600 text-white py-2 rounded font-bold hover:bg-indigo-700">저장하기</button>
+                                                <button onClick={()=>setIsEditing(false)} className="flex-1 bg-gray-300 text-gray-700 py-2 rounded font-bold hover:bg-gray-400">취소</button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">상호명</div><div className="font-bold">{user.storeName || "정보 없음"}</div></div>
+                                            <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">대표자</div><div className="font-bold">{displayRepName}</div></div>
+                                            <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">이메일</div><div className="font-bold">{user.email}</div></div>
+                                            <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">연락처</div><div className="font-bold">{user.mobile || "정보 없음"}</div></div>
+                                            <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">주소</div><div className="font-bold">{user.address || "정보 없음"}</div></div>
+                                            
+                                            <button onClick={startEdit} className="w-full py-3 bg-slate-800 text-white rounded-lg font-bold mt-4 hover:bg-slate-900 flex items-center justify-center gap-2">
+                                                <Icon name="Edit" className="w-4 h-4"/> 정보 등록/수정
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="space-y-4">
@@ -259,9 +313,6 @@
             );
         };
 
-        // ----------------------------------------------------
-        // [3] 관리자 페이지
-        // ----------------------------------------------------
         const AdminPage = ({ onLogout, onToShop }) => {
             const [products, setProducts] = useState([]);
             const [users, setUsers] = useState([]);
@@ -549,9 +600,6 @@
             );
         };
 
-        // ----------------------------------------------------
-        // [4] 로그인 페이지 (LoginPage) - 컴포넌트가 누락되지 않도록 주의
-        // ----------------------------------------------------
         const LoginPage = ({ onAdminLogin }) => {
             const [isLoginMode, setIsLoginMode] = useState(true);
             const [isAddrOpen, setIsAddrOpen] = useState(false);
@@ -651,9 +699,6 @@
             );
         };
 
-        // ----------------------------------------------------
-        // [5] 쇼핑몰 페이지 (ShopPage) - 컴포넌트가 누락되지 않도록 주의
-        // ----------------------------------------------------
         const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             const [cart, setCart] = useState(() => {
                 try {
@@ -844,9 +889,6 @@
             );
         };
 
-        // ----------------------------------------------------
-        // [6] 메인 앱 (App) - 초기 로딩 순서 개선
-        // ----------------------------------------------------
         const App = () => {
             const [user, setUser] = useState(null);
             const [isAdmin, setIsAdmin] = useState(false);
@@ -875,41 +917,39 @@
 
                 const authUnsub = window.fb.onAuthStateChanged(window.auth, (u) => {
                     if (u) {
-                        // 1. 상품 데이터 구독
                         unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => {
                             setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                         });
 
-                        // 2. 내 정보(User Doc) 실시간 구독
+                        // [핵심 수정] 유저 정보 없으면 기본 Auth 정보만이라도 보여줌
                         unsubUser = onSnapshot(doc(window.db, "users", u.uid), (docSnap) => {
                             if (docSnap.exists()) {
                                 const userData = docSnap.data();
                                 setUser({ ...u, ...userData }); // DB 정보 합치기
                                 if (userData.isAdmin === true) { setIsAdmin(true); } else { setIsAdmin(false); }
                             } else {
-                                // 문서가 아직 안 만들어졌거나(가입 직후), 삭제된 경우
-                                setUser(u); // 기본 Auth 정보만 설정
+                                // 문서가 없으면(가입 직후 오류 등) 기본 Auth 정보만 설정
+                                // 그래야 MyPage를 열어서 '정보 등록' 버튼을 누를 수 있음
+                                setUser(u); 
                                 setIsAdmin(false);
                             }
                         });
 
                     } else {
-                        // 로그아웃 시 정리
                         setProducts([]);
                         setUser(null);
                         setIsAdmin(false);
-                        unsubUser(); // 리스너 해제
+                        if(unsubUser) unsubUser();
                     }
                     setLoading(false);
                 });
 
-                return () => { unsubProd(); unsubUser(); authUnsub(); };
+                return () => { if(unsubProd) unsubProd(); if(unsubUser) unsubUser(); authUnsub(); };
             }, [firebaseReady]); 
 
             const handleForceAdmin = () => {
                 setIsAdmin(true);
                 setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' });
-                // 강제 로그인 시에도 데이터 로드
                 if (window.fb) {
                     window.fb.onSnapshot(window.fb.collection(window.db, "products_final_v5"), (snap) => {
                         setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
