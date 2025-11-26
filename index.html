@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (History Back v13)</title>
+    <title>SJ 파트너스 몰 (Order Detail v14)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -81,6 +81,7 @@
         };
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
+        // [스마트 패스 업로더]
         const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             const fileInputRef = useRef(null);
             const [preview, setPreview] = useState(currentImage || "");
@@ -228,7 +229,7 @@
         };
 
         // ----------------------------------------------------
-        // [3] 관리자 페이지
+        // [3] 관리자 페이지 (수정됨: 주문 상세 및 번호 생성)
         // ----------------------------------------------------
         const AdminPage = ({ onLogout, onToShop }) => {
             const [products, setProducts] = useState([]);
@@ -250,6 +251,21 @@
                 const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
                     let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     list.sort((a,b) => new Date(b.date) - new Date(a.date));
+                    // [주문 번호 생성 로직] - 같은 날짜끼리 그룹핑해서 순번 매김 (클라이언트 측 계산)
+                    const orderGroups = {};
+                    list.forEach(o => {
+                        const dateKey = new Date(o.date).toISOString().slice(0,10).replace(/-/g,""); // YYYYMMDD
+                        if(!orderGroups[dateKey]) orderGroups[dateKey] = [];
+                        orderGroups[dateKey].push(o);
+                    });
+                    // 날짜별로 오래된 순서대로 번호 부여 후 다시 최신순 정렬
+                    Object.keys(orderGroups).forEach(dateKey => {
+                        orderGroups[dateKey].sort((a,b) => new Date(a.date) - new Date(b.date)); // 오름차순 정렬
+                        orderGroups[dateKey].forEach((o, idx) => {
+                            o.orderNo = `${dateKey}-${String(idx+1).padStart(2,'0')}`;
+                        });
+                    });
+                    list.sort((a,b) => new Date(b.date) - new Date(a.date)); // 화면 표시는 최신순
                     setOrders(list);
                 });
                 return () => { unsubProd(); unsubUser(); unsubOrder(); };
@@ -286,6 +302,9 @@
             const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
             const openEditModal = (prod) => { setEditingProduct(prod); setThumbImage(prod.image); setDetailImage(prod.detailImage); setIsProductModalOpen(true); };
 
+            // [v14 추가] 고객 정보 찾기 헬퍼
+            const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
+
             return (
                 <div className="min-h-screen bg-slate-100">
                     <nav className="bg-slate-900 text-white p-4 flex justify-between items-center shadow-md sticky top-0 z-50">
@@ -302,9 +321,52 @@
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200 overflow-x-auto min-h-[500px]">
                             {tab === "orders" && (
                                 <table className="w-full text-left text-sm whitespace-nowrap">
-                                    <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">일시</th><th className="p-4">주문자</th><th className="p-4">내역</th><th className="p-4">금액</th><th className="p-4">상태</th></tr></thead>
+                                    <thead className="bg-slate-100 uppercase font-bold text-slate-500">
+                                        <tr>
+                                            <th className="p-4">주문번호</th>
+                                            <th className="p-4">주문자 정보</th>
+                                            <th className="p-4">주문 내역 (상세)</th>
+                                            <th className="p-4">총 금액</th>
+                                            <th className="p-4">상태</th>
+                                        </tr>
+                                    </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                        {orders.map(o=>(<tr key={o.id} className="hover:bg-slate-50"><td className="p-4 text-slate-500">{new Date(o.date).toLocaleDateString()}</td><td className="p-4 font-bold">{o.userName}<div className="text-xs font-normal text-slate-400">{o.userEmail}</div></td><td className="p-4 max-w-xs truncate">{o.items.length}건</td><td className="p-4 font-bold text-indigo-600">₩{formatPrice(o.totalAmount)}</td><td className="p-4"><select value={o.status} onChange={(e)=>handleOrderStatus(o.id, e.target.value)} className="border p-1 rounded text-xs font-bold"><option value="접수대기">접수대기</option><option value="배송중">배송중</option><option value="배송완료">배송완료</option><option value="주문취소">주문취소</option></select></td></tr>))}
+                                        {orders.map(o => {
+                                            const orderUser = getUserInfo(o.userId);
+                                            return (
+                                                <tr key={o.id} className="hover:bg-slate-50 align-top">
+                                                    <td className="p-4 font-mono font-bold text-indigo-600">{o.orderNo || "처리중"}
+                                                        <div className="text-xs text-slate-400 font-normal mt-1">{new Date(o.date).toLocaleString()}</div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="font-bold text-base">{o.userName}</div>
+                                                        {orderUser.storeName && <div className="text-xs text-slate-600 mt-0.5 font-bold">{orderUser.storeName}</div>}
+                                                        {orderUser.mobile && <div className="text-xs text-slate-500 mt-0.5">{orderUser.mobile}</div>}
+                                                        {orderUser.address && <div className="text-xs text-slate-400 mt-0.5 max-w-[150px] truncate">{orderUser.address}</div>}
+                                                        <div className="text-xs text-slate-400 mt-0.5">{o.userEmail}</div>
+                                                    </td>
+                                                    <td className="p-4 whitespace-normal max-w-md">
+                                                        <div className="space-y-1">
+                                                            {o.items.map((item, i) => (
+                                                                <div key={i} className="flex justify-between text-sm border-b border-slate-100 pb-1 last:border-0">
+                                                                    <span className="font-medium text-slate-700">{item.name}</span>
+                                                                    <span className="font-bold text-slate-900 ml-2">{item.quantity}개</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 font-bold text-lg text-indigo-600">₩{formatPrice(o.totalAmount)}</td>
+                                                    <td className="p-4">
+                                                        <select value={o.status} onChange={(e)=>handleOrderStatus(o.id, e.target.value)} className={`border p-2 rounded text-sm font-bold outline-none ${o.status==='접수대기'?'bg-red-50 text-red-600 border-red-200':o.status==='배송중'?'bg-blue-50 text-blue-600 border-blue-200':'bg-green-50 text-green-600 border-green-200'}`}>
+                                                            <option value="접수대기">접수대기</option>
+                                                            <option value="배송중">배송중</option>
+                                                            <option value="배송완료">배송완료</option>
+                                                            <option value="주문취소">주문취소</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             )}
@@ -531,12 +593,10 @@
                 return matchCat && matchSearch;
             });
 
-            // [History Back 로직: 상세페이지, 장바구니, 마이페이지 열 때 히스토리 추가]
             const openProduct = (p) => { window.history.pushState(null,"",""); setSelectedProduct(p); };
             const openCart = () => { window.history.pushState(null,"",""); setIsCartOpen(true); };
             const openMyPage = () => { window.history.pushState(null,"",""); setShowMyPage(true); };
             
-            // 뒤로가기 이벤트 감지
             useEffect(() => {
                 const handlePopState = () => {
                     if(selectedProduct) setSelectedProduct(null);
@@ -547,7 +607,6 @@
                 return () => window.removeEventListener('popstate', handlePopState);
             }, [selectedProduct, isCartOpen, showMyPage]);
 
-            // 닫기 버튼도 뒤로가기처럼 동작 (history.back)
             const handleClose = () => window.history.back();
 
             // 내부 상세 페이지
