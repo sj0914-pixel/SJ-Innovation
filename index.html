@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (Super Compress v9)</title>
+    <title>SJ 파트너스 몰 (Smart Pass v10)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -69,7 +69,7 @@
         };
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-        // [초강력 이미지 압축 업로더]
+        // [v10: 스마트 패스 업로더]
         const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             const fileInputRef = useRef(null);
             const [preview, setPreview] = useState(currentImage || "");
@@ -86,21 +86,12 @@
                             const canvas = document.createElement("canvas");
                             let width = img.width;
                             let height = img.height;
-                            
-                            // [핵심] 5MB도 거뜬하게 만드는 강력한 리사이징
-                            // 너비를 800px로 제한 (웹/모바일에서 보기에 충분함)
                             const MAX_WIDTH = 800; 
-                            if (width > MAX_WIDTH) {
-                                height *= MAX_WIDTH / width;
-                                width = MAX_WIDTH;
-                            }
+                            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                             canvas.width = width;
                             canvas.height = height;
-                            
                             const ctx = canvas.getContext("2d");
                             ctx.drawImage(img, 0, 0, width, height);
-                            
-                            // 품질을 0.6(60%)으로 설정하여 용량 대폭 감소 (눈으로는 차이 적음)
                             const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
                             resolve(dataUrl);
                         };
@@ -114,21 +105,33 @@
                 if (!file) return;
                 setIsCompressing(true);
                 try {
-                    // 압축 시작
-                    const compressedDataUrl = await compressImage(file);
-                    
-                    // 압축 후 용량 체크 (안전장치)
-                    if (compressedDataUrl.length > 900000) {
-                         alert("사진이 너~무 커서 최대한 줄여봤지만 1MB가 넘어요. ㅠㅠ\n다른 사진을 써주시거나 캡처해서 올려주세요!");
-                         setPreview(""); 
-                         onImageSelect("");
+                    // [핵심 로직 변경]
+                    // 파일이 700KB(약 716,800 bytes)보다 작으면 압축하지 않고 원본 그대로 사용합니다.
+                    // 이렇게 하면 377KB짜리 긴 상세페이지는 압축 과정 없이 바로 통과되어 용량이 늘어나지 않습니다.
+                    if (file.size < 700 * 1024) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            setPreview(reader.result);
+                            onImageSelect(reader.result);
+                            setIsCompressing(false);
+                        };
+                        reader.readAsDataURL(file);
                     } else {
-                        setPreview(compressedDataUrl);
-                        onImageSelect(compressedDataUrl);
+                        // 700KB보다 큰 파일만 압축 진행
+                        const compressedDataUrl = await compressImage(file);
+                        
+                        if (compressedDataUrl.length > 1000000) {
+                             alert("이미지 용량이 너무 큽니다 (1MB 초과).\n더 작은 이미지를 사용하거나 이미지를 잘라서 올려주세요.");
+                             setPreview(""); 
+                             onImageSelect("");
+                        } else {
+                            setPreview(compressedDataUrl);
+                            onImageSelect(compressedDataUrl);
+                        }
+                        setIsCompressing(false);
                     }
                 } catch (e) {
                     alert("이미지 처리 중 오류가 발생했습니다.");
-                } finally {
                     setIsCompressing(false);
                 }
             };
@@ -144,7 +147,7 @@
                         {isCompressing ? (
                             <div className="flex flex-col items-center justify-center text-indigo-600">
                                 <Icon name="Loader2" className="w-8 h-8 animate-spin mb-2" />
-                                <span className="text-xs font-bold">5MB -> 1MB 압축 중...</span>
+                                <span className="text-xs font-bold">이미지 최적화 중...</span>
                             </div>
                         ) : (
                             preview && !preview.includes("📦") ? ( <img src={preview} className="absolute inset-0 w-full h-full object-contain bg-slate-50" /> ) : ( <div className="text-center p-4"><div className="mx-auto bg-black text-white w-10 h-10 rounded-lg flex items-center justify-center mb-2"><Icon name="UploadCloud" className="w-6 h-6" /></div><p className="text-sm text-slate-500 font-medium">클릭/드래그 업로드</p></div> )
@@ -265,10 +268,9 @@
                 e.preventDefault();
                 const form = e.target;
                 
-                // [안전장치] 최종 용량 체크
                 const totalSize = (thumbImage?.length || 0) + (detailImage?.length || 0);
-                if (totalSize > 1000000) {
-                    alert("압축을 했는데도 이미지가 큽니다. 상세페이지 이미지를 더 작은걸로 바꿔주세요!");
+                if (totalSize > 1200000) { // 1.2MB 정도까지 여유를 두고 체크 (Base64 오버헤드 감안)
+                    alert("이미지 용량 합계가 저장 한도를 초과합니다.\n상세페이지를 조금만 더 줄이거나 잘라서 올려주세요.");
                     return;
                 }
 
