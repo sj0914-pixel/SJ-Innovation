@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJ 파트너스 몰 (Final Fixed v26)</title>
+    <title>SJ 파트너스 몰 (Stable v27)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -42,7 +42,7 @@
                 deleteUser,
                 collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, where, onSnapshot, getDoc
             };
-            console.log("Firebase Connected Safe Mode");
+            console.log("Firebase Connected Stable");
         } catch (e) {
             console.error("Connection Failed", e);
         }
@@ -78,6 +78,7 @@
         };
         const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
+        // [이미지 업로더]
         const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             const fileInputRef = useRef(null);
             const [preview, setPreview] = useState(currentImage || "");
@@ -163,11 +164,13 @@
 
         const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
+        // [마이페이지: 오류 수정 및 안정화]
         const MyPage = ({ user, onClose }) => {
             const [myOrders, setMyOrders] = useState([]);
             const [tab, setTab] = useState("info");
             const [isEditing, setIsEditing] = useState(false);
-            const [editData, setEditData] = useState({});
+            // [수정] 초기값 빈 객체 대신 명시적 필드 설정 (오류 방지)
+            const [editData, setEditData] = useState({ storeName: '', repName: '', mobile: '', address: '' });
             useLucide();
 
             useEffect(() => {
@@ -192,7 +195,6 @@
             }, [user]);
 
             const startEdit = () => {
-                // 수정할 때 필요한 순수 정보만 가져옴
                 setEditData({
                     storeName: user.storeName || "",
                     repName: user.repName || "",
@@ -202,21 +204,24 @@
                 setIsEditing(true);
             };
 
-            // [v26 핵심: 데이터 저장 오류 수정]
             const saveInfo = async () => {
                 if (!window.auth.currentUser) return;
                 try {
-                    // 불필요한 정보(Auth 객체 등)를 싹 제거하고, 텍스트만 추출해서 저장
+                    // [핵심] 순수 데이터만 추출해서 저장 (오류 방지)
                     const cleanData = {
                         storeName: editData.storeName,
                         repName: editData.repName,
                         mobile: editData.mobile,
-                        address: editData.address
+                        address: editData.address,
+                        isAdmin: user.isAdmin || false, // 관리자 권한 유지
+                        status: user.status || "승인대기", // 상태 유지
+                        email: user.email,
+                        joinedAt: user.joinedAt || new Date().toISOString()
                     };
                     
                     await window.fb.setDoc(window.fb.doc(window.db, "users", window.auth.currentUser.uid), cleanData, { merge: true });
                     
-                    alert("정보가 안전하게 저장되었습니다.");
+                    alert("정보가 성공적으로 저장되었습니다.");
                     setIsEditing(false);
                 } catch (e) {
                     alert("저장 실패: " + e.message);
@@ -267,7 +272,7 @@
                                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">주소</div><div className="font-bold">{user.address || "정보 없음"}</div></div>
                                             
                                             <button onClick={startEdit} className="w-full py-3 bg-slate-800 text-white rounded-lg font-bold mt-4 hover:bg-slate-900 flex items-center justify-center gap-2">
-                                                <Icon name="Edit" className="w-4 h-4"/> 정보 수정
+                                                <Icon name="Edit" className="w-4 h-4"/> 정보 등록/수정
                                             </button>
                                         </div>
                                     )}
@@ -306,6 +311,7 @@
             );
         };
 
+        // [관리자 페이지]
         const AdminPage = ({ onLogout, onToShop }) => {
             const [products, setProducts] = useState([]);
             const [users, setUsers] = useState([]);
@@ -323,6 +329,7 @@
                 if(!window.fb) return;
                 const { collection, query, orderBy, onSnapshot } = window.fb;
                 
+                // [수정] 관리자 페이지에서는 무조건 구독 실행 (화면 흰색 방지)
                 const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
                 const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
                 const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
@@ -343,6 +350,7 @@
                     list.sort((a,b) => new Date(b.date) - new Date(a.date));
                     setOrders(list);
                 });
+
                 return () => { unsubProd(); unsubUser(); unsubOrder(); };
             }, []);
 
@@ -363,9 +371,8 @@
                 if(!trackingNum) { alert("송장번호를 입력해주세요."); return; }
                 if(!confirm(`송장번호 [${trackingNum}]으로 발송 처리하시겠습니까?`)) return;
                 setOrders(prev => prev.map(o => o.id === id ? { ...o, status: "배송중", trackingNumber: trackingNum } : o));
-                try { 
-                    await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { status: "배송중", trackingNumber: trackingNum }); 
-                } catch(e) { alert("실패: " + e.message); }
+                try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { status: "배송중", trackingNumber: trackingNum }); } 
+                catch(e) { alert("실패: " + e.message); }
             };
 
             const handleComplete = async (id) => {
@@ -587,8 +594,118 @@
             );
         };
 
+        const LoginPage = ({ onAdminLogin }) => {
+            const [isLoginMode, setIsLoginMode] = useState(true);
+            const [isAddrOpen, setIsAddrOpen] = useState(false);
+            const [rememberMe, setRememberMe] = useState(false);
+            const addrWrapRef = useRef(null);
+            const [loading, setLoading] = useState(false);
+            const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '', name: '', mobile: '', email: '', zipcode: '', address: '', addressDetail: '', businessType: '문구/팬시점', storeName: '', repName: '', businessNumber: '', businessCategory: '', businessItem: '', taxEmail: '' });
+            useLucide();
+
+            useEffect(() => {
+                if(isAddrOpen && addrWrapRef.current && window.daum) {
+                    addrWrapRef.current.innerHTML = '';
+                    new window.daum.Postcode({
+                        oncomplete: function(data) {
+                            let addr = data.userSelectedType==='R'?data.roadAddress:data.jibunAddress;
+                            if(data.buildingName) addr+=` (${data.buildingName})`;
+                            setFormData(prev=>({...prev, zipcode: data.zonecode, address: addr}));
+                            setIsAddrOpen(false); 
+                        }, width: '100%', height: '100%'
+                    }).embed(addrWrapRef.current);
+                }
+            }, [isAddrOpen]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+
+                if(isLoginMode && formData.username === 'sj' && formData.password === '0914') {
+                    onAdminLogin(); 
+                    return;
+                }
+
+                try {
+                    if(isLoginMode) {
+                        const persistence = rememberMe ? window.fb.browserLocalPersistence : window.fb.browserSessionPersistence;
+                        await window.fb.setPersistence(window.auth, persistence);
+                        await window.fb.signInUser(window.auth, formData.username, formData.password);
+                    } else {
+                        if(formData.password !== formData.confirmPassword) { alert("비밀번호 불일치"); setLoading(false); return; }
+                        const cred = await window.fb.createUser(window.auth, formData.email, formData.password);
+                        // [v26 핵심] 순수 데이터만 저장 (cleanData)
+                        const cleanData = {
+                            email: formData.email, 
+                            displayId: formData.username, 
+                            name: formData.name, 
+                            mobile: formData.mobile,
+                            address: `${formData.address} ${formData.addressDetail}`, 
+                            businessType: formData.businessType,
+                            storeName: formData.storeName, 
+                            repName: formData.repName, 
+                            businessNumber: formData.businessNumber,
+                            businessCategory: formData.businessCategory, 
+                            businessItem: formData.businessItem, 
+                            taxEmail: formData.taxEmail,
+                            joinedAt: new Date().toISOString(), 
+                            status: "승인대기",
+                            isAdmin: false
+                        };
+                        await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), cleanData);
+                        alert("가입 완료! 자동 로그인됩니다.");
+                    }
+                } catch(err) { alert("오류: " + err.message); setLoading(false); }
+            };
+            const handleChange = (e) => setFormData(prev=>({...prev, [e.target.name]: e.target.value}));
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8">
+                    <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all duration-300 ${isLoginMode?'max-w-md p-8':'max-w-3xl p-8'}`}>
+                        <div className="text-center mb-8"><div className="bg-slate-800 w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4 text-white text-2xl font-bold">S</div><h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1><p className="text-slate-500 mt-2 text-sm">SJ Innovation</p></div>
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            {isLoginMode ? (
+                                <div className="space-y-4">
+                                    <div><label className="block text-sm font-bold mb-1 text-slate-700">아이디 (이메일)</label><input name="username" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none transition-all" onChange={handleChange} required placeholder="example@naver.com" /></div>
+                                    <div><label className="block text-sm font-bold mb-1 text-slate-700">비밀번호</label><input name="password" type="password" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none transition-all" onChange={handleChange} required /></div>
+                                    <div className="flex items-center gap-2"><input type="checkbox" id="remember" className="w-4 h-4 accent-slate-800" checked={rememberMe} onChange={e=>setRememberMe(e.target.checked)} /><label htmlFor="remember" className="text-sm text-slate-600 cursor-pointer select-none">로그인 정보 기억하기</label></div>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    <section className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                        <h3 className="font-bold mb-4 border-b border-slate-200 pb-2 text-slate-700">필수정보 <span className="text-red-500">*</span></h3>
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            <div><label className="block text-sm font-bold mb-1">이름</label><input name="name" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-bold mb-1">아이디(표시용)</label><input name="username" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-bold mb-1">비밀번호</label><input name="password" type="password" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-bold mb-1">비밀번호 확인</label><input name="confirmPassword" type="password" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-bold mb-1">연락처</label><input name="mobile" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-bold mb-1">이메일(로그인용)</label><input name="email" className="w-full p-2 border rounded" onChange={handleChange} required placeholder="example@naver.com" /></div>
+                                        </div>
+                                        <div className="mt-4"><label className="block text-sm font-bold mb-1">주소</label><div className="flex gap-2 mb-2"><input value={formData.zipcode} readOnly className="w-24 p-2 border bg-slate-100 rounded" /><button type="button" onClick={()=>setIsAddrOpen(true)} className="bg-slate-600 text-white px-3 rounded text-sm hover:bg-slate-700 transition-colors">주소검색</button></div><input value={formData.address} readOnly className="w-full p-2 border bg-slate-100 rounded mb-2" /><input name="addressDetail" className="w-full p-2 border rounded" placeholder="상세주소" onChange={handleChange} /></div>
+                                    </section>
+                                    <section className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                        <h3 className="font-bold mb-4 border-b border-slate-200 pb-2 text-slate-700">사업자 정보 <span className="text-red-500">*</span></h3>
+                                        <div className="mb-4"><label className="block text-sm font-bold mb-2">사업 형태</label><div className="grid grid-cols-3 gap-3">{['문구/팬시점','과자/아이스크림','편의점','키즈카페','기타'].map(t=><label key={t} className="flex items-center gap-2 text-sm border p-2 rounded bg-white cursor-pointer transition-colors"><input type="radio" name="businessType" value={t} checked={formData.businessType===t} onChange={handleChange} />{t}</label>)}</div></div>
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            <div><label className="block text-sm font-bold mb-1">상호명</label><input name="storeName" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
+                                            <div><label className="block text-sm font-bold mb-1">대표자명</label><input name="repName" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
+                                            <div className="md:col-span-2"><label className="block text-sm font-bold mb-1">사업자번호</label><input name="businessNumber" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
+                                        </div>
+                                    </section>
+                                </div>
+                            )}
+                            <button type="submit" disabled={loading} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-xl font-bold mt-6 transition-all duration-300 shadow-lg">{loading?"처리중...":(isLoginMode?"로그인하기":"회원가입 완료")}</button>
+                        </form>
+                        <div className="mt-6 text-center text-sm"><button onClick={()=>setIsLoginMode(!isLoginMode)} className="underline font-bold text-slate-600 hover:text-slate-900 transition-colors">{isLoginMode?"사업자 회원가입":"로그인하기"}</button></div>
+                    </div>
+                    {isAddrOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300"><div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative shadow-2xl flex flex-col"><div className="p-3 border-b flex justify-between font-bold bg-slate-50"><span>주소 검색</span><button onClick={()=>setIsAddrOpen(false)} className="hover:bg-slate-100 p-2 rounded-full"><Icon name="X"/></button></div><div ref={addrWrapRef} className="flex-1 w-full bg-slate-100 relative"></div></div></div>}
+                </div>
+            );
+        };
+
         // ----------------------------------------------------
-        // [6] 메인 앱 (App) - 컴포넌트가 누락되지 않도록 주의
+        // [6] 메인 앱 (App)
         // ----------------------------------------------------
         const App = () => {
             const [user, setUser] = useState(null);
@@ -608,7 +725,7 @@
                 return () => clearInterval(checkFirebase);
             }, []);
 
-            // [v26 핵심: 데이터 로딩 안정화]
+            // [수정] 자가 치유(Self-Healing) 로직 제거 -> 안전 모드로 변경
             useEffect(() => {
                 if (!firebaseReady) return; 
 
@@ -619,32 +736,22 @@
 
                 const authUnsub = window.fb.onAuthStateChanged(window.auth, async (u) => {
                     if (u) {
-                        // 1. 상품 데이터
                         unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => {
                             setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                         });
 
-                        // 2. 유저 정보
                         unsubUser = onSnapshot(doc(window.db, "users", u.uid), async (docSnap) => {
                             if (docSnap.exists()) {
                                 const userData = docSnap.data();
                                 setUser({ ...u, ...userData });
                                 if (userData.isAdmin === true) { setIsAdmin(true); } else { setIsAdmin(false); }
                             } else {
-                                // [자가 치유]
-                                const defaultUserData = {
-                                    email: u.email,
-                                    storeName: "정보 없음",
-                                    repName: "정보 없음",
-                                    mobile: "",
-                                    address: "",
-                                    joinedAt: new Date().toISOString(),
-                                    isAdmin: false,
-                                    status: "승인대기"
-                                };
-                                await setDoc(doc(window.db, "users", u.uid), defaultUserData);
+                                // 문서가 없으면 그냥 Auth 정보만 사용 (무리한 생성 X)
+                                setUser(u);
+                                setIsAdmin(false);
                             }
                         });
+
                     } else {
                         setProducts([]);
                         setUser(null);
@@ -686,8 +793,8 @@
                         products={products} 
                         user={user} 
                         onLogout={handleLogout} 
-                        isAdmin={isAdmin} 
-                        onToAdmin={() => setAdminViewMode(true)} 
+                        isAdmin={isAdmin} // ShopPage에 관리자 여부 전달
+                        onToAdmin={() => setAdminViewMode(true)} // 관리자 페이지로 가는 함수 전달
                     />
                 );
             }
