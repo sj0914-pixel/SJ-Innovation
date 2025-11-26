@@ -27,25 +27,23 @@
         import { getFirestore, collection, addDoc, getDoc, setDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-        // 🔴🔴🔴 [여기서부터] 🔴🔴🔴
-        // 파이어베이스 사이트에서 복사한 내용을 이 아래에 '붙여넣기' 해주세요!
-        // (기존의 const firebaseConfig = { ... }; 부분을 지우고 덮어쓰셔도 됩니다)
-        
+        // ✅ 사장님 이미지 보고 제가 직접 타이핑했습니다.
         const firebaseConfig = {
-            apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqCYceZwUtI", // (이게 틀린 키일 수 있음)
+            apiKey: "AIzaSyCpFn2uM7Dibf9UpWZdSVOxOqCYceZwUtI",
             authDomain: "sj-innovation-a8f6b.firebaseapp.com",
-            // ... 나머지 줄들 ...
+            projectId: "sj-innovation-a8f6b",
+            storageBucket: "sj-innovation-a8f6b.firebasestorage.app",
+            messagingSenderId: "449389360798",
+            appId: "1:449389360798:web:d1b490aa9c75807903ed8f",
             measurementId: "G-NED86350PH"
         };
-        
-        // 🔴🔴🔴 [여기까지] 🔴🔴🔴
 
         // 파이어베이스 시작
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // logic.js 연동 설정
+        // 로직 파일 연결
         window.db = db;
         window.auth = auth;
         window.fb = {
@@ -57,7 +55,7 @@
             browserLocalPersistence, browserSessionPersistence
         };
 
-        console.log("Firebase 설정 완료");
+        console.log("Firebase 연결 완료");
     </script>
 
     <script type="text/babel" src="./logic.js"></script>
