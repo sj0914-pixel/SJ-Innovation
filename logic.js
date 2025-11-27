@@ -1,4 +1,4 @@
-/* logic.js - Fixed Banner Upload & Removed Defaults */
+/* logic.js - Banner Fix (Compression Engine Removed) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,7 +10,7 @@ const useLucide = () => {
     }); 
 };
 
-// ★ 기본 배너 삭제 (빈 값으로 설정) ★
+// ★ 기본 배너 삭제 (빈 값) ★
 const DEFAULT_BANNERS = {
     top: "", 
     middle: "" 
@@ -43,82 +43,41 @@ const formatDate = (dateInput) => {
 };
 
 // ----------------------------------------------------
-// [1] 공통 컴포넌트 (이미지 업로더 개선판)
+// [1] 공통 컴포넌트 (이미지 업로더 - 단순화 버전)
 // ----------------------------------------------------
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
     const [preview, setPreview] = useState(currentImage || "");
-    const [isCompressing, setIsCompressing] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => { setPreview(currentImage); }, [currentImage]);
 
-    // 고용량 이미지 압축 함수
-    const compressImageToWebP = (file) => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement("canvas");
-                    let width = img.width;
-                    let height = img.height;
-                    const MAX_WIDTH = 1200; 
-                    if (width > MAX_WIDTH) { 
-                        height *= MAX_WIDTH / width; 
-                        width = MAX_WIDTH; 
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(img, 0, 0, width, height);
-                    // WebP 변환 (품질 0.8)
-                    resolve(canvas.toDataURL("image/webp", 0.8));
-                };
-                img.onerror = (error) => reject(error);
-            };
-            reader.onerror = (error) => reject(error);
-        });
-    };
-
-    const handleFile = async (file) => {
+    // [수정] 복잡한 변환 로직 제거 -> 단순 파일 읽기로 변경 (먹통 방지)
+    const handleFile = (file) => {
         if (!file) return;
-        setIsCompressing(true);
 
-        try {
-            // [수정] 1. 이미 WebP이고 용량이 작으면(500KB 미만) 변환 없이 바로 사용 (멈춤 방지)
-            if (file.type === "image/webp" && file.size < 500 * 1024) {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    setPreview(reader.result);
-                    onImageSelect(reader.result);
-                    setIsCompressing(false);
-                };
-                reader.readAsDataURL(file);
-                return;
-            }
-
-            // [수정] 2. 그 외의 경우 압축 진행
-            const compressedDataUrl = await compressImageToWebP(file);
-            
-            // 용량 체크 (2MB 제한)
-            if (compressedDataUrl.length > 2000000) { 
-                alert("이미지 용량이 너무 큽니다. 더 작은 이미지를 사용해주세요.");
-                setPreview(""); 
-                onImageSelect("");
-            } else {
-                setPreview(compressedDataUrl);
-                onImageSelect(compressedDataUrl);
-            }
-        } catch (e) { 
-            console.error("Image Error:", e);
-            alert("이미지 처리 중 오류가 발생했습니다."); 
-        } finally {
-            setIsCompressing(false);
-            // 같은 파일 다시 선택 가능하게 초기화
-            if(fileInputRef.current) fileInputRef.current.value = '';
+        // 용량 체크 (3MB 제한)
+        if (file.size > 3 * 1024 * 1024) {
+            alert("이미지 용량이 3MB를 초과합니다.\n더 작은 이미지를 사용해주세요.");
+            return;
         }
+
+        setIsLoading(true);
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            const result = e.target.result;
+            setPreview(result);
+            onImageSelect(result); // 부모 컴포넌트로 데이터 전달
+            setIsLoading(false);
+        };
+        
+        reader.onerror = () => {
+            alert("이미지를 읽는 중 오류가 발생했습니다.");
+            setIsLoading(false);
+        };
+
+        reader.readAsDataURL(file);
     };
 
     const handleDelete = (e) => {
@@ -126,6 +85,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
         if (confirm("이미지를 삭제하시겠습니까?")) {
             setPreview("");
             onImageSelect("");
+            if(fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -136,10 +96,10 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => { e.preventDefault(); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
                 onClick={() => fileInputRef.current.click()}>
-                {isCompressing ? (
+                {isLoading ? (
                     <div className="flex flex-col items-center justify-center text-indigo-600">
                         <Icon name="Loader2" className="w-8 h-8 animate-spin mb-2" />
-                        <span className="text-xs font-bold">처리 중...</span>
+                        <span className="text-xs font-bold">업로드 중...</span>
                     </div>
                 ) : (
                     preview && !preview.includes("📦") ? ( 
@@ -150,7 +110,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     ) : ( 
                         <div className="text-center p-4">
                             <Icon name="Image" className="w-6 h-6 text-slate-400 mx-auto mb-2" />
-                            <p className="text-sm text-slate-500 font-medium">클릭하여 업로드</p>
+                            <p className="text-sm text-slate-500 font-medium">클릭하여 이미지 등록</p>
                         </div> 
                     )
                 )}
@@ -313,8 +273,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
             if(d.exists()) {
                 const data = d.data();
                 setBannerConfig(data);
-                setTopBanner(data.top);
-                setMiddleBanner(data.middle);
+                setTopBanner(data.top || "");
+                setMiddleBanner(data.middle || "");
             }
         });
 
@@ -646,7 +606,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 {tab === "banners" && (
                     <div className="bg-white rounded-lg shadow-sm border p-6 max-w-3xl mx-auto">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="font-bold text-lg">쇼핑몰 배너 관리 (WebP 자동 변환)</h3>
+                            <h3 className="font-bold text-lg">쇼핑몰 배너 관리</h3>
                             <button onClick={handleSaveBanners} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg">설정 저장</button>
                         </div>
                         <div className="space-y-8">
