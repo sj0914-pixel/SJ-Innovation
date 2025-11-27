@@ -1,4 +1,4 @@
-/* logic.js - Banner High Performance Version */
+/* logic.js - Banner High Performance Version + WebP Engine */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -56,7 +56,7 @@ const formatDate = (dateInput) => {
 };
 
 // ----------------------------------------------------
-// [1] 공통 컴포넌트
+// [1] 공통 컴포넌트 (WebP 엔진 적용 완료)
 // ----------------------------------------------------
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
@@ -65,7 +65,8 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
 
     useEffect(() => { setPreview(currentImage); }, [currentImage]);
 
-    const compressImage = (file) => {
+    // ★ [WebP 엔진] 고성능 이미지 처리 함수 ★
+    const compressImageToWebP = (file) => {
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -74,13 +75,23 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     const canvas = document.createElement("canvas");
                     let width = img.width;
                     let height = img.height;
+                    
+                    // 최대 해상도 제한 (800px) - 모바일 최적화
                     const MAX_WIDTH = 800; 
-                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                    if (width > MAX_WIDTH) { 
+                        height *= MAX_WIDTH / width; 
+                        width = MAX_WIDTH; 
+                    }
+                    
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
+                    
+                    // 이미지 그리기
                     ctx.drawImage(img, 0, 0, width, height);
-                    const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+                    
+                    // ★ 핵심 변경: WebP 포맷으로 변환 (품질 0.8) ★
+                    const dataUrl = canvas.toDataURL("image/webp", 0.8);
                     resolve(dataUrl);
                 };
                 img.src = event.target.result;
@@ -93,22 +104,35 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
         if (!file) return;
         setIsCompressing(true);
         try {
-            if (file.size < 700 * 1024) {
+            // 빠른 반응속도를 위해 500KB 미만의 WebP는 원본 유지
+            if (file.size < 500 * 1024 && file.type.includes("webp")) {
                 const reader = new FileReader();
-                reader.onloadend = () => { setPreview(reader.result); onImageSelect(reader.result); setIsCompressing(false); };
+                reader.onloadend = () => { 
+                    setPreview(reader.result); 
+                    onImageSelect(reader.result); 
+                    setIsCompressing(false); 
+                };
                 reader.readAsDataURL(file);
             } else {
-                const compressedDataUrl = await compressImage(file);
-                if (compressedDataUrl.length > 1000000) {
-                        alert("이미지 용량이 너무 큽니다 (1MB 초과).\n더 작은 이미지를 사용하거나 이미지를 잘라서 올려주세요.");
-                        setPreview(""); onImageSelect("");
+                // 그 외 모든 이미지는 WebP 변환 엔진 가동
+                const compressedDataUrl = await compressImageToWebP(file);
+                
+                // Base64 문자열 길이 체크 (약 1.5MB 제한)
+                if (compressedDataUrl.length > 1500000) { 
+                        alert("이미지 최적화 후에도 용량이 너무 큽니다.\n더 작은 이미지를 사용해주세요.");
+                        setPreview(""); 
+                        onImageSelect("");
                 } else {
                     setPreview(compressedDataUrl);
                     onImageSelect(compressedDataUrl);
                 }
                 setIsCompressing(false);
             }
-        } catch (e) { alert("이미지 처리 중 오류가 발생했습니다."); setIsCompressing(false); }
+        } catch (e) { 
+            console.error(e);
+            alert("이미지 변환 엔진 오류 발생"); 
+            setIsCompressing(false); 
+        }
     };
 
     const handleDelete = (e) => {
@@ -127,14 +151,25 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 onDrop={(e) => { e.preventDefault(); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
                 onClick={() => fileInputRef.current.click()}>
                 {isCompressing ? (
-                    <div className="flex flex-col items-center justify-center text-indigo-600"><Icon name="Loader2" className="w-8 h-8 animate-spin mb-2" /><span className="text-xs font-bold">이미지 최적화 중...</span></div>
+                    <div className="flex flex-col items-center justify-center text-indigo-600">
+                        <Icon name="Loader2" className="w-8 h-8 animate-spin mb-2" />
+                        <span className="text-xs font-bold">WebP 변환 중...</span>
+                    </div>
                 ) : (
                     preview && !preview.includes("📦") ? ( 
                         <div className="relative w-full h-full">
-                            <img src={preview} className="absolute inset-0 w-full h-full object-contain bg-slate-50" />
+                            <img src={preview} className="absolute inset-0 w-full h-full object-contain bg-slate-50" alt="preview" />
                             <button onClick={handleDelete} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors shadow-md z-10" title="이미지 삭제"><Icon name="X" className="w-4 h-4" /></button>
                         </div>
-                    ) : ( <div className="text-center p-4"><div className="mx-auto bg-black text-white w-10 h-10 rounded-lg flex items-center justify-center mb-2"><Icon name="UploadCloud" className="w-6 h-6" /></div><p className="text-sm text-slate-500 font-medium">클릭/드래그 업로드</p></div> )
+                    ) : ( 
+                        <div className="text-center p-4">
+                            <div className="mx-auto bg-slate-800 text-white w-10 h-10 rounded-lg flex items-center justify-center mb-2">
+                                <Icon name="Image" className="w-5 h-5" />
+                            </div>
+                            <p className="text-sm text-slate-500 font-medium">클릭하여 업로드</p>
+                            <span className="text-[10px] text-indigo-500 font-bold bg-indigo-50 px-2 py-1 rounded mt-1 inline-block">WebP Auto Convert</span>
+                        </div> 
+                    )
                 )}
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleFile(e.target.files[0])} />
             </div>
@@ -814,7 +849,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     };
 
     // 최종 주문 처리 (무통장 입금)
-    const handleFinalOrder = async () => {
+    const handleFinalOrder = async (e) => {
         if (!depositor.trim()) return alert("입금자명을 입력해주세요.");
         
         if(!confirm("주문을 완료하시겠습니까?")) return;
