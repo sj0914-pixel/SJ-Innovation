@@ -1,4 +1,4 @@
-/* logic.js - Base64 Size Increase & Safety Patch */
+/* logic.js - FINAL SAFETY PATCH */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -42,7 +42,7 @@ const formatDate = (dateInput) => {
 };
 
 // ----------------------------------------------------
-// [1] 공통 컴포넌트 (이미지 업로더 - Base64 제한 상향)
+// [1] 공통 컴포넌트 (이미지 업로더 - 강화된 안전장치)
 // ----------------------------------------------------
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
@@ -54,9 +54,10 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const handleFile = (file) => {
         if (!file) return;
 
-        // 파일 크기(KB) 3MB 제한
+        // [최종 수정] 파일 크기(KB) 3MB 제한 유지
         if (file.size > 3 * 1024 * 1024) {
             alert("이미지 용량이 3MB를 초과합니다.\n더 작은 이미지를 사용해주세요.");
+            if(fileInputRef.current) fileInputRef.current.value = '';
             return;
         }
 
@@ -65,26 +66,29 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
         
         reader.onload = (e) => {
             const result = e.target.result;
-            // [수정] Base64 문자열 길이 제한 상향 (약 3MB)
+            
+            // Base64 문자열 길이 제한 (4MB) 유지
             if (result.length > 4000000) { 
-                alert("Base64 인코딩 후 크기가 너무 큽니다. 다시 시도해주세요.");
+                alert("Base64 인코딩 후 크기가 너무 큽니다. 다른 파일로 시도해주세요.");
                 setPreview("");
                 onImageSelect("");
             } else {
                 setPreview(result);
-                onImageSelect(result); // 부모 컴포넌트로 데이터 전달
+                onImageSelect(result); 
             }
             setIsLoading(false);
         };
         
         reader.onerror = () => {
-            alert("이미지를 읽는 중 오류가 발생했습니다.");
+            // [강화된 안전장치] 오류 발생 시 사용자에게 알리고 로딩 상태 해제
+            alert("이미지를 읽는 중 오류가 발생했습니다. 파일이 손상되었거나 브라우저 문제일 수 있습니다.");
             setIsLoading(false);
+            setPreview("");
+            onImageSelect("");
         };
 
         reader.readAsDataURL(file);
 
-        // [추가] 업로드 직후 Input 초기화 (안전 장치)
         if(fileInputRef.current) fileInputRef.current.value = '';
     };
 
