@@ -12,7 +12,7 @@ const useLucide = () => {
 
 // ★ 배너 이미지 설정 (상단 배너 교체됨) ★
 const BANNER_IMAGES = {
-    top: "https://i.ibb.co/k6s1knxx/image.png", // 사장님이 주신 티니핑 배너
+    top: "https://i.ibb.co/MxNMKN6q/1.webp"
     middle: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=1974&auto=format&fit=crop" 
 };
 
