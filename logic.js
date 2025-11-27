@@ -1,4 +1,4 @@
-/* logic.js - Final Fix (PW: 0914) */
+/* logic.js - Bank Transfer Edition */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,8 +10,15 @@ const useLucide = () => {
     }); 
 };
 
+// ★ 사장님 계좌 정보 (여기만 수정해서 쓰세요) ★
+const BANK_INFO = {
+    bankName: "신한은행",
+    accountNumber: "110-123-456789",
+    holder: "SJ이노베이션"
+};
+
 // 택배사 목록
-const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달"];
+const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
 
 // 복구용 샘플 데이터
 const INITIAL_PRODUCTS = [
@@ -205,7 +212,7 @@ const MyPage = ({ user, onClose }) => {
 };
 
 // ----------------------------------------------------
-// [3] 관리자 페이지 (대시보드형 UI)
+// [3] 관리자 페이지
 // ----------------------------------------------------
 const AdminPage = ({ onLogout, onToShop }) => {
     const [products, setProducts] = useState([]);
@@ -268,7 +275,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
         if (filterStatus !== "전체" && o.status !== filterStatus) return false;
         if (searchTerm) {
             const u = getUserInfo(o.userId);
-            const searchStr = `${o.orderNo} ${o.userName} ${u.storeName || ""} ${u.repName || ""}`.toLowerCase();
+            const searchStr = `${o.orderNo} ${o.userName} ${u.storeName || ""} ${u.repName || ""} ${o.depositor || ""}`.toLowerCase();
             if(!searchStr.includes(searchTerm.toLowerCase())) return false;
         }
         if(filterDate !== "전체") {
@@ -312,7 +319,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
             const u = getUserInfo(o.userId);
             return {
                 "시스템ID": o.id, "주문번호": o.orderNo, "상태": o.status, "주문일": new Date(o.date).toLocaleDateString(),
-                "주문자": u.storeName || o.userName, "연락처": u.mobile, "주소": u.address,
+                "주문자": u.storeName || o.userName, "연락처": u.mobile, "입금자명": o.depositor || u.repName, "주소": u.address,
                 "상품": o.items.map(i=>`${i.name}(${i.quantity})`).join(", "), "총액": o.totalAmount,
                 "택배사": o.courier || "", "송장번호": o.trackingNumber || ""
             };
@@ -486,6 +493,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                                     <td className="p-3">
                                                         <div className="font-bold">{u.storeName || o.userName}</div>
                                                         <div className="text-xs text-slate-400">{u.mobile}</div>
+                                                        {o.depositor && <div className="text-xs text-indigo-600 font-bold">입금: {o.depositor}</div>}
                                                     </td>
                                                     <td className="p-3 max-w-xs whitespace-normal">
                                                         <div className="text-xs text-slate-600 leading-tight">
@@ -760,6 +768,8 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
 const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     const [cart, setCart] = useState([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const [isOrderModalOpen, setIsOrderModalOpen] = useState(false); // 주문 모달 상태
+    const [depositor, setDepositor] = useState(""); // 입금자명
     const [selectedCategory, setSelectedCategory] = useState("전체");
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -775,18 +785,36 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         });
         alert("장바구니에 추가되었습니다.");
     };
-    const handlePlaceOrder = async () => {
+
+    // 주문 모달 열기
+    const openOrderModal = () => {
         if(cart.length === 0) return;
-        if(!confirm("총 " + formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0)) + "원 발주하시겠습니까?")) return;
+        setDepositor(user.repName || ""); // 기본값: 대표자명
+        setIsOrderModalOpen(true);
+    };
+
+    // 최종 주문 처리 (무통장 입금)
+    const handleFinalOrder = async () => {
+        if (!depositor.trim()) return alert("입금자명을 입력해주세요.");
+        
+        if(!confirm("주문을 완료하시겠습니까?")) return;
+        
         try {
             const uid = window.auth.currentUser ? window.auth.currentUser.uid : "admin_manual";
             await window.fb.addDoc(window.fb.collection(window.db, "orders"), {
                 userId: uid, userEmail: user.email, userName: user.storeName || "미등록상점",
-                items: cart, totalAmount: cart.reduce((a,c)=>a+c.price*c.quantity,0), date: new Date().toISOString(), status: "접수대기"
+                items: cart, totalAmount: cart.reduce((a,c)=>a+c.price*c.quantity,0), 
+                date: new Date().toISOString(), status: "접수대기",
+                paymentMethod: "무통장입금", depositor: depositor, bankInfo: BANK_INFO
             });
-            alert("발주가 접수되었습니다."); setCart([]); setIsCartOpen(false);
+            
+            alert(`[주문 완료]\n\n${BANK_INFO.bankName} ${BANK_INFO.accountNumber}\n예금주: ${BANK_INFO.holder}\n\n위 계좌로 입금 부탁드립니다.`);
+            setCart([]); 
+            setIsCartOpen(false);
+            setIsOrderModalOpen(false);
         } catch(e) { alert("실패: " + e.message); }
     };
+
     const filteredProducts = products.filter(p => {
         const matchCat = selectedCategory === "전체" || p.category === selectedCategory;
         const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -882,7 +910,38 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                 </div>
                             ))}
                         </div>
-                        {cart.length>0 && <div className="border-t pt-4"><div className="flex justify-between mb-4"><span className="text-slate-600">총 공급가액</span><span className="font-bold text-xl">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span></div><button onClick={handlePlaceOrder} className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg flex justify-center items-center gap-2 transition-all hover:bg-slate-900"><Icon name="Truck" className="w-5 h-5" />발주 신청하기</button></div>}
+                        {cart.length>0 && <div className="border-t pt-4"><div className="flex justify-between mb-4"><span className="text-slate-600">총 공급가액</span><span className="font-bold text-xl">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span></div><button onClick={openOrderModal} className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg flex justify-center items-center gap-2 transition-all hover:bg-slate-900"><Icon name="Truck" className="w-5 h-5" />발주 신청하기</button></div>}
+                    </div>
+                </div>
+            )}
+            {isOrderModalOpen && (
+                <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 transition-all animate-in fade-in">
+                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 relative">
+                        <button onClick={()=>setIsOrderModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
+                        <h3 className="text-xl font-bold mb-2">주문서 작성 및 계좌 확인</h3>
+                        <p className="text-sm text-slate-500 mb-6">무통장 입금 정보를 확인해 주세요.</p>
+                        
+                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-6">
+                            <div className="text-xs text-blue-600 font-bold mb-1">입금하실 계좌</div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="font-bold text-lg text-slate-800">{BANK_INFO.bankName} {BANK_INFO.accountNumber}</span>
+                                <button onClick={()=>{navigator.clipboard.writeText(BANK_INFO.accountNumber); alert("계좌번호가 복사되었습니다.");}} className="text-xs bg-white border border-blue-200 px-2 py-1 rounded text-blue-600 hover:bg-blue-100">복사</button>
+                            </div>
+                            <div className="text-sm text-slate-600">예금주: {BANK_INFO.holder}</div>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-bold mb-1 text-slate-700">입금자명 (필수)</label>
+                            <input type="text" className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="예: 김철수 (SJ문구)" value={depositor} onChange={(e)=>setDepositor(e.target.value)} />
+                            <p className="text-xs text-slate-400 mt-1">* 실제 입금하시는 분의 성함을 입력해주세요.</p>
+                        </div>
+
+                        <div className="flex justify-between items-center mb-4 pt-4 border-t">
+                            <span className="text-slate-600 font-bold">총 결제금액</span>
+                            <span className="text-xl font-bold text-blue-600">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span>
+                        </div>
+
+                        <button onClick={handleFinalOrder} className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 shadow-lg">입금 확인 요청 (주문 완료)</button>
                     </div>
                 </div>
             )}
