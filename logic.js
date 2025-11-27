@@ -119,7 +119,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
 };
 
 // ----------------------------------------------------
-// [2] 마이페이지 (추천인 표시 추가됨)
+// [2] 마이페이지 (추천인 표시)
 // ----------------------------------------------------
 const MyPage = ({ user, onClose }) => {
     const [myOrders, setMyOrders] = useState([]);
@@ -164,7 +164,6 @@ const MyPage = ({ user, onClose }) => {
                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">대표자</div><div className="font-bold">{user.repName}</div></div>
                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">이메일</div><div className="font-bold">{user.email}</div></div>
                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">연락처</div><div className="font-bold">{user.mobile || "정보 없음"}</div></div>
-                            {/* ▼ 추천인 정보 추가됨 */}
                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">추천인</div><div className="font-bold text-indigo-600">{user.recommender || "없음"}</div></div>
                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">주소</div><div className="font-bold">{user.address || "정보 없음"}</div></div>
                         </div>
@@ -203,7 +202,7 @@ const MyPage = ({ user, onClose }) => {
 };
 
 // ----------------------------------------------------
-// [3] 관리자 페이지
+// [3] 관리자 페이지 (엑셀 다운로드/업로드 추가됨)
 // ----------------------------------------------------
 const AdminPage = ({ onLogout, onToShop }) => {
     const [products, setProducts] = useState([]);
@@ -216,6 +215,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [editingProduct, setEditingProduct] = useState(null);
     const [thumbImage, setThumbImage] = useState("");
     const [detailImage, setDetailImage] = useState("");
+    const excelInputRef = useRef(null);
     useLucide();
 
     useEffect(() => {
@@ -275,6 +275,79 @@ const AdminPage = ({ onLogout, onToShop }) => {
         try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { status: "배송완료" }); } catch(e) { alert("실패"); }
     };
 
+    // --- 엑셀 관련 기능 시작 ---
+    const handleExcelDownload = () => {
+        if(!window.XLSX) { alert("엑셀 라이브러리가 로드되지 않았습니다. 새로고침 해주세요."); return; }
+        
+        // 다운로드할 대상: '접수대기' 상태인 신규 주문
+        const targetOrders = orders.filter(o => o.status === '접수대기');
+        if(targetOrders.length === 0) { alert("다운로드할 신규 주문이 없습니다."); return; }
+
+        const excelData = targetOrders.map(o => {
+            const u = getUserInfo(o.userId);
+            // 상품 내역을 문자열 하나로 묶음
+            const itemsStr = o.items.map(i => `${i.name}(${i.quantity})`).join(", ");
+            
+            return {
+                "시스템ID": o.id, // 나중에 업로드할 때 식별용 (필수)
+                "주문번호": o.orderNo,
+                "주문일시": new Date(o.date).toLocaleString(),
+                "주문자명": u.storeName || o.userName,
+                "연락처": u.mobile || "",
+                "주소": u.address || "",
+                "상품내역": itemsStr,
+                "총금액": o.totalAmount,
+                "송장번호": "" // 여기에 입력해서 업로드하라고 비워둠
+            };
+        });
+
+        const ws = window.XLSX.utils.json_to_sheet(excelData);
+        const wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, ws, "신규주문");
+        window.XLSX.writeFile(wb, `신규주문발주서_${new Date().toISOString().slice(0,10)}.xlsx`);
+    };
+
+    const handleExcelUpload = async (e) => {
+        if(!window.XLSX) { alert("엑셀 라이브러리 로드 오류"); return; }
+        const file = e.target.files[0];
+        if(!file) return;
+
+        if(!confirm("엑셀 파일을 업로드하여 송장번호를 일괄 등록하시겠습니까?\n'시스템ID'와 '송장번호' 컬럼이 있어야 합니다.")) return;
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = window.XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const rows = window.XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
+                
+                let successCount = 0;
+                
+                // 일괄 업데이트
+                for (let row of rows) {
+                    const docId = row["시스템ID"];
+                    const trackNum = row["송장번호"];
+
+                    if(docId && trackNum) {
+                        // DB 업데이트 (status -> 배송중, trackingNumber 등록)
+                        await window.fb.updateDoc(window.fb.doc(window.db, "orders", docId), {
+                            status: "배송중",
+                            trackingNumber: String(trackNum) // 숫자일 수 있으니 문자열로 변환
+                        });
+                        successCount++;
+                    }
+                }
+                alert(`총 ${successCount}건의 송장이 등록되었습니다.`);
+                e.target.value = ""; // 초기화
+            } catch(err) {
+                alert("엑셀 처리 중 오류 발생: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+    // --- 엑셀 관련 기능 끝 ---
+
     const handleSaveProduct = async (e) => {
         e.preventDefault();
         const form = e.target;
@@ -322,10 +395,17 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200 overflow-x-auto min-h-[500px]">
                     {tab === "orders" && (
                         <div>
-                            <div className="flex border-b bg-slate-50">
-                                <button onClick={()=>setOrderSubTab("new")} className={`flex-1 py-3 font-bold text-sm ${orderSubTab==="new"?"bg-white border-t-2 border-indigo-500 text-indigo-600":"text-slate-500 hover:text-slate-700"}`}>📦 신규 주문 (접수대기)</button>
-                                <button onClick={()=>setOrderSubTab("shipping")} className={`flex-1 py-3 font-bold text-sm ${orderSubTab==="shipping"?"bg-white border-t-2 border-indigo-500 text-indigo-600":"text-slate-500 hover:text-slate-700"}`}>🚚 배송 관리 (배송중/완료)</button>
-                                <button onClick={()=>setOrderSubTab("cancel")} className={`flex-1 py-3 font-bold text-sm ${orderSubTab==="cancel"?"bg-white border-t-2 border-red-500 text-red-600":"text-slate-500 hover:text-slate-700"}`}>🚫 취소 내역</button>
+                            <div className="flex flex-col md:flex-row border-b bg-slate-50 justify-between items-center pr-2">
+                                <div className="flex w-full md:w-auto">
+                                    <button onClick={()=>setOrderSubTab("new")} className={`flex-1 md:flex-none px-6 py-3 font-bold text-sm ${orderSubTab==="new"?"bg-white border-t-2 border-indigo-500 text-indigo-600":"text-slate-500 hover:text-slate-700"}`}>📦 신규 주문 (접수대기)</button>
+                                    <button onClick={()=>setOrderSubTab("shipping")} className={`flex-1 md:flex-none px-6 py-3 font-bold text-sm ${orderSubTab==="shipping"?"bg-white border-t-2 border-indigo-500 text-indigo-600":"text-slate-500 hover:text-slate-700"}`}>🚚 배송 관리 (배송중/완료)</button>
+                                    <button onClick={()=>setOrderSubTab("cancel")} className={`flex-1 md:flex-none px-6 py-3 font-bold text-sm ${orderSubTab==="cancel"?"bg-white border-t-2 border-red-500 text-red-600":"text-slate-500 hover:text-slate-700"}`}>🚫 취소 내역</button>
+                                </div>
+                                <div className="flex gap-2 p-2">
+                                    <button onClick={handleExcelDownload} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1"><Icon name="Download" className="w-3 h-3"/> 주문서 엑셀 다운</button>
+                                    <button onClick={()=>excelInputRef.current.click()} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1"><Icon name="Upload" className="w-3 h-3"/> 송장 일괄 등록</button>
+                                    <input type="file" ref={excelInputRef} className="hidden" accept=".xlsx, .xls" onChange={handleExcelUpload} />
+                                </div>
                             </div>
 
                             <table className="w-full text-left text-sm whitespace-nowrap">
