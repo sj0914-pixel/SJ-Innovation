@@ -1,4 +1,4 @@
-/* logic.js - Beta Feedback Fixed & Banner Tab Restored */
+/* logic.js - Fixed Banner Upload & Removed Defaults */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,10 +10,10 @@ const useLucide = () => {
     }); 
 };
 
-// ★ 기본 배너 (DB에 없을 경우 표시될 이미지) ★
+// ★ 기본 배너 삭제 (빈 값으로 설정) ★
 const DEFAULT_BANNERS = {
-    top: "https://i.ibb.co/k6s1knxx/image.png", 
-    middle: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=1974&auto=format&fit=crop" 
+    top: "", 
+    middle: "" 
 };
 
 const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
@@ -27,7 +27,6 @@ const BANK_INFO = {
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
 const Icon = ({ name, ...props }) => {
-    // Boxes -> ShoppingCart로 매핑 변경
     const iconName = name === "Boxes" ? "ShoppingCart" : (name.charAt(0).toLowerCase() + name.slice(1));
     return <i data-lucide={iconName} {...props}></i>;
 };
@@ -44,7 +43,7 @@ const formatDate = (dateInput) => {
 };
 
 // ----------------------------------------------------
-// [1] 공통 컴포넌트 (WebP 엔진)
+// [1] 공통 컴포넌트 (이미지 업로더 개선판)
 // ----------------------------------------------------
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
@@ -53,11 +52,14 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
 
     useEffect(() => { setPreview(currentImage); }, [currentImage]);
 
+    // 고용량 이미지 압축 함수
     const compressImageToWebP = (file) => {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
+            reader.readAsDataURL(file);
             reader.onload = (event) => {
                 const img = new Image();
+                img.src = event.target.result;
                 img.onload = () => {
                     const canvas = document.createElement("canvas");
                     let width = img.width;
@@ -71,43 +73,51 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
                     ctx.drawImage(img, 0, 0, width, height);
-                    const dataUrl = canvas.toDataURL("image/webp", 0.8);
-                    resolve(dataUrl);
+                    // WebP 변환 (품질 0.8)
+                    resolve(canvas.toDataURL("image/webp", 0.8));
                 };
-                img.src = event.target.result;
+                img.onerror = (error) => reject(error);
             };
-            reader.readAsDataURL(file);
+            reader.onerror = (error) => reject(error);
         });
     };
 
     const handleFile = async (file) => {
         if (!file) return;
         setIsCompressing(true);
+
         try {
-            if (file.size < 500 * 1024 && file.type.includes("webp")) {
+            // [수정] 1. 이미 WebP이고 용량이 작으면(500KB 미만) 변환 없이 바로 사용 (멈춤 방지)
+            if (file.type === "image/webp" && file.size < 500 * 1024) {
                 const reader = new FileReader();
-                reader.onloadend = () => { 
-                    setPreview(reader.result); 
-                    onImageSelect(reader.result); 
-                    setIsCompressing(false); 
+                reader.onloadend = () => {
+                    setPreview(reader.result);
+                    onImageSelect(reader.result);
+                    setIsCompressing(false);
                 };
                 reader.readAsDataURL(file);
+                return;
+            }
+
+            // [수정] 2. 그 외의 경우 압축 진행
+            const compressedDataUrl = await compressImageToWebP(file);
+            
+            // 용량 체크 (2MB 제한)
+            if (compressedDataUrl.length > 2000000) { 
+                alert("이미지 용량이 너무 큽니다. 더 작은 이미지를 사용해주세요.");
+                setPreview(""); 
+                onImageSelect("");
             } else {
-                const compressedDataUrl = await compressImageToWebP(file);
-                if (compressedDataUrl.length > 2000000) { 
-                        alert("이미지 용량이 너무 큽니다.");
-                        setPreview(""); 
-                        onImageSelect("");
-                } else {
-                    setPreview(compressedDataUrl);
-                    onImageSelect(compressedDataUrl);
-                }
-                setIsCompressing(false);
+                setPreview(compressedDataUrl);
+                onImageSelect(compressedDataUrl);
             }
         } catch (e) { 
-            console.error(e);
-            alert("이미지 변환 오류"); 
-            setIsCompressing(false); 
+            console.error("Image Error:", e);
+            alert("이미지 처리 중 오류가 발생했습니다."); 
+        } finally {
+            setIsCompressing(false);
+            // 같은 파일 다시 선택 가능하게 초기화
+            if(fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -129,7 +139,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 {isCompressing ? (
                     <div className="flex flex-col items-center justify-center text-indigo-600">
                         <Icon name="Loader2" className="w-8 h-8 animate-spin mb-2" />
-                        <span className="text-xs font-bold">변환 중...</span>
+                        <span className="text-xs font-bold">처리 중...</span>
                     </div>
                 ) : (
                     preview && !preview.includes("📦") ? ( 
@@ -243,7 +253,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
     
-    // [수정] 기본 날짜를 '오늘'로 설정
     const getToday = () => {
         const d = new Date();
         return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
@@ -422,7 +431,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         reader.readAsArrayBuffer(file);
     };
     
-    // [수정] 상품 저장 시 isHidden 필드 처리 추가
     const handleSaveProduct = async (e) => {
         e.preventDefault(); const form = e.target;
         const newProd = { 
@@ -437,7 +445,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
             detailImage: detailImage || "", 
             description: form.pDescription.value, 
             rating: "5.0",
-            isHidden: form.pIsHidden.checked // 판매 중지 체크 여부 저장
+            isHidden: form.pIsHidden.checked 
         };
         try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨"); } catch (err) { alert(err.message); }
     };
@@ -1007,9 +1015,12 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
-                <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 min-h-[160px]">
-                    <img src={banners.top} alt="Top Banner" className="w-full h-40 sm:h-52 object-cover" fetchPriority="high" decoding="sync"/>
-                </div>
+                {/* 배너 조건부 렌더링: 이미지가 있을 때만 표시 */}
+                {banners.top && (
+                    <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 min-h-[160px]">
+                        <img src={banners.top} alt="Top Banner" className="w-full h-40 sm:h-52 object-cover" fetchPriority="high" decoding="sync"/>
+                    </div>
+                )}
 
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide">
                     {CATEGORIES.map(cat => ( <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all duration-300 ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button> ))}
@@ -1034,7 +1045,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                     </div>
                                 </div>
                             </div>
-                            {index === 7 && (
+                            {index === 7 && banners.middle && (
                                 <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 min-h-[128px]">
                                     <img src={banners.middle} alt="Middle Banner" className="w-full h-32 sm:h-40 object-cover" />
                                 </div>
