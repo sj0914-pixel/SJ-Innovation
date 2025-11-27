@@ -795,7 +795,7 @@ const LoginPage = ({ onAdminLogin }) => {
         <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8">
             <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all duration-300 ${isLoginMode?'max-w-md p-8':'max-w-3xl p-8'}`}>
                 <div className="text-center mb-8">{/* 로고 이미지 (높이 h-16 등으로 크기 조절 가능) */}
-                <img src="https://i.ibb.co/8Dv3VSts/image.png" alt="Logo" className="h-20 w-auto object-contain mx-auto mb-4" /><h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1><p className="text-slate-500 mt-2 text-sm">SJ Innovation</p></div>
+                <img src="https://i.ibb.co/LF7PbQv/image.png" alt="Logo" className="h-20 w-auto object-contain mx-auto mb-4" /><h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1><p className="text-slate-500 mt-2 text-sm">SJ Innovation</p></div>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {isLoginMode ? (
                         <div className="space-y-4">
@@ -863,7 +863,10 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
         <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-right duration-300 min-h-screen flex flex-col pb-[80px]">
             <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center justify-between">
                 <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="ArrowLeft" className="w-7 h-7 text-slate-800" /></button>
-                <div className="flex-1 flex justify-center"><div className="font-bold text-lg bg-slate-800 text-white px-3 py-1 rounded cursor-pointer" onClick={goHome}>SJ Innovation</div></div>
+                <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
+                {/* 글씨 태그를 싹 지우고 이미지만 남깁니다 */}
+                <img src="여기에_대표님_로고_주소" alt="Logo" className="h-10 w-auto object-contain" />
+            </div>
                 <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="X" className="w-6 h-6 text-slate-600" /></button>
             </div>
             <div className="flex-1 overflow-y-auto">
