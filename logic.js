@@ -1,4 +1,4 @@
-/* logic.js - Bank Transfer Edition */
+/* logic.js - Search Fixed Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -8,13 +8,6 @@ const useLucide = () => {
     useEffect(() => { 
         if (window.lucide) window.lucide.createIcons(); 
     }); 
-};
-
-// ★ 사장님 계좌 정보 (여기만 수정해서 쓰세요) ★
-const BANK_INFO = {
-    bankName: "카카오뱅크",
-    accountNumber: "3333-24-2073558",
-    holder: "운병민"
 };
 
 // 택배사 목록
@@ -40,6 +33,9 @@ const Icon = ({ name, ...props }) => {
 };
 
 const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
+
+// 날짜 포맷팅 (YYYY-MM-DD)
+const formatDate = (date) => date.toISOString().slice(0, 10);
 
 // ----------------------------------------------------
 // [1] 공통 컴포넌트
@@ -212,7 +208,7 @@ const MyPage = ({ user, onClose }) => {
 };
 
 // ----------------------------------------------------
-// [3] 관리자 페이지
+// [3] 관리자 페이지 (검색 버튼 로직 수정됨)
 // ----------------------------------------------------
 const AdminPage = ({ onLogout, onToShop }) => {
     const [products, setProducts] = useState([]);
@@ -220,12 +216,27 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [orders, setOrders] = useState([]);
     const [tab, setTab] = useState("orders");
     
-    // UI 상태
-    const [selectedIds, setSelectedIds] = useState(new Set());
-    const [filterStatus, setFilterStatus] = useState("전체");
-    const [filterDate, setFilterDate] = useState("전체"); 
-    const [searchTerm, setSearchTerm] = useState("");
+    // 입력값 상태 (UI에 보여지는 값)
+    const [searchInputs, setSearchInputs] = useState({
+        status: "전체",
+        dateType: "전체", // 오늘, 7일, 30일, 전체
+        startDate: "",
+        endDate: "",
+        searchType: "주문자명",
+        keyword: ""
+    });
 
+    // 적용된 필터 상태 (실제 리스트 필터링에 사용 - 검색 버튼 누를 때 갱신)
+    const [appliedFilters, setAppliedFilters] = useState({
+        status: "전체",
+        dateType: "전체",
+        startDate: "",
+        endDate: "",
+        searchType: "주문자명",
+        keyword: ""
+    });
+
+    const [selectedIds, setSelectedIds] = useState(new Set());
     const [selectedUser, setSelectedUser] = useState(null);
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
@@ -261,6 +272,63 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
 
+    // 검색 버튼 핸들러
+    const handleSearch = () => {
+        setAppliedFilters({ ...searchInputs });
+        setSelectedIds(new Set()); // 검색 시 선택 초기화
+    };
+
+    // 초기화 버튼 핸들러
+    const handleReset = () => {
+        const resetState = {
+            status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: ""
+        };
+        setSearchInputs(resetState);
+        setAppliedFilters(resetState);
+        setSelectedIds(new Set());
+    };
+
+    // 날짜 버튼 핸들러
+    const handleDateBtn = (type) => {
+        const today = new Date();
+        let start = new Date();
+        
+        if (type === "오늘") { /* start = today */ }
+        else if (type === "7일") { start.setDate(today.getDate() - 7); }
+        else if (type === "30일") { start.setDate(today.getDate() - 30); }
+        
+        setSearchInputs(prev => ({
+            ...prev,
+            dateType: type,
+            startDate: type === "전체" ? "" : formatDate(start),
+            endDate: type === "전체" ? "" : formatDate(today)
+        }));
+    };
+
+    // 필터링 로직 (appliedFilters 기준)
+    const filteredOrders = orders.filter(o => {
+        // 1. 상태 필터
+        if (appliedFilters.status !== "전체" && o.status !== appliedFilters.status) return false;
+        
+        // 2. 검색어 필터
+        if (appliedFilters.keyword) {
+            const u = getUserInfo(o.userId);
+            const keyword = appliedFilters.keyword.toLowerCase();
+            let target = "";
+            if (appliedFilters.searchType === "주문자명") target = `${o.userName} ${u.storeName || ""} ${u.repName || ""}`;
+            else if (appliedFilters.searchType === "주문번호") target = o.orderNo;
+            
+            if (!target.toLowerCase().includes(keyword)) return false;
+        }
+
+        // 3. 날짜 필터
+        if (appliedFilters.startDate && appliedFilters.endDate) {
+            const orderDate = formatDate(new Date(o.date));
+            if (orderDate < appliedFilters.startDate || orderDate > appliedFilters.endDate) return false;
+        }
+        return true;
+    });
+
     const toggleSelect = (id) => {
         const newSet = new Set(selectedIds);
         if(newSet.has(id)) newSet.delete(id); else newSet.add(id);
@@ -270,24 +338,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         if(e.target.checked) setSelectedIds(new Set(filteredOrders.map(o=>o.id)));
         else setSelectedIds(new Set());
     };
-
-    const filteredOrders = orders.filter(o => {
-        if (filterStatus !== "전체" && o.status !== filterStatus) return false;
-        if (searchTerm) {
-            const u = getUserInfo(o.userId);
-            const searchStr = `${o.orderNo} ${o.userName} ${u.storeName || ""} ${u.repName || ""} ${o.depositor || ""}`.toLowerCase();
-            if(!searchStr.includes(searchTerm.toLowerCase())) return false;
-        }
-        if(filterDate !== "전체") {
-            const d = new Date(o.date);
-            const now = new Date();
-            const diff = (now - d) / (1000 * 60 * 60 * 24);
-            if(filterDate === "오늘" && diff > 1) return false;
-            if(filterDate === "7일" && diff > 7) return false;
-            if(filterDate === "30일" && diff > 30) return false;
-        }
-        return true;
-    });
 
     const countStatus = (status) => orders.filter(o => o.status === status).length;
 
@@ -405,24 +455,25 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             ))}
                         </div>
 
+                        {/* 🔹 검색 필터 영역 */}
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">기간</span>
                                 <div className="flex gap-1">
                                     {["오늘","7일","30일","전체"].map(d => (
-                                        <button key={d} onClick={()=>setFilterDate(d)} className={`px-3 py-1.5 border rounded text-xs font-bold ${filterDate===d ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 hover:bg-slate-50"}`}>{d}</button>
+                                        <button key={d} onClick={()=>handleDateBtn(d)} className={`px-3 py-1.5 border rounded text-xs font-bold ${searchInputs.dateType===d ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 hover:bg-slate-50"}`}>{d}</button>
                                     ))}
                                 </div>
-                                <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500" disabled value={new Date().toISOString().slice(0,10)}/>
+                                <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500" value={searchInputs.startDate} onChange={(e)=>setSearchInputs({...searchInputs, startDate: e.target.value})} />
                                 <span className="text-slate-400">~</span>
-                                <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500" disabled value={new Date().toISOString().slice(0,10)}/>
+                                <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500" value={searchInputs.endDate} onChange={(e)=>setSearchInputs({...searchInputs, endDate: e.target.value})} />
                             </div>
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">배송상태</span>
                                 <div className="flex gap-4">
                                     {["전체", "접수대기", "배송중", "배송완료", "주문취소"].map(s => (
                                         <label key={s} className="flex items-center gap-2 cursor-pointer text-sm">
-                                            <input type="radio" name="status" checked={filterStatus === s} onChange={()=>setFilterStatus(s)} className="accent-blue-600" /> 
+                                            <input type="radio" name="status" checked={searchInputs.status === s} onChange={()=>setSearchInputs({...searchInputs, status: s})} className="accent-blue-600" /> 
                                             {s === "접수대기" ? "결제완료(신규)" : s}
                                         </label>
                                     ))}
@@ -430,11 +481,14 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
                             <div className="flex flex-col md:flex-row gap-4 items-center border-t pt-4">
                                 <span className="w-20 font-bold text-sm text-slate-600">상세조건</span>
-                                <select className="border rounded px-2 py-2 text-sm bg-slate-50 min-w-[120px]"><option>주문자명</option><option>주문번호</option></select>
-                                <input className="border rounded px-3 py-2 text-sm w-full md:w-96" placeholder="검색어 입력" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
+                                <select className="border rounded px-2 py-2 text-sm bg-slate-50 min-w-[120px]" value={searchInputs.searchType} onChange={(e)=>setSearchInputs({...searchInputs, searchType: e.target.value})}>
+                                    <option value="주문자명">주문자명</option>
+                                    <option value="주문번호">주문번호</option>
+                                </select>
+                                <input className="border rounded px-3 py-2 text-sm w-full md:w-96" placeholder="검색어 입력" value={searchInputs.keyword} onChange={(e)=>setSearchInputs({...searchInputs, keyword: e.target.value})} onKeyDown={(e)=>{if(e.key==='Enter') handleSearch()}} />
                                 <div className="ml-auto flex gap-2">
-                                    <button onClick={()=>{setSearchTerm(""); setFilterStatus("전체"); setFilterDate("전체");}} className="px-4 py-2 border rounded text-sm font-bold hover:bg-slate-50">초기화</button>
-                                    <button className="px-6 py-2 bg-blue-600 text-white rounded text-sm font-bold hover:bg-blue-700 shadow-sm">검색</button>
+                                    <button onClick={handleReset} className="px-4 py-2 border rounded text-sm font-bold hover:bg-slate-50">초기화</button>
+                                    <button onClick={handleSearch} className="px-6 py-2 bg-blue-600 text-white rounded text-sm font-bold hover:bg-blue-700 shadow-sm">검색</button>
                                 </div>
                             </div>
                         </div>
@@ -629,7 +683,6 @@ const LoginPage = ({ onAdminLogin }) => {
         e.preventDefault();
         setLoading(true);
 
-        // ▼ 비밀번호 0914로 수정되었습니다.
         if(isLoginMode && formData.username === 'sj' && formData.password === '0914') {
              try {
                 await window.fb.signInUser(window.auth, "admin@sj.com", "sjmaster0914");
@@ -718,6 +771,13 @@ const LoginPage = ({ onAdminLogin }) => {
             {isAddrOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300"><div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative shadow-2xl flex flex-col"><div className="p-3 border-b flex justify-between font-bold bg-slate-50"><span>주소 검색</span><button onClick={()=>setIsAddrOpen(false)} className="hover:bg-slate-100 p-2 rounded-full"><Icon name="X"/></button></div><div ref={addrWrapRef} className="flex-1 w-full bg-slate-100 relative"></div></div></div>}
         </div>
     );
+};
+
+// ★ 사장님 계좌 정보 (여기만 수정해서 쓰세요) ★
+const BANK_INFO = {
+    bankName: "신한은행",
+    accountNumber: "110-123-456789",
+    holder: "SJ이노베이션"
 };
 
 const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
