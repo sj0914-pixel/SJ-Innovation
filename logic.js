@@ -10,12 +10,6 @@ const useLucide = () => {
     }); 
 };
 
-// ★ 기본 배너 (DB에 없을 경우 표시될 이미지) ★
-const DEFAULT_BANNERS = {
-    top: "https://i.ibb.co/k6s1knxx/image.png", 
-    middle: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=1974&auto=format&fit=crop" 
-};
-
 // 택배사 목록
 const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
 
