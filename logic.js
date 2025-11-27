@@ -380,9 +380,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     )}
                     {tab === "users" && (
                         <table className="w-full text-left text-sm whitespace-nowrap">
-                            <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">관리</th></tr></thead>
+                            <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">추천인</th><th className="p-4">관리</th></tr></thead>
                             <tbody className="divide-y divide-slate-100">
-                                {users.map(u=>(<tr key={u.id} className="hover:bg-slate-50"><td className="p-4 font-bold">{u.storeName}</td><td className="p-4">{u.repName}</td><td className="p-4">{u.email}</td><td className="p-4 flex gap-2"><button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs">삭제</button></td></tr>))}
+                                {users.map(u=>(<tr key={u.id} className="hover:bg-slate-50"><td className="p-4 font-bold">{u.storeName}</td><td className="p-4">{u.repName}</td><td className="p-4">{u.email}</td><td className="p-4 text-indigo-600 font-medium">{u.recommender || "-"}</td><td className="p-4 flex gap-2"><button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs">삭제</button></td></tr>))}
                             </tbody>
                         </table>
                     )}
@@ -424,6 +424,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">대표자명</span><span className="font-bold">{selectedUser.repName || "미입력"}</span></div>
                                 <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">연락처</span><span className="font-bold">{selectedUser.mobile || "미입력"}</span></div>
                             </div>
+                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">추천인(영업담당)</span><span className="font-bold text-indigo-600">{selectedUser.recommender || "없음"}</span></div>
                             <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">사업자등록번호</span><span className="font-bold">{selectedUser.businessNumber || "미입력"}</span></div>
                             <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">주소</span><span className="font-bold">{selectedUser.address || "미입력"}</span></div>
                             <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">이메일</span><span className="font-bold">{selectedUser.email || "미입력"}</span></div>
@@ -463,7 +464,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 };
 
 // ----------------------------------------------------
-// [4] 로그인 페이지
+// [4] 로그인 페이지 (추천인 추가됨)
 // ----------------------------------------------------
 const LoginPage = ({ onAdminLogin }) => {
     const [isLoginMode, setIsLoginMode] = useState(true);
@@ -471,7 +472,7 @@ const LoginPage = ({ onAdminLogin }) => {
     const [rememberMe, setRememberMe] = useState(false);
     const addrWrapRef = useRef(null);
     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '', name: '', mobile: '', email: '', zipcode: '', address: '', addressDetail: '', businessType: '문구/팬시점', storeName: '', repName: '', businessNumber: '', businessCategory: '', businessItem: '', taxEmail: '' });
+    const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '', name: '', mobile: '', email: '', zipcode: '', address: '', addressDetail: '', businessType: '문구/팬시점', storeName: '', repName: '', businessNumber: '', businessCategory: '', businessItem: '', taxEmail: '', recommender: '' });
     useLucide();
 
     useEffect(() => {
@@ -509,6 +510,7 @@ const LoginPage = ({ onAdminLogin }) => {
                     address: `${formData.address} ${formData.addressDetail}`, businessType: formData.businessType,
                     storeName: formData.storeName, repName: formData.repName, businessNumber: formData.businessNumber,
                     businessCategory: formData.businessCategory, businessItem: formData.businessItem, taxEmail: formData.taxEmail,
+                    recommender: formData.recommender, // 추천인 저장
                     joinedAt: new Date().toISOString(), status: "승인대기", isAdmin: false
                 });
                 alert("가입 완료! 자동 로그인됩니다.");
@@ -541,6 +543,11 @@ const LoginPage = ({ onAdminLogin }) => {
                                     <div><label className="block text-sm font-bold mb-1">이메일(로그인용)</label><input name="email" className="w-full p-2 border rounded" onChange={handleChange} required placeholder="example@naver.com" /></div>
                                 </div>
                                 <div className="mt-4"><label className="block text-sm font-bold mb-1">주소</label><div className="flex gap-2 mb-2"><input value={formData.zipcode} readOnly className="w-24 p-2 border bg-slate-100 rounded" /><button type="button" onClick={()=>setIsAddrOpen(true)} className="bg-slate-600 text-white px-3 rounded text-sm hover:bg-slate-700 transition-colors">주소검색</button></div><input value={formData.address} readOnly className="w-full p-2 border bg-slate-100 rounded mb-2" /><input name="addressDetail" className="w-full p-2 border rounded" placeholder="상세주소" onChange={handleChange} /></div>
+                                <div className="mt-4 pt-4 border-t border-slate-200">
+                                    <label className="block text-sm font-bold mb-1 text-indigo-900">추천인 코드 (영업담당자)</label>
+                                    <p className="text-xs text-slate-500 mb-2">귀하에게 이 쇼핑몰 입점을 제안하거나 안내해준 영업 담당자의 이름을 입력해주세요.</p>
+                                    <input name="recommender" className="w-full p-2 border border-indigo-200 bg-indigo-50 rounded placeholder-slate-400 focus:bg-white transition-colors" placeholder="예: 김철수 과장" onChange={handleChange} />
+                                </div>
                             </section>
                             <section className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                 <h3 className="font-bold mb-4 border-b border-slate-200 pb-2 text-slate-700">사업자 정보 <span className="text-red-500">*</span></h3>
