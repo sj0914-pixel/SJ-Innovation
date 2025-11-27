@@ -1,4 +1,4 @@
-/* logic.js - Beta Feedback Fixed Version */
+/* logic.js - Final Fix Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,26 +10,25 @@ const useLucide = () => {
     }); 
 };
 
-// ★ 기본 배너 (DB에 없을 경우 표시될 이미지) ★
+// ★ [수정됨] 기본 배너 (이미지 주소 삭제 - 관리자에서 등록 안하면 빈칸) ★
 const DEFAULT_BANNERS = {
-    top: "https://i.ibb.co/k6s1knxx/image.png", 
-    middle: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=1974&auto=format&fit=crop" 
+    top: "", 
+    middle: "" 
 };
 
 // 택배사 목록
 const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
 
-// 계좌 정보
+// ★ [수정됨] 계좌 정보 변경 (카카오뱅크) ★
 const BANK_INFO = {
-    bankName: "신한은행",
-    accountNumber: "110-123-456789",
-    holder: "SJ이노베이션"
+    bankName: "카카오뱅크",
+    accountNumber: "3333-24-2073558",
+    holder: "에스제이이노베이션"
 };
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
 const Icon = ({ name, ...props }) => {
-    // 아이콘 이름 안전하게 변환
     const iconName = name ? name.charAt(0).toLowerCase() + name.slice(1) : 'box';
     return <i data-lucide={iconName} {...props}></i>;
 };
@@ -41,7 +40,6 @@ const formatDate = (dateInput) => {
         if (!dateInput) return "";
         const d = new Date(dateInput);
         if (isNaN(d.getTime())) return ""; 
-        // 한국 시간대 기준 날짜 문자열 반환 (ISOString은 UTC 기준이라 날짜가 밀릴 수 있음)
         const offset = d.getTimezoneOffset() * 60000;
         const dateOffset = new Date(d.getTime() - offset);
         return dateOffset.toISOString().slice(0, 10);
@@ -250,7 +248,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
     
-    // ★ [요청반영] 기본값 날짜 오늘로 설정
+    // 기본값 날짜 오늘로 설정
     const getTodayStr = () => formatDate(new Date());
     const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
     const [appliedFilters, setAppliedFilters] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
@@ -272,7 +270,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            // 주문 번호 생성 로직
             const orderGroups = {};
             list.forEach(o => {
                 if(o.date) {
@@ -432,7 +429,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
             detailImage: detailImage || "", 
             description: form.pDescription.value, 
             rating: "5.0",
-            // ★ [요청반영] 판매 중지(숨김) 기능
             isHidden: form.pIsHidden.checked 
         };
         try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨"); } catch (err) { alert(err.message); }
@@ -768,9 +764,7 @@ const LoginPage = ({ onAdminLogin }) => {
                 const persistence = rememberMe ? window.fb.browserLocalPersistence : window.fb.browserSessionPersistence;
                 await window.fb.setPersistence(window.auth, persistence);
                 await window.fb.signInUser(window.auth, formData.username, formData.password);
-                // 로그인 성공 시 별도 얼럿 없이 상태 변경 기다림
             } else {
-                // ★ [요청반영] 비밀번호 유효성 검사 (영문+숫자 포함 8자리 이상)
                 const pwRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
                 if(!pwRegex.test(formData.password)) {
                     alert("비밀번호는 영문과 숫자를 모두 포함하여 8자리 이상이어야 합니다.");
@@ -789,7 +783,6 @@ const LoginPage = ({ onAdminLogin }) => {
                     recommender: formData.recommender,
                     joinedAt: new Date().toISOString(), status: "승인대기", isAdmin: false
                 });
-                // ★ [요청반영] 회원가입 후 alert 제거 -> 자동 로그인 흐름으로 사용자 경험 개선
             }
         } catch(err) { 
             alert("오류: " + err.message); 
@@ -813,7 +806,6 @@ const LoginPage = ({ onAdminLogin }) => {
                         <div className="space-y-6">
                             <section className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                 <h3 className="font-bold mb-4 border-b border-slate-200 pb-2 text-slate-700">필수정보 <span className="text-red-500">*</span></h3>
-                                {/* ★ [요청반영] 아이디(표시용) 입력 필드 삭제함 */}
                                 <div className="grid md:grid-cols-2 gap-4">
                                     <div><label className="block text-sm font-bold mb-1">이메일(로그인용 ID)</label><input name="email" className="w-full p-2 border rounded" onChange={handleChange} required placeholder="example@naver.com" /></div>
                                     <div><label className="block text-sm font-bold mb-1">이름</label><input name="name" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
@@ -879,7 +871,6 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
                         {product.image.startsWith('data:') || product.image.startsWith('.') || product.image.startsWith('http') ? <img src={product.image} alt={product.name} className="w-full h-full object-contain" /> : <span className="text-[8rem] drop-shadow-2xl">{product.image}</span>}
                     </div>
                     <div className="px-5 pb-8">
-                        {/* ★ [요청반영] 상세페이지 상단 상품명 추가 */}
                         <div className="mb-4">
                             <span className="text-sm text-slate-500 font-bold block mb-1">{product.category}</span>
                             <h1 className="text-2xl font-bold text-slate-900 leading-tight">{product.name}</h1>
@@ -897,7 +888,6 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 sm:p-4 shadow z-30 safe-area-bottom transition-all duration-300">
                 <div className="max-w-3xl mx-auto flex gap-3">
                     <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1"><button onClick={()=>handleQuantityChange(-1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Minus" className="w-4 h-4"/></button><span className="font-bold w-8 text-center">{qty}</span><button onClick={()=>handleQuantityChange(1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Plus" className="w-4 h-4"/></button></div>
-                    {/* ★ [요청반영] 장바구니 담기 후 뒤로가기 삭제 (onBack 호출 제거) */}
                     <button onClick={()=>{onAddToCart(product,qty);}} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-slate-900"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
                 </div>
             </div>
@@ -937,7 +927,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             if (idx > -1) { const newCart = [...prev]; newCart[idx].quantity += quantity; return newCart; }
             return [...prev, { ...product, quantity }];
         });
-        // ★ [요청반영] 팝업만 뜨고 페이지는 유지됨
         alert("장바구니에 상품이 담겼습니다.");
     };
 
@@ -967,7 +956,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     };
 
     const filteredProducts = products.filter(p => {
-        // ★ [요청반영] 판매 중지(숨김) 상품 필터링 (isHidden이 true면 안보임)
         if (p.isHidden) return false;
         const matchCat = selectedCategory === "전체" || p.category === selectedCategory;
         const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -1009,7 +997,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                             <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1"><Icon name="Settings" className="w-3 h-3"/>관리자</button>
                         )}
                         <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all">
-                            {/* ★ [요청반영] 장바구니 아이콘 교체 (Boxes -> ShoppingCart) */}
+                            {/* ★ [수정됨] 장바구니 아이콘 (기존 Boxes -> ShoppingCart) 확실하게 적용 */}
                             <Icon name="ShoppingCart" className="w-6 h-6" />
                             {cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}
                         </button>
@@ -1020,16 +1008,18 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
-                {/* Top Banner (Dynamic) */}
-                <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 min-h-[160px]">
-                    <img 
-                        src={banners.top} 
-                        alt="Top Banner" 
-                        className="w-full h-40 sm:h-52 object-cover" 
-                        fetchPriority="high"
-                        decoding="sync"
-                    />
-                </div>
+                {/* Top Banner (Dynamic) - 배너 없으면 안보임 */}
+                {banners.top && (
+                    <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 min-h-[160px]">
+                        <img 
+                            src={banners.top} 
+                            alt="Top Banner" 
+                            className="w-full h-40 sm:h-52 object-cover" 
+                            fetchPriority="high"
+                            decoding="sync"
+                        />
+                    </div>
+                )}
 
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide">
                     {CATEGORIES.map(cat => ( <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all duration-300 ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button> ))}
@@ -1054,8 +1044,8 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                     </div>
                                 </div>
                             </div>
-                            {/* Middle Banner (Dynamic) */}
-                            {index === 7 && (
+                            {/* Middle Banner (Dynamic) - 배너 없으면 안보임 */}
+                            {index === 7 && banners.middle && (
                                 <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 min-h-[128px]">
                                     <img src={banners.middle} alt="Middle Banner" className="w-full h-32 sm:h-40 object-cover" />
                                 </div>
@@ -1131,7 +1121,6 @@ const App = () => {
     const [firebaseReady, setFirebaseReady] = useState(false);
 
     useEffect(() => {
-        // ★ [요청반영] 로딩 최적화: 체크 주기를 100ms -> 30ms로 단축하여 체감 속도 개선
         const interval = setInterval(() => {
             if (window.fb && window.auth && window.db) {
                 setFirebaseReady(true);
