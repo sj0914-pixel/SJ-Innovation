@@ -1,4 +1,4 @@
-/* logic.js - Custom Banner Applied Version */
+/* logic.js - Banner High Performance Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,9 +10,9 @@ const useLucide = () => {
     }); 
 };
 
-// ★ 배너 이미지 설정 (상단 배너 교체됨) ★
+// ★ 배너 이미지 설정 ★
 const BANNER_IMAGES = {
-    top: "https://i.ibb.co/MxNMKN6q/1.webp"
+    top: "https://i.ibb.co/k6s1knxx/image.png", // 사장님 크리스마스 배너
     middle: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=1974&auto=format&fit=crop" 
 };
 
@@ -28,7 +28,6 @@ const BANK_INFO = {
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-// 복구용 샘플 데이터
 const INITIAL_PRODUCTS = [
     { id: "p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.8" },
     { id: "p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.7" },
@@ -47,7 +46,6 @@ const Icon = ({ name, ...props }) => {
 
 const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
-// 날짜 포맷 안전하게 처리
 const formatDate = (dateInput) => {
     try {
         if (!dateInput) return "";
@@ -406,6 +404,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
+                        {/* 대시보드 */}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                             {[
                                 { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" },
@@ -421,6 +420,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             ))}
                         </div>
 
+                        {/* 필터 */}
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">기간</span>
@@ -455,6 +455,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
                         </div>
 
+                        {/* 리스트 */}
                         <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3 bg-slate-50/50">
                                 <div className="flex gap-2 items-center">
@@ -882,9 +883,15 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
-                {/* Top Banner (Compact Size Fixed) */}
+                {/* Top Banner (Compact Size Fixed & Priority Loading) */}
                 <div className="mb-8 rounded-2xl overflow-hidden shadow-lg">
-                    <img src={BANNER_IMAGES.top} alt="Top Banner" className="w-full h-40 sm:h-52 object-cover" />
+                    <img 
+                        src={BANNER_IMAGES.top} 
+                        alt="Top Banner" 
+                        className="w-full h-40 sm:h-52 object-cover" 
+                        fetchPriority="high"
+                        decoding="sync"
+                    />
                 </div>
 
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide">
