@@ -1,4 +1,4 @@
-/* logic.js - Banner Management + WebP Engine Version */
+/* logic.js - Beta Feedback Fixed Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -28,19 +28,9 @@ const BANK_INFO = {
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-const INITIAL_PRODUCTS = [
-    { id: "p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.8" },
-    { id: "p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.7" },
-    { id: "p3", name: "슈팅스타 캐치티니핑 하츄핑 모자목도리", category: "유아동의류", price: 16900, originPrice: 29900, image: "🧢", description: "하츄핑 캐릭터 모자/목도리 일체형.", stock: 100, minQty: 20, cartonQty: 20, rating: "4.9" },
-    { id: "p4", name: "슈팅스타 캐치티니핑 하츄핑 벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, image: "🧤", description: "따뜻한 하츄핑 벙어리 장갑.", stock: 100, minQty: 20, cartonQty: 20, rating: "5.0" },
-    { id: "p5", name: "캐치티니핑 시즌6 미스터리 뱃지 1팩", category: "완구/교구", price: 8900, originPrice: 12900, image: "🌟", description: "랜덤 미스터리 뱃지 1팩.", stock: 200, minQty: 10, cartonQty: 10, rating: "4.5" },
-    { id: "p6", name: "브레인롯 랜덤딱지 1박스", category: "완구/교구", price: 22900, originPrice: 39900, image: "🎲", description: "대유행 브레인롯 랜덤 딱지 1박스.", stock: 200, minQty: 10, cartonQty: 10, rating: "4.8" },
-    { id: "p7", name: "젠바디 코로나 자가진단 키트", category: "생활/건강", price: 9350, originPrice: 13500, image: "🩺", description: "빠르고 정확한 자가진단 키트.", stock: 500, minQty: 20, cartonQty: 20, rating: "4.9" },
-    { id: "p8", name: "참존 마스크", category: "생활/건강", price: 10900, originPrice: 20000, image: "😷", description: "편안한 호흡 참존 마스크.", stock: 500, minQty: 16, cartonQty: 16, rating: "4.7" }
-];
-
 const Icon = ({ name, ...props }) => {
-    const iconName = name.charAt(0).toLowerCase() + name.slice(1);
+    // 아이콘 이름 안전하게 변환
+    const iconName = name ? name.charAt(0).toLowerCase() + name.slice(1) : 'box';
     return <i data-lucide={iconName} {...props}></i>;
 };
 
@@ -51,12 +41,15 @@ const formatDate = (dateInput) => {
         if (!dateInput) return "";
         const d = new Date(dateInput);
         if (isNaN(d.getTime())) return ""; 
-        return d.toISOString().slice(0, 10);
+        // 한국 시간대 기준 날짜 문자열 반환 (ISOString은 UTC 기준이라 날짜가 밀릴 수 있음)
+        const offset = d.getTimezoneOffset() * 60000;
+        const dateOffset = new Date(d.getTime() - offset);
+        return dateOffset.toISOString().slice(0, 10);
     } catch (e) { return ""; }
 };
 
 // ----------------------------------------------------
-// [1] 공통 컴포넌트 (WebP 엔진 적용 완료)
+// [1] 공통 컴포넌트
 // ----------------------------------------------------
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
@@ -65,7 +58,6 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
 
     useEffect(() => { setPreview(currentImage); }, [currentImage]);
 
-    // ★ [WebP 엔진] 고성능 이미지 처리 함수 ★
     const compressImageToWebP = (file) => {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -75,22 +67,15 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     const canvas = document.createElement("canvas");
                     let width = img.width;
                     let height = img.height;
-                    
-                    // 최대 해상도 제한 (배너 등 고려하여 1200px로 상향)
                     const MAX_WIDTH = 1200; 
                     if (width > MAX_WIDTH) { 
                         height *= MAX_WIDTH / width; 
                         width = MAX_WIDTH; 
                     }
-                    
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
-                    
-                    // 이미지 그리기
                     ctx.drawImage(img, 0, 0, width, height);
-                    
-                    // ★ 핵심 변경: WebP 포맷으로 변환 (품질 0.8) ★
                     const dataUrl = canvas.toDataURL("image/webp", 0.8);
                     resolve(dataUrl);
                 };
@@ -104,7 +89,6 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
         if (!file) return;
         setIsCompressing(true);
         try {
-            // 빠른 반응속도를 위해 500KB 미만의 WebP는 원본 유지
             if (file.size < 500 * 1024 && file.type.includes("webp")) {
                 const reader = new FileReader();
                 reader.onloadend = () => { 
@@ -114,12 +98,9 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 };
                 reader.readAsDataURL(file);
             } else {
-                // 그 외 모든 이미지는 WebP 변환 엔진 가동
                 const compressedDataUrl = await compressImageToWebP(file);
-                
-                // Base64 문자열 길이 체크 (약 2MB 제한 - 배너 고려 상향)
                 if (compressedDataUrl.length > 2000000) { 
-                        alert("이미지 최적화 후에도 용량이 너무 큽니다.\n더 작은 이미지를 사용해주세요.");
+                        alert("이미지 용량이 너무 큽니다. 더 작은 이미지를 사용해주세요.");
                         setPreview(""); 
                         onImageSelect("");
                 } else {
@@ -130,7 +111,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             }
         } catch (e) { 
             console.error(e);
-            alert("이미지 변환 엔진 오류 발생"); 
+            alert("이미지 변환 오류"); 
             setIsCompressing(false); 
         }
     };
@@ -153,21 +134,18 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 {isCompressing ? (
                     <div className="flex flex-col items-center justify-center text-indigo-600">
                         <Icon name="Loader2" className="w-8 h-8 animate-spin mb-2" />
-                        <span className="text-xs font-bold">WebP 변환 중...</span>
+                        <span className="text-xs font-bold">변환 중...</span>
                     </div>
                 ) : (
                     preview && !preview.includes("📦") ? ( 
                         <div className="relative w-full h-full">
                             <img src={preview} className="absolute inset-0 w-full h-full object-cover bg-slate-50" alt="preview" />
-                            <button onClick={handleDelete} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors shadow-md z-10" title="이미지 삭제"><Icon name="X" className="w-4 h-4" /></button>
+                            <button onClick={handleDelete} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors shadow-md z-10" title="삭제"><Icon name="X" className="w-4 h-4" /></button>
                         </div>
                     ) : ( 
                         <div className="text-center p-4">
-                            <div className="mx-auto bg-slate-800 text-white w-10 h-10 rounded-lg flex items-center justify-center mb-2">
-                                <Icon name="Image" className="w-5 h-5" />
-                            </div>
+                            <Icon name="Image" className="w-5 h-5 mx-auto text-slate-400 mb-2" />
                             <p className="text-sm text-slate-500 font-medium">클릭하여 업로드</p>
-                            <span className="text-[10px] text-indigo-500 font-bold bg-indigo-50 px-2 py-1 rounded mt-1 inline-block">WebP Auto Convert</span>
                         </div> 
                     )
                 )}
@@ -272,8 +250,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
     
-    const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" });
-    const [appliedFilters, setAppliedFilters] = useState({ status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" });
+    // ★ [요청반영] 기본값 날짜 오늘로 설정
+    const getTodayStr = () => formatDate(new Date());
+    const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
+    const [appliedFilters, setAppliedFilters] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
 
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [selectedUser, setSelectedUser] = useState(null);
@@ -281,6 +261,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [editingProduct, setEditingProduct] = useState(null);
     const [thumbImage, setThumbImage] = useState("");
     const [detailImage, setDetailImage] = useState("");
+    
     const excelInputRef = useRef(null);
     useLucide();
 
@@ -291,6 +272,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // 주문 번호 생성 로직
             const orderGroups = {};
             list.forEach(o => {
                 if(o.date) {
@@ -309,7 +291,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
             setOrders(list);
         });
 
-        // 배너 설정 가져오기
         const unsubBanner = onSnapshot(doc(window.db, "config", "banners"), (d) => {
             if(d.exists()) {
                 const data = d.data();
@@ -348,13 +329,27 @@ const AdminPage = ({ onLogout, onToShop }) => {
         const resetState = { status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" };
         setSearchInputs(resetState); setAppliedFilters(resetState); setSelectedIds(new Set());
     };
+    
     const handleDateBtn = (type) => {
         const today = new Date();
         let start = new Date();
-        if (type === "7일") start.setDate(today.getDate() - 7);
-        else if (type === "30일") start.setDate(today.getDate() - 30);
-        setSearchInputs(prev => ({ ...prev, dateType: type, startDate: type === "전체" ? "" : formatDate(start), endDate: type === "전체" ? "" : formatDate(today) }));
+        
+        if (type === "오늘") {
+            // start, today 모두 오늘
+        } else if (type === "7일") {
+            start.setDate(today.getDate() - 7);
+        } else if (type === "30일") {
+            start.setDate(today.getDate() - 30);
+        }
+
+        setSearchInputs(prev => ({ 
+            ...prev, 
+            dateType: type, 
+            startDate: type === "전체" ? "" : formatDate(start), 
+            endDate: type === "전체" ? "" : formatDate(today) 
+        }));
     };
+    
     const handleCardClick = (targetStatus) => {
         let realStatus = targetStatus;
         if (targetStatus === "결제완료(신규)") realStatus = "접수대기";
@@ -422,26 +417,36 @@ const AdminPage = ({ onLogout, onToShop }) => {
         };
         reader.readAsArrayBuffer(file);
     };
-    const handleLoadInitialData = async () => {
-        if(!confirm("샘플 데이터를 복구하시겠습니까?")) return;
-        try { await Promise.all(INITIAL_PRODUCTS.map(p => window.fb.setDoc(window.fb.doc(window.db, "products_final_v5", p.id), p))); alert("복구 완료!"); } catch(e) { alert("오류: " + e.message); }
-    };
+
     const handleSaveProduct = async (e) => {
         e.preventDefault(); const form = e.target;
-        const newProd = { name: form.pName.value, category: form.pCategory.value, price: Number(form.pPrice.value)||0, originPrice: Number(form.pOriginPrice.value)||0, stock: Number(form.pStock.value)||0, minQty: Number(form.pMinQty.value)||1, cartonQty: Number(form.pCartonQty.value)||1, image: thumbImage || "📦", detailImage: detailImage || "", description: form.pDescription.value, rating: "5.0" };
+        const newProd = { 
+            name: form.pName.value, 
+            category: form.pCategory.value, 
+            price: Number(form.pPrice.value)||0, 
+            originPrice: Number(form.pOriginPrice.value)||0, 
+            stock: Number(form.pStock.value)||0, 
+            minQty: Number(form.pMinQty.value)||1, 
+            cartonQty: Number(form.pCartonQty.value)||1, 
+            image: thumbImage || "📦", 
+            detailImage: detailImage || "", 
+            description: form.pDescription.value, 
+            rating: "5.0",
+            // ★ [요청반영] 판매 중지(숨김) 기능
+            isHidden: form.pIsHidden.checked 
+        };
         try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨"); } catch (err) { alert(err.message); }
     };
     const handleDeleteProduct = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "products_final_v5", id)); };
     const handleDeleteUser = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "users", id)); };
     
-    // 배너 저장 함수
     const handleSaveBanners = async () => {
         try {
             await window.fb.setDoc(window.fb.doc(window.db, "config", "banners"), {
                 top: topBanner,
                 middle: middleBanner
             });
-            alert("배너 설정이 저장되었습니다.\nWebP 변환 엔진이 적용되었습니다.");
+            alert("배너 저장 완료");
         } catch(e) {
             alert("배너 저장 실패: " + e.message);
         }
@@ -607,20 +612,27 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     <div className="bg-white rounded-lg shadow-sm border p-4">
                         <div className="flex justify-between mb-4">
                             <h3 className="font-bold text-lg">상품 목록</h3>
-                            <div className="flex gap-2">
-                                <button onClick={handleLoadInitialData} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm flex gap-1 items-center"><Icon name="RefreshCw" className="w-4 h-4"/>샘플 데이터 복구</button>
-                                <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button>
-                            </div>
+                            <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button>
                         </div>
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">이미지</th><th className="p-4">상품명</th><th className="p-4">가격</th><th className="p-4">재고</th><th className="p-4">관리</th></tr></thead>
+                            <thead className="bg-slate-100 uppercase font-bold text-slate-500">
+                                <tr>
+                                    <th className="p-4">이미지</th>
+                                    <th className="p-4">상품명</th>
+                                    <th className="p-4">가격</th>
+                                    <th className="p-4">재고</th>
+                                    <th className="p-4">상태</th>
+                                    <th className="p-4">관리</th>
+                                </tr>
+                            </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {products.map(p=>(
-                                    <tr key={p.id} className="hover:bg-slate-50">
+                                    <tr key={p.id} className={`hover:bg-slate-50 ${p.isHidden ? "bg-slate-100 opacity-60" : ""}`}>
                                         <td className="p-4 text-2xl">{p.image && (p.image.startsWith('data:') || p.image.startsWith('http')) ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
                                         <td className="p-4"><div className="font-bold">{p.name}</div><div className="text-xs text-slate-400">{p.category}</div></td>
                                         <td className="p-4">₩{formatPrice(p.price)}</td>
                                         <td className="p-4 font-bold text-blue-600">{p.stock}</td>
+                                        <td className="p-4">{p.isHidden ? <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">판매중지</span> : <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded font-bold">판매중</span>}</td>
                                         <td className="p-4 flex gap-2"><button onClick={()=>openEditModal(p)} className="bg-slate-200 px-3 py-1 rounded text-xs font-bold">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-3 py-1 rounded text-xs font-bold">삭제</button></td>
                                     </tr>
                                 ))}
@@ -628,7 +640,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         </table>
                     </div>
                 )}
-                {/* ★ 배너 관리 탭 UI 추가 ★ */}
                 {tab === "banners" && (
                     <div className="bg-white rounded-lg shadow-sm border p-6 max-w-3xl mx-auto">
                         <div className="flex justify-between items-center mb-6">
@@ -638,13 +649,11 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         <div className="space-y-8">
                             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                 <h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="LayoutTemplate" className="w-5 h-5"/> 메인 상단 배너</h4>
-                                <p className="text-sm text-slate-500 mb-4">쇼핑몰 최상단에 노출되는 가장 큰 배너입니다.</p>
                                 <ImageUploader label="상단 배너 이미지 업로드" currentImage={topBanner} onImageSelect={setTopBanner} />
                             </div>
                             
                             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                 <h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="CreditCard" className="w-5 h-5"/> 중간 띠 배너</h4>
-                                <p className="text-sm text-slate-500 mb-4">상품 리스트 중간(8번째 상품 뒤)에 삽입되는 가로형 배너입니다.</p>
                                 <ImageUploader label="중간 배너 이미지 업로드" currentImage={middleBanner} onImageSelect={setMiddleBanner} />
                             </div>
                         </div>
@@ -677,6 +686,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
                         <h3 className="font-bold text-lg mb-4 border-b pb-2">{editingProduct ? "상품 수정" : "상품 등록"}</h3>
                         <form onSubmit={handleSaveProduct} className="space-y-3 text-sm">
+                            <div className="flex items-center gap-2 p-3 bg-red-50 rounded border border-red-100 mb-2">
+                                <input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/>
+                                <label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label>
+                            </div>
                             <div className="grid grid-cols-2 gap-2">
                                 <div><label className="block mb-1 font-bold">카테고리</label><select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded">{CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}</select></div>
                                 <div><label className="block mb-1 font-bold">재고</label><input name="pStock" type="number" defaultValue={editingProduct?.stock || 0} className="w-full border p-2 rounded" required /></div>
@@ -742,7 +755,7 @@ const LoginPage = ({ onAdminLogin }) => {
                         email: "admin@sj.com", storeName: "총괄관리자", repName: "SJ",
                         isAdmin: true, role: "master", joinedAt: new Date().toISOString()
                     });
-                    alert("관리자 계정이 생성되었습니다. 다시 로그인 버튼을 눌러주세요.");
+                    alert("관리자 계정 생성됨");
                 } catch(createErr) {
                     alert("관리자 접속 오류: " + createErr.message);
                 }
@@ -755,20 +768,33 @@ const LoginPage = ({ onAdminLogin }) => {
                 const persistence = rememberMe ? window.fb.browserLocalPersistence : window.fb.browserSessionPersistence;
                 await window.fb.setPersistence(window.auth, persistence);
                 await window.fb.signInUser(window.auth, formData.username, formData.password);
+                // 로그인 성공 시 별도 얼럿 없이 상태 변경 기다림
             } else {
-                if(formData.password !== formData.confirmPassword) { alert("비밀번호 불일치"); setLoading(false); return; }
+                // ★ [요청반영] 비밀번호 유효성 검사 (영문+숫자 포함 8자리 이상)
+                const pwRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+                if(!pwRegex.test(formData.password)) {
+                    alert("비밀번호는 영문과 숫자를 모두 포함하여 8자리 이상이어야 합니다.");
+                    setLoading(false);
+                    return;
+                }
+
+                if(formData.password !== formData.confirmPassword) { alert("비밀번호가 일치하지 않습니다."); setLoading(false); return; }
+                
                 const cred = await window.fb.createUser(window.auth, formData.email, formData.password);
                 await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), {
-                    email: formData.email, displayId: formData.username, name: formData.name, mobile: formData.mobile,
+                    email: formData.email, displayId: formData.email.split('@')[0], name: formData.name, mobile: formData.mobile,
                     address: `${formData.address} ${formData.addressDetail}`, businessType: formData.businessType,
                     storeName: formData.storeName, repName: formData.repName, businessNumber: formData.businessNumber,
                     businessCategory: formData.businessCategory, businessItem: formData.businessItem, taxEmail: formData.taxEmail,
                     recommender: formData.recommender,
                     joinedAt: new Date().toISOString(), status: "승인대기", isAdmin: false
                 });
-                alert("가입 완료! 자동 로그인됩니다.");
+                // ★ [요청반영] 회원가입 후 alert 제거 -> 자동 로그인 흐름으로 사용자 경험 개선
             }
-        } catch(err) { alert("오류: " + err.message); setLoading(false); }
+        } catch(err) { 
+            alert("오류: " + err.message); 
+            setLoading(false); 
+        }
     };
     const handleChange = (e) => setFormData(prev=>({...prev, [e.target.name]: e.target.value}));
 
@@ -787,13 +813,13 @@ const LoginPage = ({ onAdminLogin }) => {
                         <div className="space-y-6">
                             <section className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                 <h3 className="font-bold mb-4 border-b border-slate-200 pb-2 text-slate-700">필수정보 <span className="text-red-500">*</span></h3>
+                                {/* ★ [요청반영] 아이디(표시용) 입력 필드 삭제함 */}
                                 <div className="grid md:grid-cols-2 gap-4">
+                                    <div><label className="block text-sm font-bold mb-1">이메일(로그인용 ID)</label><input name="email" className="w-full p-2 border rounded" onChange={handleChange} required placeholder="example@naver.com" /></div>
                                     <div><label className="block text-sm font-bold mb-1">이름</label><input name="name" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
-                                    <div><label className="block text-sm font-bold mb-1">아이디(표시용)</label><input name="username" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
-                                    <div><label className="block text-sm font-bold mb-1">비밀번호</label><input name="password" type="password" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
+                                    <div><label className="block text-sm font-bold mb-1">비밀번호</label><input name="password" type="password" className="w-full p-2 border rounded" onChange={handleChange} required placeholder="영문, 숫자 포함 8자리 이상" /></div>
                                     <div><label className="block text-sm font-bold mb-1">비밀번호 확인</label><input name="confirmPassword" type="password" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
-                                    <div><label className="block text-sm font-bold mb-1">연락처</label><input name="mobile" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
-                                    <div><label className="block text-sm font-bold mb-1">이메일(로그인용)</label><input name="email" className="w-full p-2 border rounded" onChange={handleChange} required placeholder="example@naver.com" /></div>
+                                    <div className="md:col-span-2"><label className="block text-sm font-bold mb-1">연락처</label><input name="mobile" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
                                 </div>
                                 <div className="mt-4"><label className="block text-sm font-bold mb-1">주소</label><div className="flex gap-2 mb-2"><input value={formData.zipcode} readOnly className="w-24 p-2 border bg-slate-100 rounded" /><button type="button" onClick={()=>setIsAddrOpen(true)} className="bg-slate-600 text-white px-3 rounded text-sm hover:bg-slate-700 transition-colors">주소검색</button></div><input value={formData.address} readOnly className="w-full p-2 border bg-slate-100 rounded mb-2" /><input name="addressDetail" className="w-full p-2 border rounded" placeholder="상세주소" onChange={handleChange} /></div>
                                 <div className="mt-4 pt-4 border-t border-slate-200">
@@ -813,7 +839,10 @@ const LoginPage = ({ onAdminLogin }) => {
                             </section>
                         </div>
                     )}
-                    <button type="submit" disabled={loading} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-xl font-bold mt-6 transition-all duration-300 shadow-lg">{loading?"처리중...":(isLoginMode?"로그인하기":"회원가입 완료")}</button>
+                    <button type="submit" disabled={loading} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-xl font-bold mt-6 transition-all duration-300 shadow-lg flex items-center justify-center gap-2">
+                        {loading && <Icon name="Loader2" className="w-5 h-5 animate-spin" />}
+                        {loading ? "처리중..." : (isLoginMode ? "로그인하기" : "회원가입 완료")}
+                    </button>
                 </form>
                 <div className="mt-6 text-center text-sm"><button onClick={()=>setIsLoginMode(!isLoginMode)} className="underline font-bold text-slate-600 hover:text-slate-900 transition-colors">{isLoginMode?"사업자 회원가입":"로그인하기"}</button></div>
             </div>
@@ -850,6 +879,11 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
                         {product.image.startsWith('data:') || product.image.startsWith('.') || product.image.startsWith('http') ? <img src={product.image} alt={product.name} className="w-full h-full object-contain" /> : <span className="text-[8rem] drop-shadow-2xl">{product.image}</span>}
                     </div>
                     <div className="px-5 pb-8">
+                        {/* ★ [요청반영] 상세페이지 상단 상품명 추가 */}
+                        <div className="mb-4">
+                            <span className="text-sm text-slate-500 font-bold block mb-1">{product.category}</span>
+                            <h1 className="text-2xl font-bold text-slate-900 leading-tight">{product.name}</h1>
+                        </div>
                         <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100"><span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{formatPrice(product.price)}</span><span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{formatPrice(product.originPrice)}</span><span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">{Math.round((1-product.price/product.originPrice)*100)}% OFF</span></div>
                         <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100"><Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" /><div><span className="font-bold block text-sm">최소 {product.minQty}개 발주 가능 (1카톤 = {product.cartonQty}개)</span><span className="text-xs text-indigo-700 mt-1 block">도매 전용 상품 (카톤 단위 출고)</span><span className="text-xs text-red-600 font-bold mt-1 block">최대 5박스 한정 (대량 발주는 개별 문의)</span></div></div>
                         <div className="space-y-8">
@@ -863,7 +897,8 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 sm:p-4 shadow z-30 safe-area-bottom transition-all duration-300">
                 <div className="max-w-3xl mx-auto flex gap-3">
                     <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1"><button onClick={()=>handleQuantityChange(-1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Minus" className="w-4 h-4"/></button><span className="font-bold w-8 text-center">{qty}</span><button onClick={()=>handleQuantityChange(1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Plus" className="w-4 h-4"/></button></div>
-                    <button onClick={()=>{onAddToCart(product,qty); onBack();}} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-slate-900"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
+                    {/* ★ [요청반영] 장바구니 담기 후 뒤로가기 삭제 (onBack 호출 제거) */}
+                    <button onClick={()=>{onAddToCart(product,qty);}} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-slate-900"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
                 </div>
             </div>
         </div>
@@ -876,17 +911,16 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
 const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     const [cart, setCart] = useState([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
-    const [isOrderModalOpen, setIsOrderModalOpen] = useState(false); // 주문 모달 상태
-    const [depositor, setDepositor] = useState(""); // 입금자명
+    const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+    const [depositor, setDepositor] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("전체");
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showMyPage, setShowMyPage] = useState(false);
-    const [banners, setBanners] = useState(DEFAULT_BANNERS); // 배너 상태
+    const [banners, setBanners] = useState(DEFAULT_BANNERS);
     useLucide();
 
     useEffect(() => {
-        // 배너 설정 실시간 동기화
         if(window.fb) {
             const { doc, onSnapshot } = window.fb;
             const unsub = onSnapshot(doc(window.db, "config", "banners"), (d) => {
@@ -903,23 +937,20 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             if (idx > -1) { const newCart = [...prev]; newCart[idx].quantity += quantity; return newCart; }
             return [...prev, { ...product, quantity }];
         });
-        alert("장바구니에 추가되었습니다.");
+        // ★ [요청반영] 팝업만 뜨고 페이지는 유지됨
+        alert("장바구니에 상품이 담겼습니다.");
     };
 
-    // 주문 모달 열기 (장바구니 닫음)
     const openOrderModal = () => {
         if(cart.length === 0) return;
         setDepositor(user.repName || ""); 
-        setIsCartOpen(false); // 장바구니 닫기
+        setIsCartOpen(false);
         setIsOrderModalOpen(true);
     };
 
-    // 최종 주문 처리 (무통장 입금)
     const handleFinalOrder = async (e) => {
         if (!depositor.trim()) return alert("입금자명을 입력해주세요.");
-        
         if(!confirm("주문을 완료하시겠습니까?")) return;
-        
         try {
             const uid = window.auth.currentUser ? window.auth.currentUser.uid : "admin_manual";
             await window.fb.addDoc(window.fb.collection(window.db, "orders"), {
@@ -928,7 +959,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 date: new Date().toISOString(), status: "접수대기",
                 paymentMethod: "무통장입금", depositor: depositor, bankInfo: BANK_INFO
             });
-            
             alert(`[주문 완료]\n\n${BANK_INFO.bankName} ${BANK_INFO.accountNumber}\n예금주: ${BANK_INFO.holder}\n\n위 계좌로 입금 부탁드립니다.`);
             setCart([]); 
             setIsCartOpen(false);
@@ -937,6 +967,8 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     };
 
     const filteredProducts = products.filter(p => {
+        // ★ [요청반영] 판매 중지(숨김) 상품 필터링 (isHidden이 true면 안보임)
+        if (p.isHidden) return false;
         const matchCat = selectedCategory === "전체" || p.category === selectedCategory;
         const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
         return matchCat && matchSearch;
@@ -976,7 +1008,11 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                         {isAdmin && (
                             <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1"><Icon name="Settings" className="w-3 h-3"/>관리자</button>
                         )}
-                        <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="Boxes" className="w-6 h-6" />{cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}</button>
+                        <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all">
+                            {/* ★ [요청반영] 장바구니 아이콘 교체 (Boxes -> ShoppingCart) */}
+                            <Icon name="ShoppingCart" className="w-6 h-6" />
+                            {cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}
+                        </button>
                         <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
                         <button onClick={openMyPage} className="flex items-center gap-2 text-sm font-medium hover:bg-slate-100 p-2 rounded-full transition-all"><div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center"><Icon name="User" className="w-4 h-4" /></div><span className="hidden sm:block">{user.storeName || "내 정보"}</span></button>
                         <button onClick={onLogout} className="bg-slate-200 hover:bg-red-500 hover:text-white px-3 py-1 rounded font-bold text-sm transition-all duration-300">로그아웃</button>
@@ -1095,13 +1131,13 @@ const App = () => {
     const [firebaseReady, setFirebaseReady] = useState(false);
 
     useEffect(() => {
+        // ★ [요청반영] 로딩 최적화: 체크 주기를 100ms -> 30ms로 단축하여 체감 속도 개선
         const interval = setInterval(() => {
             if (window.fb && window.auth && window.db) {
-                console.log("React: Firebase is ready");
                 setFirebaseReady(true);
                 clearInterval(interval);
             }
-        }, 100);
+        }, 30);
         return () => clearInterval(interval);
     }, []);
 
@@ -1134,7 +1170,12 @@ const App = () => {
     const handleForceAdmin = () => { setIsAdmin(true); setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); };
     const handleLogout = () => { setIsAdmin(false); setAdminViewMode(false); setUser(null); window.fb.logOut(window.auth); };
 
-    if (!firebaseReady || loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">시스템 연결중...</div>;
+    if (!firebaseReady || loading) return (
+        <div className="h-screen flex flex-col items-center justify-center font-bold text-slate-400 bg-slate-50 gap-4">
+             <div className="w-10 h-10 border-4 border-slate-300 border-t-slate-800 rounded-full animate-spin"></div>
+             <div>시스템 연결중...</div>
+        </div>
+    );
     if (isAdmin && adminViewMode) return <AdminPage onLogout={handleLogout} onToShop={() => setAdminViewMode(false)} />;
     if (user) return <ShopPage products={products} user={user} onLogout={handleLogout} isAdmin={isAdmin} onToAdmin={() => setAdminViewMode(true)} />;
     return <LoginPage onAdminLogin={handleForceAdmin} />;
