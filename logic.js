@@ -794,7 +794,8 @@ const LoginPage = ({ onAdminLogin }) => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8">
             <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all duration-300 ${isLoginMode?'max-w-md p-8':'max-w-3xl p-8'}`}>
-                <div className="text-center mb-8"><div className="bg-slate-800 w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4 text-white text-2xl font-bold">S</div><h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1><p className="text-slate-500 mt-2 text-sm">SJ Innovation</p></div>
+                <div className="text-center mb-8">{/* 로고 이미지 (높이 h-16 등으로 크기 조절 가능) */}
+                <img src="https://i.ibb.co/8Dv3VSts/image.png" alt="Logo" className="h-20 w-auto object-contain mx-auto mb-4" /><h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1><p className="text-slate-500 mt-2 text-sm">SJ Innovation</p></div>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {isLoginMode ? (
                         <div className="space-y-4">
@@ -985,7 +986,8 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100 transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
-                        <div className="bg-slate-800 w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-lg">S</div>
+                        {/* 상단 미니 로고 */}
+                        <img src="https://i.ibb.co/LdPMppLv/image.png" alt="Logo" className="h-8 w-auto object-contain rounded-lg" />
                         <div className="flex flex-col"><span className="font-bold text-lg leading-none hidden sm:block">SJ Innovation</span></div>
                     </div>
                     <div className="flex-1 max-w-lg mx-4 relative hidden sm:block">
