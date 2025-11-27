@@ -1,4 +1,4 @@
-/* logic.js - Fixed Banner Size Version */
+/* logic.js - Image Link & Upload Hybrid Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -12,7 +12,7 @@ const useLucide = () => {
 
 // ★ 배너 이미지 설정 ★
 const BANNER_IMAGES = {
-    top: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=2070&auto=format&fit=crop", 
+    top: "https://i.ibb.co/k6s1knxx/image.png", 
     middle: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=1974&auto=format&fit=crop" 
 };
 
@@ -21,22 +21,16 @@ const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠�
 
 // 계좌 정보
 const BANK_INFO = {
-    bankName: "신한은행",
-    accountNumber: "110-123-456789",
-    holder: "SJ이노베이션"
+    bankName: "카카오뱅크",
+    accountNumber: "3333-24-2073558",
+    holder: "윤병민 에스제이이노베이"
 };
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
 const INITIAL_PRODUCTS = [
-    { id: "p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.8" },
-    { id: "p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.7" },
-    { id: "p3", name: "슈팅스타 캐치티니핑 하츄핑 모자목도리", category: "유아동의류", price: 16900, originPrice: 29900, image: "🧢", description: "하츄핑 캐릭터 모자/목도리 일체형.", stock: 100, minQty: 20, cartonQty: 20, rating: "4.9" },
-    { id: "p4", name: "슈팅스타 캐치티니핑 하츄핑 벙어리장갑", category: "유아동의류", price: 22900, originPrice: 32900, image: "🧤", description: "따뜻한 하츄핑 벙어리 장갑.", stock: 100, minQty: 20, cartonQty: 20, rating: "5.0" },
-    { id: "p5", name: "캐치티니핑 시즌6 미스터리 뱃지 1팩", category: "완구/교구", price: 8900, originPrice: 12900, image: "🌟", description: "랜덤 미스터리 뱃지 1팩.", stock: 200, minQty: 10, cartonQty: 10, rating: "4.5" },
-    { id: "p6", name: "브레인롯 랜덤딱지 1박스", category: "완구/교구", price: 22900, originPrice: 39900, image: "🎲", description: "대유행 브레인롯 랜덤 딱지 1박스.", stock: 200, minQty: 10, cartonQty: 10, rating: "4.8" },
-    { id: "p7", name: "젠바디 코로나 자가진단 키트", category: "생활/건강", price: 9350, originPrice: 13500, image: "🩺", description: "빠르고 정확한 자가진단 키트.", stock: 500, minQty: 20, cartonQty: 20, rating: "4.9" },
-    { id: "p8", name: "참존 마스크", category: "생활/건강", price: 10900, originPrice: 20000, image: "😷", description: "편안한 호흡 참존 마스크.", stock: 500, minQty: 16, cartonQty: 16, rating: "4.7" }
+    { id: "p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "https://via.placeholder.com/300?text=Item1", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.8" },
+    { id: "p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "https://via.placeholder.com/300?text=Item2", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.7" },
 ];
 
 const Icon = ({ name, ...props }) => {
@@ -61,83 +55,66 @@ const formatDate = (dateInput) => {
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
     const [preview, setPreview] = useState(currentImage || "");
-    const [isCompressing, setIsCompressing] = useState(false);
+    const [linkMode, setLinkMode] = useState(false); // 링크 입력 모드 스위치
+    const [urlInput, setUrlInput] = useState("");
 
     useEffect(() => { setPreview(currentImage); }, [currentImage]);
 
-    const compressImage = (file) => {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement("canvas");
-                    let width = img.width;
-                    let height = img.height;
-                    const MAX_WIDTH = 800; 
-                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(img, 0, 0, width, height);
-                    const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
-                    resolve(dataUrl);
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-    };
-
-    const handleFile = async (file) => {
+    const handleFile = (file) => {
         if (!file) return;
-        setIsCompressing(true);
-        try {
-            if (file.size < 700 * 1024) {
-                const reader = new FileReader();
-                reader.onloadend = () => { setPreview(reader.result); onImageSelect(reader.result); setIsCompressing(false); };
-                reader.readAsDataURL(file);
-            } else {
-                const compressedDataUrl = await compressImage(file);
-                if (compressedDataUrl.length > 1000000) {
-                        alert("이미지 용량이 너무 큽니다 (1MB 초과).\n더 작은 이미지를 사용하거나 이미지를 잘라서 올려주세요.");
-                        setPreview(""); onImageSelect("");
-                } else {
-                    setPreview(compressedDataUrl);
-                    onImageSelect(compressedDataUrl);
-                }
-                setIsCompressing(false);
-            }
-        } catch (e) { alert("이미지 처리 중 오류가 발생했습니다."); setIsCompressing(false); }
+        const reader = new FileReader();
+        reader.onloadend = () => { setPreview(reader.result); onImageSelect(reader.result); };
+        reader.readAsDataURL(file);
     };
 
-    const handleDelete = (e) => {
-        e.stopPropagation();
-        if (confirm("이미지를 삭제하시겠습니까?")) {
-            setPreview("");
-            onImageSelect("");
+    const handleUrlApply = () => {
+        if (urlInput.trim()) {
+            setPreview(urlInput);
+            onImageSelect(urlInput);
         }
     };
 
     return (
         <div className="mb-4">
-            <label className="block mb-1 font-bold text-sm text-slate-700">{label}</label>
-            <div className="border-2 border-dashed border-slate-300 rounded-lg flex flex-col justify-center items-center h-32 cursor-pointer hover:bg-slate-100 transition-colors relative overflow-hidden bg-white group"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
-                onClick={() => fileInputRef.current.click()}>
-                {isCompressing ? (
-                    <div className="flex flex-col items-center justify-center text-indigo-600"><Icon name="Loader2" className="w-8 h-8 animate-spin mb-2" /><span className="text-xs font-bold">이미지 최적화 중...</span></div>
-                ) : (
-                    preview && !preview.includes("📦") ? ( 
+            <div className="flex justify-between items-end mb-1">
+                <label className="font-bold text-sm text-slate-700">{label}</label>
+                <button type="button" onClick={() => setLinkMode(!linkMode)} className="text-xs text-indigo-600 underline font-bold">
+                    {linkMode ? "직접 업로드하기" : "이미지 주소(링크) 입력하기"}
+                </button>
+            </div>
+            
+            {linkMode ? (
+                <div className="flex gap-2">
+                    <input 
+                        type="text" 
+                        className="flex-1 border rounded px-2 py-2 text-sm" 
+                        placeholder="https://... 이미지 주소 붙여넣기" 
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                    />
+                    <button type="button" onClick={handleUrlApply} className="bg-slate-800 text-white text-xs px-3 rounded font-bold">확인</button>
+                </div>
+            ) : (
+                <div className="border-2 border-dashed border-slate-300 rounded-lg flex flex-col justify-center items-center h-32 cursor-pointer hover:bg-slate-100 transition-colors relative overflow-hidden bg-white group"
+                    onClick={() => fileInputRef.current.click()}>
+                    {preview ? ( 
                         <div className="relative w-full h-full">
                             <img src={preview} className="absolute inset-0 w-full h-full object-contain bg-slate-50" />
-                            <button onClick={handleDelete} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors shadow-md z-10" title="이미지 삭제"><Icon name="X" className="w-4 h-4" /></button>
+                            <button onClick={(e) => {e.stopPropagation(); setPreview(""); onImageSelect("");}} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full z-10"><Icon name="X" className="w-3 h-3" /></button>
                         </div>
-                    ) : ( <div className="text-center p-4"><div className="mx-auto bg-black text-white w-10 h-10 rounded-lg flex items-center justify-center mb-2"><Icon name="UploadCloud" className="w-6 h-6" /></div><p className="text-sm text-slate-500 font-medium">클릭/드래그 업로드</p></div> )
-                )}
-                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleFile(e.target.files[0])} />
-            </div>
+                    ) : ( <div className="text-center p-4"><Icon name="UploadCloud" className="w-6 h-6 mx-auto mb-1 text-slate-400" /><p className="text-xs text-slate-500">클릭하여 업로드</p></div> )
+                    }
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleFile(e.target.files[0])} />
+                </div>
+            )}
+            
+            {/* 미리보기 (링크 입력시 확인용) */}
+            {linkMode && preview && (
+                <div className="mt-2 h-24 border rounded overflow-hidden bg-slate-50 relative">
+                    <img src={preview} className="w-full h-full object-contain" />
+                    <button type="button" onClick={() => {setPreview(""); onImageSelect(""); setUrlInput("");}} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full"><Icon name="X" className="w-3 h-3" /></button>
+                </div>
+            )}
         </div>
     );
 };
@@ -404,7 +381,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* 대시보드 */}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                             {[
                                 { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" },
@@ -420,7 +396,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             ))}
                         </div>
 
-                        {/* 필터 */}
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">기간</span>
@@ -455,7 +430,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
                         </div>
 
-                        {/* 리스트 */}
                         <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3 bg-slate-50/50">
                                 <div className="flex gap-2 items-center">
@@ -883,9 +857,9 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
-                {/* Top Banner (Click to change image in BANNER_IMAGES const) */}
+                {/* Top Banner (Compact Size Fixed) */}
                 <div className="mb-8 rounded-2xl overflow-hidden shadow-lg">
-                    <img src={BANNER_IMAGES.top} alt="Top Banner" className="w-full h-40 sm:h-48 object-cover" />
+                    <img src={BANNER_IMAGES.top} alt="Top Banner" className="w-full h-40 sm:h-52 object-cover" />
                 </div>
 
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide">
@@ -911,7 +885,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                     </div>
                                 </div>
                             </div>
-                            {/* Middle Banner Insertion (After 8th item) */}
+                            {/* Middle Banner Insertion (Compact Size Fixed) */}
                             {index === 7 && (
                                 <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md">
                                     <img src={BANNER_IMAGES.middle} alt="Middle Banner" className="w-full h-32 sm:h-40 object-cover" />
