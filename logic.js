@@ -1,4 +1,4 @@
-/* logic.js - Banner High Performance Version + WebP Engine */
+/* logic.js - Banner Management + WebP Engine Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,9 +10,9 @@ const useLucide = () => {
     }); 
 };
 
-// ★ 배너 이미지 설정 ★
-const BANNER_IMAGES = {
-    top: "https://i.ibb.co/k6s1knxx/image.png", // 사장님 크리스마스 배너
+// ★ 기본 배너 (DB에 없을 경우 표시될 이미지) ★
+const DEFAULT_BANNERS = {
+    top: "https://i.ibb.co/k6s1knxx/image.png", 
     middle: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=1974&auto=format&fit=crop" 
 };
 
@@ -76,8 +76,8 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     let width = img.width;
                     let height = img.height;
                     
-                    // 최대 해상도 제한 (800px) - 모바일 최적화
-                    const MAX_WIDTH = 800; 
+                    // 최대 해상도 제한 (배너 등 고려하여 1200px로 상향)
+                    const MAX_WIDTH = 1200; 
                     if (width > MAX_WIDTH) { 
                         height *= MAX_WIDTH / width; 
                         width = MAX_WIDTH; 
@@ -117,8 +117,8 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 // 그 외 모든 이미지는 WebP 변환 엔진 가동
                 const compressedDataUrl = await compressImageToWebP(file);
                 
-                // Base64 문자열 길이 체크 (약 1.5MB 제한)
-                if (compressedDataUrl.length > 1500000) { 
+                // Base64 문자열 길이 체크 (약 2MB 제한 - 배너 고려 상향)
+                if (compressedDataUrl.length > 2000000) { 
                         alert("이미지 최적화 후에도 용량이 너무 큽니다.\n더 작은 이미지를 사용해주세요.");
                         setPreview(""); 
                         onImageSelect("");
@@ -158,7 +158,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 ) : (
                     preview && !preview.includes("📦") ? ( 
                         <div className="relative w-full h-full">
-                            <img src={preview} className="absolute inset-0 w-full h-full object-contain bg-slate-50" alt="preview" />
+                            <img src={preview} className="absolute inset-0 w-full h-full object-cover bg-slate-50" alt="preview" />
                             <button onClick={handleDelete} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors shadow-md z-10" title="이미지 삭제"><Icon name="X" className="w-4 h-4" /></button>
                         </div>
                     ) : ( 
@@ -265,7 +265,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [products, setProducts] = useState([]);
     const [users, setUsers] = useState([]);
     const [orders, setOrders] = useState([]);
+    const [bannerConfig, setBannerConfig] = useState(DEFAULT_BANNERS);
     const [tab, setTab] = useState("orders");
+    
+    // 배너 관리용 State
+    const [topBanner, setTopBanner] = useState("");
+    const [middleBanner, setMiddleBanner] = useState("");
     
     const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" });
     const [appliedFilters, setAppliedFilters] = useState({ status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" });
@@ -281,7 +286,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     useEffect(() => {
         if(!window.fb) return;
-        const { collection, onSnapshot } = window.fb;
+        const { collection, onSnapshot, doc } = window.fb;
         const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
@@ -303,7 +308,18 @@ const AdminPage = ({ onLogout, onToShop }) => {
             list.sort((a,b) => new Date(b.date) - new Date(a.date));
             setOrders(list);
         });
-        return () => { unsubProd(); unsubUser(); unsubOrder(); };
+
+        // 배너 설정 가져오기
+        const unsubBanner = onSnapshot(doc(window.db, "config", "banners"), (d) => {
+            if(d.exists()) {
+                const data = d.data();
+                setBannerConfig(data);
+                setTopBanner(data.top);
+                setMiddleBanner(data.middle);
+            }
+        });
+
+        return () => { unsubProd(); unsubUser(); unsubOrder(); unsubBanner(); };
     }, []);
 
     const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
@@ -417,6 +433,20 @@ const AdminPage = ({ onLogout, onToShop }) => {
     };
     const handleDeleteProduct = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "products_final_v5", id)); };
     const handleDeleteUser = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "users", id)); };
+    
+    // 배너 저장 함수
+    const handleSaveBanners = async () => {
+        try {
+            await window.fb.setDoc(window.fb.doc(window.db, "config", "banners"), {
+                top: topBanner,
+                middle: middleBanner
+            });
+            alert("배너 설정이 저장되었습니다.\nWebP 변환 엔진이 적용되었습니다.");
+        } catch(e) {
+            alert("배너 저장 실패: " + e.message);
+        }
+    };
+
     const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
     const openEditModal = (p) => { setEditingProduct(p); setThumbImage(p.image); setDetailImage(p.detailImage); setIsProductModalOpen(true); };
 
@@ -431,9 +461,11 @@ const AdminPage = ({ onLogout, onToShop }) => {
             </nav>
 
             <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6">
-                <div className="flex gap-2 border-b border-slate-300 pb-1">
-                    {["orders", "users", "products"].map(t => (
-                        <button key={t} onClick={()=>setTab(t)} className={`px-6 py-3 rounded-t-lg font-bold text-sm uppercase transition-colors ${tab===t ? "bg-white text-slate-900 border border-b-0 border-slate-300 shadow-sm" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}>{t === 'orders' ? '주문 통합 관리' : t === 'users' ? '회원 관리' : '상품 관리'}</button>
+                <div className="flex gap-2 border-b border-slate-300 pb-1 overflow-x-auto">
+                    {["orders", "users", "products", "banners"].map(t => (
+                        <button key={t} onClick={()=>setTab(t)} className={`px-6 py-3 rounded-t-lg font-bold text-sm uppercase transition-colors whitespace-nowrap ${tab===t ? "bg-white text-slate-900 border border-b-0 border-slate-300 shadow-sm" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}>
+                            {t === 'orders' ? '주문 통합 관리' : t === 'users' ? '회원 관리' : t === 'products' ? '상품 관리' : '배너 관리'}
+                        </button>
                     ))}
                 </div>
 
@@ -594,6 +626,28 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                )}
+                {/* ★ 배너 관리 탭 UI 추가 ★ */}
+                {tab === "banners" && (
+                    <div className="bg-white rounded-lg shadow-sm border p-6 max-w-3xl mx-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-lg">쇼핑몰 배너 관리 (WebP 자동 변환)</h3>
+                            <button onClick={handleSaveBanners} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg">설정 저장</button>
+                        </div>
+                        <div className="space-y-8">
+                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                <h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="LayoutTemplate" className="w-5 h-5"/> 메인 상단 배너</h4>
+                                <p className="text-sm text-slate-500 mb-4">쇼핑몰 최상단에 노출되는 가장 큰 배너입니다.</p>
+                                <ImageUploader label="상단 배너 이미지 업로드" currentImage={topBanner} onImageSelect={setTopBanner} />
+                            </div>
+                            
+                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                <h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="CreditCard" className="w-5 h-5"/> 중간 띠 배너</h4>
+                                <p className="text-sm text-slate-500 mb-4">상품 리스트 중간(8번째 상품 뒤)에 삽입되는 가로형 배너입니다.</p>
+                                <ImageUploader label="중간 배너 이미지 업로드" currentImage={middleBanner} onImageSelect={setMiddleBanner} />
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
@@ -828,7 +882,19 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showMyPage, setShowMyPage] = useState(false);
+    const [banners, setBanners] = useState(DEFAULT_BANNERS); // 배너 상태
     useLucide();
+
+    useEffect(() => {
+        // 배너 설정 실시간 동기화
+        if(window.fb) {
+            const { doc, onSnapshot } = window.fb;
+            const unsub = onSnapshot(doc(window.db, "config", "banners"), (d) => {
+                if(d.exists()) setBanners(d.data());
+            });
+            return () => unsub();
+        }
+    }, []);
 
     const goHome = () => { setSelectedCategory("전체"); setSearchTerm(""); setSelectedProduct(null); setShowMyPage(false); window.scrollTo(0, 0); };
     const addToCart = (product, quantity = 1) => {
@@ -918,10 +984,10 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
-                {/* Top Banner (Compact Size Fixed & Priority Loading) */}
-                <div className="mb-8 rounded-2xl overflow-hidden shadow-lg">
+                {/* Top Banner (Dynamic) */}
+                <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 min-h-[160px]">
                     <img 
-                        src={BANNER_IMAGES.top} 
+                        src={banners.top} 
                         alt="Top Banner" 
                         className="w-full h-40 sm:h-52 object-cover" 
                         fetchPriority="high"
@@ -952,10 +1018,10 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                     </div>
                                 </div>
                             </div>
-                            {/* Middle Banner Insertion (Compact Size Fixed) */}
+                            {/* Middle Banner (Dynamic) */}
                             {index === 7 && (
-                                <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md">
-                                    <img src={BANNER_IMAGES.middle} alt="Middle Banner" className="w-full h-32 sm:h-40 object-cover" />
+                                <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 min-h-[128px]">
+                                    <img src={banners.middle} alt="Middle Banner" className="w-full h-32 sm:h-40 object-cover" />
                                 </div>
                             )}
                         </React.Fragment>
