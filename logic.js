@@ -1,4 +1,4 @@
-/* logic.js - Search Fixed Version */
+/* logic.js - Dashboard Click Filter Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -208,7 +208,7 @@ const MyPage = ({ user, onClose }) => {
 };
 
 // ----------------------------------------------------
-// [3] 관리자 페이지 (검색 버튼 로직 수정됨)
+// [3] 관리자 페이지 (대시보드 클릭 필터 추가됨)
 // ----------------------------------------------------
 const AdminPage = ({ onLogout, onToShop }) => {
     const [products, setProducts] = useState([]);
@@ -226,7 +226,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
         keyword: ""
     });
 
-    // 적용된 필터 상태 (실제 리스트 필터링에 사용 - 검색 버튼 누를 때 갱신)
+    // 적용된 필터 상태
     const [appliedFilters, setAppliedFilters] = useState({
         status: "전체",
         dateType: "전체",
@@ -275,14 +275,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
     // 검색 버튼 핸들러
     const handleSearch = () => {
         setAppliedFilters({ ...searchInputs });
-        setSelectedIds(new Set()); // 검색 시 선택 초기화
+        setSelectedIds(new Set());
     };
 
     // 초기화 버튼 핸들러
     const handleReset = () => {
-        const resetState = {
-            status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: ""
-        };
+        const resetState = { status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" };
         setSearchInputs(resetState);
         setAppliedFilters(resetState);
         setSelectedIds(new Set());
@@ -292,7 +290,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const handleDateBtn = (type) => {
         const today = new Date();
         let start = new Date();
-        
         if (type === "오늘") { /* start = today */ }
         else if (type === "7일") { start.setDate(today.getDate() - 7); }
         else if (type === "30일") { start.setDate(today.getDate() - 30); }
@@ -305,23 +302,39 @@ const AdminPage = ({ onLogout, onToShop }) => {
         }));
     };
 
-    // 필터링 로직 (appliedFilters 기준)
+    // 대시보드 카드 클릭 핸들러
+    const handleCardClick = (targetStatus) => {
+        let realStatus = targetStatus;
+        // 화면 표시 이름과 실제 DB 상태값 매칭
+        if (targetStatus === "결제완료(신규)") realStatus = "접수대기";
+        
+        // 상태 업데이트 및 즉시 필터 적용
+        const newState = {
+            status: realStatus,
+            dateType: "전체", // 날짜는 전체로 풀어줌 (전체 기간 확인용)
+            startDate: "",
+            endDate: "",
+            searchType: "주문자명",
+            keyword: ""
+        };
+        setSearchInputs(newState);
+        setAppliedFilters(newState);
+        setSelectedIds(new Set());
+    };
+
+    // 필터링 로직
     const filteredOrders = orders.filter(o => {
-        // 1. 상태 필터
         if (appliedFilters.status !== "전체" && o.status !== appliedFilters.status) return false;
         
-        // 2. 검색어 필터
         if (appliedFilters.keyword) {
             const u = getUserInfo(o.userId);
             const keyword = appliedFilters.keyword.toLowerCase();
             let target = "";
             if (appliedFilters.searchType === "주문자명") target = `${o.userName} ${u.storeName || ""} ${u.repName || ""}`;
             else if (appliedFilters.searchType === "주문번호") target = o.orderNo;
-            
             if (!target.toLowerCase().includes(keyword)) return false;
         }
 
-        // 3. 날짜 필터
         if (appliedFilters.startDate && appliedFilters.endDate) {
             const orderDate = formatDate(new Date(o.date));
             if (orderDate < appliedFilters.startDate || orderDate > appliedFilters.endDate) return false;
@@ -440,6 +453,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
+                        {/* 대시보드 카드 영역 (클릭 이벤트 추가됨) */}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                             {[
                                 { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" },
@@ -448,8 +462,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 { label: "배송중", count: countStatus("배송중"), color: "text-green-600", bg: "bg-green-50" },
                                 { label: "배송완료", count: countStatus("배송완료"), color: "text-slate-600", bg: "bg-slate-50" }
                             ].map((card, idx) => (
-                                <div key={idx} className={`p-5 rounded-lg border shadow-sm flex flex-col justify-between h-28 ${card.bg}`}>
-                                    <div className="text-sm font-bold text-slate-500 flex items-center gap-1">{card.label} <Icon name="HelpCircle" className="w-3 h-3 text-slate-300"/></div>
+                                <div 
+                                    key={idx} 
+                                    onClick={() => handleCardClick(card.label)} // 카드 클릭 시 필터 적용
+                                    className={`p-5 rounded-lg border shadow-sm flex flex-col justify-between h-28 ${card.bg} cursor-pointer hover:opacity-80 transition-opacity ring-2 ring-transparent hover:ring-slate-200`}
+                                >
+                                    <div className="text-sm font-bold text-slate-500 flex items-center gap-1">{card.label} <Icon name="ChevronRight" className="w-3 h-3 text-slate-400"/></div>
                                     <div className={`text-3xl font-bold ${card.color}`}>{card.count} <span className="text-base text-slate-400 font-normal">건</span></div>
                                 </div>
                             ))}
@@ -653,6 +671,13 @@ const AdminPage = ({ onLogout, onToShop }) => {
     );
 };
 
+// ★ 사장님 계좌 정보 (여기만 수정해서 쓰세요) ★
+const BANK_INFO = {
+    bankName: "신한은행",
+    accountNumber: "110-123-456789",
+    holder: "SJ이노베이션"
+};
+
 // ----------------------------------------------------
 // [4] 로그인 페이지, [5] 상세 페이지, [6] 쇼핑몰 페이지, [7] 메인 앱
 // ----------------------------------------------------
@@ -771,13 +796,6 @@ const LoginPage = ({ onAdminLogin }) => {
             {isAddrOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all duration-300"><div className="bg-white w-full max-w-lg h-[500px] rounded-xl overflow-hidden relative shadow-2xl flex flex-col"><div className="p-3 border-b flex justify-between font-bold bg-slate-50"><span>주소 검색</span><button onClick={()=>setIsAddrOpen(false)} className="hover:bg-slate-100 p-2 rounded-full"><Icon name="X"/></button></div><div ref={addrWrapRef} className="flex-1 w-full bg-slate-100 relative"></div></div></div>}
         </div>
     );
-};
-
-// ★ 사장님 계좌 정보 (여기만 수정해서 쓰세요) ★
-const BANK_INFO = {
-    bankName: "신한은행",
-    accountNumber: "110-123-456789",
-    holder: "SJ이노베이션"
 };
 
 const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
@@ -970,38 +988,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                 </div>
                             ))}
                         </div>
-                        {cart.length>0 && <div className="border-t pt-4"><div className="flex justify-between mb-4"><span className="text-slate-600">총 공급가액</span><span className="font-bold text-xl">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span></div><button onClick={openOrderModal} className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg flex justify-center items-center gap-2 transition-all hover:bg-slate-900"><Icon name="Truck" className="w-5 h-5" />발주 신청하기</button></div>}
-                    </div>
-                </div>
-            )}
-            {isOrderModalOpen && (
-                <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 transition-all animate-in fade-in">
-                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 relative">
-                        <button onClick={()=>setIsOrderModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
-                        <h3 className="text-xl font-bold mb-2">주문서 작성 및 계좌 확인</h3>
-                        <p className="text-sm text-slate-500 mb-6">무통장 입금 정보를 확인해 주세요.</p>
-                        
-                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-6">
-                            <div className="text-xs text-blue-600 font-bold mb-1">입금하실 계좌</div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="font-bold text-lg text-slate-800">{BANK_INFO.bankName} {BANK_INFO.accountNumber}</span>
-                                <button onClick={()=>{navigator.clipboard.writeText(BANK_INFO.accountNumber); alert("계좌번호가 복사되었습니다.");}} className="text-xs bg-white border border-blue-200 px-2 py-1 rounded text-blue-600 hover:bg-blue-100">복사</button>
-                            </div>
-                            <div className="text-sm text-slate-600">예금주: {BANK_INFO.holder}</div>
-                        </div>
-
-                        <div className="mb-6">
-                            <label className="block text-sm font-bold mb-1 text-slate-700">입금자명 (필수)</label>
-                            <input type="text" className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="예: 김철수 (SJ문구)" value={depositor} onChange={(e)=>setDepositor(e.target.value)} />
-                            <p className="text-xs text-slate-400 mt-1">* 실제 입금하시는 분의 성함을 입력해주세요.</p>
-                        </div>
-
-                        <div className="flex justify-between items-center mb-4 pt-4 border-t">
-                            <span className="text-slate-600 font-bold">총 결제금액</span>
-                            <span className="text-xl font-bold text-blue-600">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span>
-                        </div>
-
-                        <button onClick={handleFinalOrder} className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 shadow-lg">입금 확인 요청 (주문 완료)</button>
+                        {cart.length>0 && <div className="border-t pt-4"><div className="flex justify-between mb-4"><span className="text-slate-600">총 공급가액</span><span className="font-bold text-xl">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span></div><button onClick={handlePlaceOrder} className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg flex justify-center items-center gap-2 transition-all hover:bg-slate-900"><Icon name="Truck" className="w-5 h-5" />발주 신청하기</button></div>}
                     </div>
                 </div>
             )}
