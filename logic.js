@@ -15,9 +15,9 @@ const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠�
 
 // 계좌 정보 (사장님 정보로 수정 필수)
 const BANK_INFO = {
-    bankName: "신한은행",
-    accountNumber: "110-123-456789",
-    holder: "SJ이노베이션"
+    bankName: "카카오뱅크",
+    accountNumber: "3333-24-2073558",
+    holder: "윤병민 에스제이이노베이션"
 };
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
