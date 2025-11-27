@@ -25,40 +25,10 @@ const BANK_INFO = {
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-// ----------------------------------------------------
-// [0] 전역 상수 및 유틸리티
-// ----------------------------------------------------
-const useLucide = () => { 
-    useEffect(() => { 
-        if (window.lucide) window.lucide.createIcons(); 
-    }); 
-};
-
-const DEFAULT_BANNERS = {
-    top: "", 
-    middle: "" 
-};
-
-const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
-
-const BANK_INFO = {
-    bankName: "신한은행",
-    accountNumber: "110-123-456789",
-    holder: "SJ이노베이션"
-};
-
-const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
-
 const Icon = ({ name, ...props }) => {
-    // name이 "Boxes"면 ShoppingCart 아이콘으로 치환, 나머지는 맨 앞글자만 소문자로 변환
-    const iconName =
-        name === "Boxes"
-            ? "ShoppingCart"
-            : (name && name.charAt(0).toLowerCase() + name.slice(1));
-
+    const iconName = name === "Boxes" ? "ShoppingCart" : (name.charAt(0).toLowerCase() + name.slice(1));
     return <i data-lucide={iconName} {...props}></i>;
 };
-
 
 const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
