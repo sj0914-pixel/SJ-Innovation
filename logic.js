@@ -1,8 +1,8 @@
-/* logic.js - Final Stable Version */
+/* logic.js - Cart Auto-Close Fixed Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
-// [0] 전역 상수 및 유틸리티 (순서 중요)
+// [0] 전역 상수 및 유틸리티
 // ----------------------------------------------------
 const useLucide = () => { 
     useEffect(() => { 
@@ -46,7 +46,7 @@ const formatDate = (dateInput) => {
     try {
         if (!dateInput) return "";
         const d = new Date(dateInput);
-        if (isNaN(d.getTime())) return ""; // 유효하지 않은 날짜 처리
+        if (isNaN(d.getTime())) return ""; 
         return d.toISOString().slice(0, 10);
     } catch (e) { return ""; }
 };
@@ -220,7 +220,7 @@ const MyPage = ({ user, onClose }) => {
 };
 
 // ----------------------------------------------------
-// [3] 관리자 페이지 (안전장치 및 클릭 필터 적용)
+// [3] 관리자 페이지
 // ----------------------------------------------------
 const AdminPage = ({ onLogout, onToShop }) => {
     const [products, setProducts] = useState([]);
@@ -306,10 +306,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
         return true;
     });
 
-    // 대시보드 카운트
     const countStatus = (status) => orders.filter(o => o.status === status).length;
 
-    // 핸들러들
     const handleSearch = () => {
         setAppliedFilters({ ...searchInputs });
         setSelectedIds(new Set());
@@ -336,7 +334,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         }));
     };
 
-    // 대시보드 카드 클릭
     const handleCardClick = (targetStatus) => {
         let realStatus = targetStatus;
         if (targetStatus === "결제완료(신규)") realStatus = "접수대기";
@@ -377,7 +374,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         } catch(e) { console.error(e); }
     };
 
-    // 엑셀 다운/업로드 및 상품/유저 관리 핸들러 (생략 없이 전체 포함)
     const handleExcelDownload = () => {
         if(!window.XLSX) { alert("엑셀 라이브러리 오류"); return; }
         const targetData = filteredOrders.length > 0 ? filteredOrders : orders;
@@ -421,7 +417,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     };
 
     const handleLoadInitialData = async () => {
-        if(!confirm("샘플 데이터를 복구하시겠습니까?")) return;
+        if(!confirm("상품 목록이 비어있을 때만 사용하는 기능입니다.\n샘플 데이터를 복구하시겠습니까?")) return;
         try {
             const { doc, setDoc } = window.fb;
             await Promise.all(INITIAL_PRODUCTS.map(p => setDoc(doc(window.db, "products_final_v5", p.id), p)));
@@ -624,7 +620,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 )}
             </div>
 
-            {/* 모달 컴포넌트들 생략 없이 포함 */}
             {selectedUser && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative">
@@ -796,7 +791,7 @@ const LoginPage = ({ onAdminLogin }) => {
 };
 
 // ----------------------------------------------------
-// [5] 상세 페이지
+// [5] 상세 페이지 (ShopPage 밖으로 분리됨)
 // ----------------------------------------------------
 const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
     const [qty, setQty] = useState(product.minQty || 1);
@@ -844,13 +839,13 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
 };
 
 // ----------------------------------------------------
-// [6] 쇼핑몰 페이지
+// [6] 쇼핑몰 페이지 (ShopPage)
 // ----------------------------------------------------
 const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     const [cart, setCart] = useState([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
-    const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-    const [depositor, setDepositor] = useState("");
+    const [isOrderModalOpen, setIsOrderModalOpen] = useState(false); // 주문 모달 상태
+    const [depositor, setDepositor] = useState(""); // 입금자명
     const [selectedCategory, setSelectedCategory] = useState("전체");
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -867,15 +862,20 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         alert("장바구니에 추가되었습니다.");
     };
 
+    // 주문 모달 열기 (장바구니 닫음)
     const openOrderModal = () => {
         if(cart.length === 0) return;
         setDepositor(user.repName || ""); 
+        setIsCartOpen(false); // 장바구니 닫기
         setIsOrderModalOpen(true);
     };
 
+    // 최종 주문 처리 (무통장 입금)
     const handleFinalOrder = async () => {
         if (!depositor.trim()) return alert("입금자명을 입력해주세요.");
+        
         if(!confirm("주문을 완료하시겠습니까?")) return;
+        
         try {
             const uid = window.auth.currentUser ? window.auth.currentUser.uid : "admin_manual";
             await window.fb.addDoc(window.fb.collection(window.db, "orders"), {
@@ -884,8 +884,11 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 date: new Date().toISOString(), status: "접수대기",
                 paymentMethod: "무통장입금", depositor: depositor, bankInfo: BANK_INFO
             });
+            
             alert(`[주문 완료]\n\n${BANK_INFO.bankName} ${BANK_INFO.accountNumber}\n예금주: ${BANK_INFO.holder}\n\n위 계좌로 입금 부탁드립니다.`);
-            setCart([]); setIsCartOpen(false); setIsOrderModalOpen(false);
+            setCart([]); 
+            setIsCartOpen(false);
+            setIsOrderModalOpen(false);
         } catch(e) { alert("실패: " + e.message); }
     };
 
@@ -1031,6 +1034,7 @@ const App = () => {
     const [loading, setLoading] = useState(true);
     const [firebaseReady, setFirebaseReady] = useState(false);
 
+    // 1. Firebase 로드 대기 (Race Condition 해결)
     useEffect(() => {
         const interval = setInterval(() => {
             if (window.fb && window.auth && window.db) {
@@ -1042,12 +1046,18 @@ const App = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // 2. Firebase 준비 후 데이터 구독
     useEffect(() => {
         if (!firebaseReady) return;
+
         const { collection, onSnapshot, getDoc, doc } = window.fb;
+        
+        // 상품 목록 구독
         const unsub = onSnapshot(collection(window.db, "products_final_v5"), (snap) => {
             setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         });
+        
+        // 인증 상태 구독
         const authUnsub = window.fb.onAuthStateChanged(window.auth, async (u) => {
             if (u) {
                 try {
@@ -1068,12 +1078,28 @@ const App = () => {
         return () => { unsub(); authUnsub(); };
     }, [firebaseReady]);
 
-    const handleForceAdmin = () => { setIsAdmin(true); setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); };
-    const handleLogout = () => { setIsAdmin(false); setAdminViewMode(false); setUser(null); window.fb.logOut(window.auth); };
+    const handleForceAdmin = () => {
+        setIsAdmin(true);
+        setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' });
+    };
+
+    const handleLogout = () => {
+        setIsAdmin(false);
+        setAdminViewMode(false);
+        setUser(null);
+        window.fb.logOut(window.auth);
+    };
 
     if (!firebaseReady || loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">시스템 연결중...</div>;
-    if (isAdmin && adminViewMode) return <AdminPage onLogout={handleLogout} onToShop={() => setAdminViewMode(false)} />;
-    if (user) return <ShopPage products={products} user={user} onLogout={handleLogout} isAdmin={isAdmin} onToAdmin={() => setAdminViewMode(true)} />;
+    
+    if (isAdmin && adminViewMode) {
+        return <AdminPage onLogout={handleLogout} onToShop={() => setAdminViewMode(false)} />;
+    }
+    
+    if (user) {
+        return <ShopPage products={products} user={user} onLogout={handleLogout} isAdmin={isAdmin} onToAdmin={() => setAdminViewMode(true)} />;
+    }
+
     return <LoginPage onAdminLogin={handleForceAdmin} />;
 };
 
