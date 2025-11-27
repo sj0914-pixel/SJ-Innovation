@@ -1,4 +1,4 @@
-/* logic.js - Cart Auto-Close Fixed Version */
+/* logic.js - Final Code (Safety Patched) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -13,16 +13,15 @@ const useLucide = () => {
 // 택배사 목록
 const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
 
-// 계좌 정보
+// 계좌 정보 (사장님 정보로 수정 필수)
 const BANK_INFO = {
-    bankName: "카카오뱅크",
-    accountNumber: "3333-24-2073558",
-    holder: "윤병민 에스제이이노베이션"
+    bankName: "신한은행",
+    accountNumber: "110-123-456789",
+    holder: "SJ이노베이션"
 };
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-// 복구용 샘플 데이터
 const INITIAL_PRODUCTS = [
     { id: "p1", name: "올인원 교정젓가락풀세트 (오로라핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "오로라핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.8" },
     { id: "p2", name: "올인원 교정젓가락풀세트 (빛나핑)", category: "주방/식기", price: 13900, originPrice: 17500, image: "🥢", description: "빛나핑 캐릭터 교정 젓가락 풀세트.", stock: 200, minQty: 20, cartonQty: 20, rating: "4.7" },
@@ -39,14 +38,15 @@ const Icon = ({ name, ...props }) => {
     return <i data-lucide={iconName} {...props}></i>;
 };
 
-const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
+const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price || 0);
 
-// 날짜 포맷 안전하게 처리
+// 날짜 포맷 안전 함수 (에러 방지)
 const formatDate = (dateInput) => {
     try {
         if (!dateInput) return "";
         const d = new Date(dateInput);
-        if (isNaN(d.getTime())) return ""; 
+        if (isNaN(d.getTime())) return "";
+        // 한국 시간대 보정 (선택 사항이나, 간단히 ISO 앞부분 사용)
         return d.toISOString().slice(0, 10);
     } catch (e) { return ""; }
 };
@@ -201,7 +201,7 @@ const MyPage = ({ user, onClose }) => {
                                         </div>
                                     )}
                                     <div className="space-y-1 mb-3 text-sm">
-                                        {order.items.map((item, i) => (
+                                        {(order.items || []).map((item, i) => (
                                             <div key={i} className="flex justify-between"><span className="truncate w-2/3">{item.name}</span><span className="text-slate-500">{item.quantity}개</span></div>
                                         ))}
                                     </div>
@@ -228,25 +228,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [orders, setOrders] = useState([]);
     const [tab, setTab] = useState("orders");
     
-    // 검색 필터 상태
-    const [searchInputs, setSearchInputs] = useState({
-        status: "전체",
-        dateType: "전체", 
-        startDate: "",
-        endDate: "",
-        searchType: "주문자명",
-        keyword: ""
-    });
-
-    // 실제 적용된 필터
-    const [appliedFilters, setAppliedFilters] = useState({
-        status: "전체",
-        dateType: "전체",
-        startDate: "",
-        endDate: "",
-        searchType: "주문자명",
-        keyword: ""
-    });
+    // 검색 필터
+    const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" });
+    const [appliedFilters, setAppliedFilters] = useState({ status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" });
 
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [selectedUser, setSelectedUser] = useState(null);
@@ -264,6 +248,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // 주문번호 생성 (안전장치 추가)
             const orderGroups = {};
             list.forEach(o => {
                 if(o.date) {
@@ -286,10 +271,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
 
-    // 필터링 로직
     const filteredOrders = orders.filter(o => {
         if (appliedFilters.status !== "전체" && o.status !== appliedFilters.status) return false;
-        
         if (appliedFilters.keyword) {
             const u = getUserInfo(o.userId);
             const keyword = appliedFilters.keyword.toLowerCase();
@@ -298,7 +281,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
             else if (appliedFilters.searchType === "주문번호") target = o.orderNo || "";
             if (!target.toLowerCase().includes(keyword)) return false;
         }
-
         if (appliedFilters.startDate && appliedFilters.endDate) {
             const orderDate = formatDate(new Date(o.date));
             if (orderDate < appliedFilters.startDate || orderDate > appliedFilters.endDate) return false;
@@ -308,81 +290,56 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     const countStatus = (status) => orders.filter(o => o.status === status).length;
 
-    const handleSearch = () => {
-        setAppliedFilters({ ...searchInputs });
-        setSelectedIds(new Set());
-    };
-
+    // 핸들러
+    const handleSearch = () => { setAppliedFilters({ ...searchInputs }); setSelectedIds(new Set()); };
     const handleReset = () => {
         const resetState = { status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" };
-        setSearchInputs(resetState);
-        setAppliedFilters(resetState);
-        setSelectedIds(new Set());
+        setSearchInputs(resetState); setAppliedFilters(resetState); setSelectedIds(new Set());
     };
-
     const handleDateBtn = (type) => {
         const today = new Date();
         let start = new Date();
         if (type === "7일") start.setDate(today.getDate() - 7);
         else if (type === "30일") start.setDate(today.getDate() - 30);
-        
-        setSearchInputs(prev => ({
-            ...prev,
-            dateType: type,
-            startDate: type === "전체" ? "" : formatDate(start),
-            endDate: type === "전체" ? "" : formatDate(today)
-        }));
+        setSearchInputs(prev => ({ ...prev, dateType: type, startDate: type === "전체" ? "" : formatDate(start), endDate: type === "전체" ? "" : formatDate(today) }));
     };
-
     const handleCardClick = (targetStatus) => {
         let realStatus = targetStatus;
         if (targetStatus === "결제완료(신규)") realStatus = "접수대기";
         const newState = { status: realStatus, dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" };
-        setSearchInputs(newState);
-        setAppliedFilters(newState);
-        setSelectedIds(new Set());
+        setSearchInputs(newState); setAppliedFilters(newState); setSelectedIds(new Set());
     };
-
     const toggleSelect = (id) => {
         const newSet = new Set(selectedIds);
         if(newSet.has(id)) newSet.delete(id); else newSet.add(id);
         setSelectedIds(newSet);
     };
     const toggleSelectAll = (e) => {
-        if(e.target.checked) setSelectedIds(new Set(filteredOrders.map(o=>o.id)));
-        else setSelectedIds(new Set());
+        if(e.target.checked) setSelectedIds(new Set(filteredOrders.map(o=>o.id))); else setSelectedIds(new Set());
     };
-
     const handleBatchStatus = async (status) => {
         if(selectedIds.size === 0) return alert("선택된 주문이 없습니다.");
         if(!confirm(`선택한 ${selectedIds.size}건을 [${status}] 상태로 변경하시겠습니까?`)) return;
         try {
             const promises = Array.from(selectedIds).map(id => window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { status }));
             await Promise.all(promises);
-            alert("처리되었습니다.");
-            setSelectedIds(new Set());
+            alert("처리되었습니다."); setSelectedIds(new Set());
         } catch(e) { alert("오류: " + e.message); }
     };
-
     const handleUpdateTracking = async (id, courier, tracking) => {
-        try {
-            await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { 
-                courier: courier,
-                trackingNumber: tracking,
-                status: tracking ? "배송중" : "접수대기"
-            });
-        } catch(e) { console.error(e); }
+        try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { courier, trackingNumber: tracking, status: tracking ? "배송중" : "접수대기" }); } catch(e) { console.error(e); }
     };
 
+    // 엑셀 및 데이터 관리
     const handleExcelDownload = () => {
         if(!window.XLSX) { alert("엑셀 라이브러리 오류"); return; }
         const targetData = filteredOrders.length > 0 ? filteredOrders : orders;
         const excelData = targetData.map(o => {
             const u = getUserInfo(o.userId);
             return {
-                "시스템ID": o.id, "주문번호": o.orderNo, "상태": o.status, "주문일": new Date(o.date).toLocaleDateString(),
+                "시스템ID": o.id, "주문번호": o.orderNo, "상태": o.status, "주문일": formatDate(o.date),
                 "주문자": u.storeName || o.userName, "연락처": u.mobile, "입금자명": o.depositor || u.repName, "주소": u.address,
-                "상품": o.items.map(i=>`${i.name}(${i.quantity})`).join(", "), "총액": o.totalAmount,
+                "상품": (o.items || []).map(i=>`${i.name}(${i.quantity})`).join(", "), "총액": o.totalAmount,
                 "택배사": o.courier || "", "송장번호": o.trackingNumber || ""
             };
         });
@@ -391,7 +348,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         window.XLSX.utils.book_append_sheet(wb, ws, "주문목록");
         window.XLSX.writeFile(wb, `주문목록_${new Date().toISOString().slice(0,10)}.xlsx`);
     };
-
     const handleExcelUpload = async (e) => {
         const file = e.target.files[0];
         if(!file) return;
@@ -415,19 +371,13 @@ const AdminPage = ({ onLogout, onToShop }) => {
         };
         reader.readAsArrayBuffer(file);
     };
-
     const handleLoadInitialData = async () => {
-        if(!confirm("상품 목록이 비어있을 때만 사용하는 기능입니다.\n샘플 데이터를 복구하시겠습니까?")) return;
-        try {
-            const { doc, setDoc } = window.fb;
-            await Promise.all(INITIAL_PRODUCTS.map(p => setDoc(doc(window.db, "products_final_v5", p.id), p)));
-            alert("복구 완료!");
-        } catch(e) { alert("오류: " + e.message); }
+        if(!confirm("샘플 데이터를 복구하시겠습니까?")) return;
+        try { await Promise.all(INITIAL_PRODUCTS.map(p => window.fb.setDoc(window.fb.doc(window.db, "products_final_v5", p.id), p))); alert("복구 완료!"); } catch(e) { alert("오류: " + e.message); }
     };
-    
     const handleSaveProduct = async (e) => {
         e.preventDefault(); const form = e.target;
-        const newProd = { name: form.pName.value, category: form.pCategory.value, price: Number(form.pPrice.value), originPrice: Number(form.pOriginPrice.value), stock: Number(form.pStock.value), minQty: Number(form.pMinQty.value), cartonQty: Number(form.pCartonQty.value), image: thumbImage || "📦", detailImage: detailImage || "", description: form.pDescription.value, rating: "5.0" };
+        const newProd = { name: form.pName.value, category: form.pCategory.value, price: Number(form.pPrice.value)||0, originPrice: Number(form.pOriginPrice.value)||0, stock: Number(form.pStock.value)||0, minQty: Number(form.pMinQty.value)||1, cartonQty: Number(form.pCartonQty.value)||1, image: thumbImage || "📦", detailImage: detailImage || "", description: form.pDescription.value, rating: "5.0" };
         try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨"); } catch (err) { alert(err.message); }
     };
     const handleDeleteProduct = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "products_final_v5", id)); };
@@ -454,32 +404,28 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
+                        {/* 대시보드 */}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                             {[
                                 { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" },
-                                { label: "배송준비", count: 0, color: "text-slate-600", bg: "bg-white" },
-                                { label: "배송지시", count: 0, color: "text-slate-600", bg: "bg-white" },
+                                { label: "배송준비", count: countStatus("배송준비"), color: "text-indigo-600", bg: "bg-indigo-50" },
+                                { label: "배송지시", count: countStatus("배송지시"), color: "text-orange-600", bg: "bg-orange-50" },
                                 { label: "배송중", count: countStatus("배송중"), color: "text-green-600", bg: "bg-green-50" },
                                 { label: "배송완료", count: countStatus("배송완료"), color: "text-slate-600", bg: "bg-slate-50" }
                             ].map((card, idx) => (
-                                <div 
-                                    key={idx} 
-                                    onClick={() => handleCardClick(card.label)}
-                                    className={`p-5 rounded-lg border shadow-sm flex flex-col justify-between h-28 ${card.bg} cursor-pointer hover:opacity-80 transition-opacity ring-2 ring-transparent hover:ring-slate-200`}
-                                >
+                                <div key={idx} onClick={() => handleCardClick(card.label)} className={`p-5 rounded-lg border shadow-sm flex flex-col justify-between h-28 ${card.bg} cursor-pointer hover:opacity-80 transition-opacity ring-2 ring-transparent hover:ring-slate-200`}>
                                     <div className="text-sm font-bold text-slate-500 flex items-center gap-1">{card.label} <Icon name="ChevronRight" className="w-3 h-3 text-slate-400"/></div>
                                     <div className={`text-3xl font-bold ${card.color}`}>{card.count} <span className="text-base text-slate-400 font-normal">건</span></div>
                                 </div>
                             ))}
                         </div>
 
+                        {/* 필터 */}
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">기간</span>
                                 <div className="flex gap-1">
-                                    {["오늘","7일","30일","전체"].map(d => (
-                                        <button key={d} onClick={()=>handleDateBtn(d)} className={`px-3 py-1.5 border rounded text-xs font-bold ${searchInputs.dateType===d ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 hover:bg-slate-50"}`}>{d}</button>
-                                    ))}
+                                    {["오늘","7일","30일","전체"].map(d => ( <button key={d} onClick={()=>handleDateBtn(d)} className={`px-3 py-1.5 border rounded text-xs font-bold ${searchInputs.dateType===d ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 hover:bg-slate-50"}`}>{d}</button> ))}
                                 </div>
                                 <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500" value={searchInputs.startDate} onChange={(e)=>setSearchInputs({...searchInputs, startDate: e.target.value})} />
                                 <span className="text-slate-400">~</span>
@@ -488,7 +434,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">배송상태</span>
                                 <div className="flex gap-4">
-                                    {["전체", "접수대기", "배송중", "배송완료", "주문취소"].map(s => (
+                                    {["전체", "접수대기", "배송준비", "배송중", "배송완료", "주문취소"].map(s => (
                                         <label key={s} className="flex items-center gap-2 cursor-pointer text-sm">
                                             <input type="radio" name="status" checked={searchInputs.status === s} onChange={()=>setSearchInputs({...searchInputs, status: s})} className="accent-blue-600" /> 
                                             {s === "접수대기" ? "결제완료(신규)" : s}
@@ -499,8 +445,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <div className="flex flex-col md:flex-row gap-4 items-center border-t pt-4">
                                 <span className="w-20 font-bold text-sm text-slate-600">상세조건</span>
                                 <select className="border rounded px-2 py-2 text-sm bg-slate-50 min-w-[120px]" value={searchInputs.searchType} onChange={(e)=>setSearchInputs({...searchInputs, searchType: e.target.value})}>
-                                    <option value="주문자명">주문자명</option>
-                                    <option value="주문번호">주문번호</option>
+                                    <option value="주문자명">주문자명</option><option value="주문번호">주문번호</option>
                                 </select>
                                 <input className="border rounded px-3 py-2 text-sm w-full md:w-96" placeholder="검색어 입력" value={searchInputs.keyword} onChange={(e)=>setSearchInputs({...searchInputs, keyword: e.target.value})} onKeyDown={(e)=>{if(e.key==='Enter') handleSearch()}} />
                                 <div className="ml-auto flex gap-2">
@@ -510,21 +455,21 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
                         </div>
 
+                        {/* 리스트 */}
                         <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3 bg-slate-50/50">
                                 <div className="flex gap-2 items-center">
                                     <span className="font-bold text-sm mr-2">{selectedIds.size}개 선택됨</span>
-                                    <button onClick={()=>handleBatchStatus("배송중")} className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 flex items-center gap-1"><Icon name="Truck" className="w-3 h-3"/> 발주확인/배송처리</button>
-                                    <button onClick={()=>handleBatchStatus("주문취소")} className="bg-white border text-slate-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-50">취소/반품 접수</button>
+                                    <button onClick={()=>handleBatchStatus("배송준비")} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-700 flex items-center gap-1"><Icon name="Package" className="w-3 h-3"/> 배송준비</button>
+                                    <button onClick={()=>handleBatchStatus("배송중")} className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700 flex items-center gap-1"><Icon name="Truck" className="w-3 h-3"/> 배송중 처리</button>
+                                    <button onClick={()=>handleBatchStatus("주문취소")} className="bg-white border text-slate-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-50">취소 처리</button>
                                 </div>
                                 <div className="flex gap-2">
                                     <button onClick={handleExcelDownload} className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700 flex items-center gap-1"><Icon name="Download" className="w-3 h-3"/> 엑셀 다운</button>
                                     <button onClick={()=>excelInputRef.current.click()} className="bg-slate-700 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-800 flex items-center gap-1"><Icon name="Upload" className="w-3 h-3"/> 송장 일괄 등록</button>
                                     <input type="file" ref={excelInputRef} className="hidden" onChange={handleExcelUpload} />
-                                    <select className="border rounded text-xs px-2 py-1"><option>10개씩 보기</option><option>50개씩 보기</option></select>
                                 </div>
                             </div>
-
                             <div className="overflow-x-auto min-h-[400px]">
                                 <table className="w-full text-sm text-left whitespace-nowrap">
                                     <thead className="bg-slate-100 text-slate-500 font-bold border-b text-xs uppercase">
@@ -559,7 +504,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                                             onKeyDown={(e)=>{if(e.key==='Enter') e.target.blur()}}
                                                         />
                                                     </td>
-                                                    <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs font-bold ${o.status==='접수대기'?'bg-blue-100 text-blue-700':o.status==='배송중'?'bg-green-100 text-green-700':o.status==='주문취소'?'bg-red-100 text-red-700':'bg-slate-100 text-slate-600'}`}>{o.status === '접수대기' ? '결제완료' : o.status}</span></td>
+                                                    <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs font-bold ${o.status==='접수대기'?'bg-blue-100 text-blue-700':o.status==='배송준비'?'bg-indigo-100 text-indigo-700':o.status==='배송중'?'bg-green-100 text-green-700':o.status==='주문취소'?'bg-red-100 text-red-700':'bg-slate-100 text-slate-600'}`}>{o.status === '접수대기' ? '결제완료' : o.status}</span></td>
                                                     <td className="p-3 text-slate-500 text-xs">{new Date(o.date).toLocaleString()}</td>
                                                     <td className="p-3">
                                                         <div className="font-bold">{u.storeName || o.userName}</div>
@@ -568,7 +513,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                                     </td>
                                                     <td className="p-3 max-w-xs whitespace-normal">
                                                         <div className="text-xs text-slate-600 leading-tight">
-                                                            {o.items.map((i,idx)=>(<div key={idx} className="mb-1"><span className="text-blue-600 font-bold">[{i.name}]</span> {i.quantity}개</div>))}
+                                                            {(o.items||[]).map((i,idx)=>(<div key={idx} className="mb-1"><span className="text-blue-600 font-bold">[{i.name}]</span> {i.quantity}개</div>))}
                                                         </div>
                                                     </td>
                                                     <td className="p-3 font-bold text-slate-700">{formatPrice(o.totalAmount)}원</td>
@@ -581,7 +526,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         </div>
                     </div>
                 )}
-                
                 {tab === "users" && (
                     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                         <table className="w-full text-left text-sm whitespace-nowrap">
@@ -592,7 +536,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         </table>
                     </div>
                 )}
-
                 {tab === "products" && (
                     <div className="bg-white rounded-lg shadow-sm border p-4">
                         <div className="flex justify-between mb-4">
@@ -1034,7 +977,6 @@ const App = () => {
     const [loading, setLoading] = useState(true);
     const [firebaseReady, setFirebaseReady] = useState(false);
 
-    // 1. Firebase 로드 대기 (Race Condition 해결)
     useEffect(() => {
         const interval = setInterval(() => {
             if (window.fb && window.auth && window.db) {
@@ -1046,18 +988,12 @@ const App = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // 2. Firebase 준비 후 데이터 구독
     useEffect(() => {
         if (!firebaseReady) return;
-
         const { collection, onSnapshot, getDoc, doc } = window.fb;
-        
-        // 상품 목록 구독
         const unsub = onSnapshot(collection(window.db, "products_final_v5"), (snap) => {
             setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         });
-        
-        // 인증 상태 구독
         const authUnsub = window.fb.onAuthStateChanged(window.auth, async (u) => {
             if (u) {
                 try {
@@ -1078,28 +1014,12 @@ const App = () => {
         return () => { unsub(); authUnsub(); };
     }, [firebaseReady]);
 
-    const handleForceAdmin = () => {
-        setIsAdmin(true);
-        setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' });
-    };
-
-    const handleLogout = () => {
-        setIsAdmin(false);
-        setAdminViewMode(false);
-        setUser(null);
-        window.fb.logOut(window.auth);
-    };
+    const handleForceAdmin = () => { setIsAdmin(true); setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); };
+    const handleLogout = () => { setIsAdmin(false); setAdminViewMode(false); setUser(null); window.fb.logOut(window.auth); };
 
     if (!firebaseReady || loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">시스템 연결중...</div>;
-    
-    if (isAdmin && adminViewMode) {
-        return <AdminPage onLogout={handleLogout} onToShop={() => setAdminViewMode(false)} />;
-    }
-    
-    if (user) {
-        return <ShopPage products={products} user={user} onLogout={handleLogout} isAdmin={isAdmin} onToAdmin={() => setAdminViewMode(true)} />;
-    }
-
+    if (isAdmin && adminViewMode) return <AdminPage onLogout={handleLogout} onToShop={() => setAdminViewMode(false)} />;
+    if (user) return <ShopPage products={products} user={user} onLogout={handleLogout} isAdmin={isAdmin} onToAdmin={() => setAdminViewMode(true)} />;
     return <LoginPage onAdminLogin={handleForceAdmin} />;
 };
 
