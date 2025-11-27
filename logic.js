@@ -991,7 +991,10 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                     <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
                         {/* 상단 미니 로고 */}
                         <img src="https://i.ibb.co/LdPMppLv/image.png" alt="Logo" className="h-8 w-auto object-contain rounded-lg" />
-                        <div className="flex flex-col"><span className="font-bold text-lg leading-none hidden sm:block">SJ Innovation</span></div>
+                        <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
+                        {/* 글씨 태그 삭제하고 이미지만 남김 */}
+                        <img src="https://i.ibb.co/LdPMppLv/image.png" alt="Logo" className="h-8 w-auto object-contain rounded-lg" />
+</div>
                     </div>
                     <div className="flex-1 max-w-lg mx-4 relative hidden sm:block">
                         <input type="text" placeholder="상품 검색..." className="w-full bg-slate-100 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-slate-500 focus:bg-white transition-all" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
