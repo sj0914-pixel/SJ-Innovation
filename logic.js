@@ -1,4 +1,4 @@
-/* logic.js - Banner Fix (Compression Engine Removed) */
+/* logic.js - Base64 Size Increase & Safety Patch */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,7 +10,6 @@ const useLucide = () => {
     }); 
 };
 
-// ★ 기본 배너 삭제 (빈 값) ★
 const DEFAULT_BANNERS = {
     top: "", 
     middle: "" 
@@ -43,7 +42,7 @@ const formatDate = (dateInput) => {
 };
 
 // ----------------------------------------------------
-// [1] 공통 컴포넌트 (이미지 업로더 - 단순화 버전)
+// [1] 공통 컴포넌트 (이미지 업로더 - Base64 제한 상향)
 // ----------------------------------------------------
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
@@ -52,11 +51,10 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
 
     useEffect(() => { setPreview(currentImage); }, [currentImage]);
 
-    // [수정] 복잡한 변환 로직 제거 -> 단순 파일 읽기로 변경 (먹통 방지)
     const handleFile = (file) => {
         if (!file) return;
 
-        // 용량 체크 (3MB 제한)
+        // 파일 크기(KB) 3MB 제한
         if (file.size > 3 * 1024 * 1024) {
             alert("이미지 용량이 3MB를 초과합니다.\n더 작은 이미지를 사용해주세요.");
             return;
@@ -67,8 +65,15 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
         
         reader.onload = (e) => {
             const result = e.target.result;
-            setPreview(result);
-            onImageSelect(result); // 부모 컴포넌트로 데이터 전달
+            // [수정] Base64 문자열 길이 제한 상향 (약 3MB)
+            if (result.length > 4000000) { 
+                alert("Base64 인코딩 후 크기가 너무 큽니다. 다시 시도해주세요.");
+                setPreview("");
+                onImageSelect("");
+            } else {
+                setPreview(result);
+                onImageSelect(result); // 부모 컴포넌트로 데이터 전달
+            }
             setIsLoading(false);
         };
         
@@ -78,6 +83,9 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
         };
 
         reader.readAsDataURL(file);
+
+        // [추가] 업로드 직후 Input 초기화 (안전 장치)
+        if(fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const handleDelete = (e) => {
