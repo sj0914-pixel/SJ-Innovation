@@ -1,4 +1,4 @@
-/* logic.js - Final Code (Safety Patched) */
+/* logic.js - Banner Edition (Top & Middle) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,14 +10,20 @@ const useLucide = () => {
     }); 
 };
 
+// ★ 배너 이미지 설정 (여기 주소를 바꾸면 배너가 바뀝니다) ★
+const BANNER_IMAGES = {
+    top: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=2070&auto=format&fit=crop", // 상단 배너 (쇼핑/세일 이미지)
+    middle: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=1974&auto=format&fit=crop" // 중간 배너 (선물/이벤트 이미지)
+};
+
 // 택배사 목록
 const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
 
-// 계좌 정보 (사장님 정보로 수정 필수)
+// 계좌 정보
 const BANK_INFO = {
-    bankName: "카카오뱅크",
-    accountNumber: "3333-24-2073558",
-    holder: "윤병민 에스제이이노베이션"
+    bankName: "신한은행",
+    accountNumber: "110-123-456789",
+    holder: "SJ이노베이션"
 };
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
@@ -40,13 +46,11 @@ const Icon = ({ name, ...props }) => {
 
 const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price || 0);
 
-// 날짜 포맷 안전 함수 (에러 방지)
 const formatDate = (dateInput) => {
     try {
         if (!dateInput) return "";
         const d = new Date(dateInput);
         if (isNaN(d.getTime())) return "";
-        // 한국 시간대 보정 (선택 사항이나, 간단히 ISO 앞부분 사용)
         return d.toISOString().slice(0, 10);
     } catch (e) { return ""; }
 };
@@ -228,7 +232,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [orders, setOrders] = useState([]);
     const [tab, setTab] = useState("orders");
     
-    // 검색 필터
     const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" });
     const [appliedFilters, setAppliedFilters] = useState({ status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" });
 
@@ -248,7 +251,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            // 주문번호 생성 (안전장치 추가)
             const orderGroups = {};
             list.forEach(o => {
                 if(o.date) {
@@ -290,7 +292,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     const countStatus = (status) => orders.filter(o => o.status === status).length;
 
-    // 핸들러
     const handleSearch = () => { setAppliedFilters({ ...searchInputs }); setSelectedIds(new Set()); };
     const handleReset = () => {
         const resetState = { status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" };
@@ -330,7 +331,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { courier, trackingNumber: tracking, status: tracking ? "배송중" : "접수대기" }); } catch(e) { console.error(e); }
     };
 
-    // 엑셀 및 데이터 관리
     const handleExcelDownload = () => {
         if(!window.XLSX) { alert("엑셀 라이브러리 오류"); return; }
         const targetData = filteredOrders.length > 0 ? filteredOrders : orders;
@@ -404,7 +404,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* 대시보드 */}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                             {[
                                 { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" },
@@ -420,7 +419,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             ))}
                         </div>
 
-                        {/* 필터 */}
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">기간</span>
@@ -455,7 +453,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
                         </div>
 
-                        {/* 리스트 */}
                         <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3 bg-slate-50/50">
                                 <div className="flex gap-2 items-center">
@@ -883,31 +880,41 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
-                <div className="bg-slate-900 rounded-2xl p-8 mb-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div><span className="bg-white/20 text-white px-3 py-1 rounded-full text-xs font-semibold mb-3 inline-block border border-white/30">SJ Innovation 파트너</span><h2 className="text-3xl font-bold mb-2">겨울 시즌 신상 입고!</h2><p className="text-slate-300">티니핑 시즌5 굿즈 & 방한 용품 대량 입고.</p></div>
-                    <div className="flex gap-3"><div className="bg-white/10 p-4 rounded-xl text-center min-w-[100px]"><div className="text-2xl font-bold">NEW</div><div className="text-xs text-slate-300">신규 캐릭터</div></div><div className="bg-white/10 p-4 rounded-xl text-center min-w-[100px]"><div className="text-2xl font-bold">40%</div><div className="text-xs text-slate-300">추가 할인</div></div></div>
+                {/* Top Banner (Click to change image in BANNER_IMAGES const) */}
+                <div className="mb-8 rounded-2xl overflow-hidden shadow-lg">
+                    <img src={BANNER_IMAGES.top} alt="Winter Season Banner" className="w-full h-auto object-cover" />
                 </div>
+
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide">
                     {CATEGORIES.map(cat => ( <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all duration-300 ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button> ))}
                 </div>
+                
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {filteredProducts.map(p => (
-                        <div key={p.id} onClick={() => openProduct(p)} className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group overflow-hidden flex flex-col">
-                            <div className="aspect-[4/3] bg-slate-100 relative flex items-center justify-center overflow-hidden">
-                                {p.image.startsWith('data:') || p.image.startsWith('http') || p.image.startsWith('.') ? <img src={p.image} alt={p.name} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" /> : <span className="text-6xl transform group-hover:scale-110 transition-transform duration-500">{p.image}</span>}
-                                <div className="absolute top-3 left-3 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">인기</div>
-                            </div>
-                            <div className="p-5 flex flex-col flex-grow">
-                                <div className="text-xs text-slate-400 mb-1 font-medium">{p.category}</div>
-                                <h3 className="font-bold text-slate-800 mb-2 text-lg leading-tight line-clamp-2">{p.name}</h3>
-                                <div className="flex items-center gap-1 mb-4"><Icon name="Star" className="w-4 h-4 text-yellow-400 fill-yellow-400" /><span className="text-sm font-bold text-slate-700">{p.rating || "5.0"}</span></div>
-                                <div className="mt-auto">
-                                    <div className="flex justify-between items-center mb-1"><span className="text-xs text-slate-400">권장가</span><span className="text-xs text-slate-400 line-through">₩{formatPrice(p.originPrice)}</span></div>
-                                    <div className="flex justify-between items-baseline mb-3"><span className="text-sm font-bold text-slate-700">공급가</span><span className="text-xl font-bold text-slate-800">₩{formatPrice(p.price)}</span></div>
-                                    <button className="w-full bg-slate-50 text-slate-700 border border-slate-200 group-hover:bg-slate-800 group-hover:text-white py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"><Icon name="Search" className="w-4 h-4" /> 상세</button>
+                    {filteredProducts.map((p, index) => (
+                        <React.Fragment key={p.id}>
+                            <div onClick={() => openProduct(p)} className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group overflow-hidden flex flex-col">
+                                <div className="aspect-[4/3] bg-slate-100 relative flex items-center justify-center overflow-hidden">
+                                    {p.image.startsWith('data:') || p.image.startsWith('http') || p.image.startsWith('.') ? <img src={p.image} alt={p.name} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" /> : <span className="text-6xl transform group-hover:scale-110 transition-transform duration-500">{p.image}</span>}
+                                    <div className="absolute top-3 left-3 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">인기</div>
+                                </div>
+                                <div className="p-5 flex flex-col flex-grow">
+                                    <div className="text-xs text-slate-400 mb-1 font-medium">{p.category}</div>
+                                    <h3 className="font-bold text-slate-800 mb-2 text-lg leading-tight line-clamp-2">{p.name}</h3>
+                                    <div className="flex items-center gap-1 mb-4"><Icon name="Star" className="w-4 h-4 text-yellow-400 fill-yellow-400" /><span className="text-sm font-bold text-slate-700">{p.rating || "5.0"}</span></div>
+                                    <div className="mt-auto">
+                                        <div className="flex justify-between items-center mb-1"><span className="text-xs text-slate-400">권장가</span><span className="text-xs text-slate-400 line-through">₩{formatPrice(p.originPrice)}</span></div>
+                                        <div className="flex justify-between items-baseline mb-3"><span className="text-sm font-bold text-slate-700">공급가</span><span className="text-xl font-bold text-slate-800">₩{formatPrice(p.price)}</span></div>
+                                        <button className="w-full bg-slate-50 text-slate-700 border border-slate-200 group-hover:bg-slate-800 group-hover:text-white py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"><Icon name="Search" className="w-4 h-4" /> 상세</button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                            {/* Middle Banner Insertion (After 8th item) */}
+                            {index === 7 && (
+                                <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md">
+                                    <img src={BANNER_IMAGES.middle} alt="Event Banner" className="w-full h-auto object-cover" />
+                                </div>
+                            )}
+                        </React.Fragment>
                     ))}
                 </div>
             </main>
