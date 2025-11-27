@@ -544,7 +544,7 @@ const LoginPage = ({ onAdminLogin }) => {
                                 </div>
                                 <div className="mt-4"><label className="block text-sm font-bold mb-1">주소</label><div className="flex gap-2 mb-2"><input value={formData.zipcode} readOnly className="w-24 p-2 border bg-slate-100 rounded" /><button type="button" onClick={()=>setIsAddrOpen(true)} className="bg-slate-600 text-white px-3 rounded text-sm hover:bg-slate-700 transition-colors">주소검색</button></div><input value={formData.address} readOnly className="w-full p-2 border bg-slate-100 rounded mb-2" /><input name="addressDetail" className="w-full p-2 border rounded" placeholder="상세주소" onChange={handleChange} /></div>
                                 <div className="mt-4 pt-4 border-t border-slate-200">
-                                    <label className="block text-sm font-bold mb-1 text-indigo-900">추천인 코드 (영업담당자)</label>
+                                    <label className="block text-sm font-bold mb-1 text-indigo-900">추천인</label>
                                     <p className="text-xs text-slate-500 mb-2">귀하에게 이 쇼핑몰 입점을 제안하거나 안내해준 영업 담당자의 이름을 입력해주세요.</p>
                                     <input name="recommender" className="w-full p-2 border border-indigo-200 bg-indigo-50 rounded placeholder-slate-400 focus:bg-white transition-colors" placeholder="예: 김철수 과장" onChange={handleChange} />
                                 </div>
