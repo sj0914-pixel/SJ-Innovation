@@ -997,8 +997,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                             <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1"><Icon name="Settings" className="w-3 h-3"/>관리자</button>
                         )}
                         <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all">
-                            {/* ★ [수정됨] 장바구니 아이콘 (기존 Boxes -> ShoppingCart) 확실하게 적용 */}
-                            <Icon name="ShoppingCart" className="w-6 h-6" />
+                            <span className="text-2xl">🛒</span>
                             {cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}
                         </button>
                         <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
