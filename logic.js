@@ -1,4 +1,4 @@
-/* logic.js - Banner Edition (Top & Middle) */
+/* logic.js - Fixed Banner Size Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,10 +10,10 @@ const useLucide = () => {
     }); 
 };
 
-// ★ 배너 이미지 설정 (여기 주소를 바꾸면 배너가 바뀝니다) ★
+// ★ 배너 이미지 설정 ★
 const BANNER_IMAGES = {
-    top: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=2070&auto=format&fit=crop", // 상단 배너 (쇼핑/세일 이미지)
-    middle: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=1974&auto=format&fit=crop" // 중간 배너 (선물/이벤트 이미지)
+    top: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=2070&auto=format&fit=crop", 
+    middle: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=1974&auto=format&fit=crop" 
 };
 
 // 택배사 목록
@@ -404,6 +404,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
+                        {/* 대시보드 */}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                             {[
                                 { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" },
@@ -419,6 +420,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             ))}
                         </div>
 
+                        {/* 필터 */}
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">기간</span>
@@ -453,6 +455,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
                         </div>
 
+                        {/* 리스트 */}
                         <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3 bg-slate-50/50">
                                 <div className="flex gap-2 items-center">
@@ -882,7 +885,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
                 {/* Top Banner (Click to change image in BANNER_IMAGES const) */}
                 <div className="mb-8 rounded-2xl overflow-hidden shadow-lg">
-                    <img src={BANNER_IMAGES.top} alt="Winter Season Banner" className="w-full h-auto object-cover" />
+                    <img src={BANNER_IMAGES.top} alt="Top Banner" className="w-full h-40 sm:h-48 object-cover" />
                 </div>
 
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide">
@@ -911,7 +914,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                             {/* Middle Banner Insertion (After 8th item) */}
                             {index === 7 && (
                                 <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md">
-                                    <img src={BANNER_IMAGES.middle} alt="Event Banner" className="w-full h-auto object-cover" />
+                                    <img src={BANNER_IMAGES.middle} alt="Middle Banner" className="w-full h-32 sm:h-40 object-cover" />
                                 </div>
                             )}
                         </React.Fragment>
