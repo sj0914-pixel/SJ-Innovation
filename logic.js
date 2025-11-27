@@ -1,4 +1,4 @@
-/* logic.js - Beta Feedback Fixed Version */
+/* logic.js - Beta Feedback Fixed & Banner Tab Restored */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -12,8 +12,8 @@ const useLucide = () => {
 
 // ★ 기본 배너 (DB에 없을 경우 표시될 이미지) ★
 const DEFAULT_BANNERS = {
-    top: "", 
-    middle: "" 
+    top: "https://i.ibb.co/k6s1knxx/image.png", 
+    middle: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=1974&auto=format&fit=crop" 
 };
 
 const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
@@ -26,7 +26,6 @@ const BANK_INFO = {
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-// [수정] 아이콘 컴포넌트 (장바구니 아이콘 변경을 위해 수정)
 const Icon = ({ name, ...props }) => {
     // Boxes -> ShoppingCart로 매핑 변경
     const iconName = name === "Boxes" ? "ShoppingCart" : (name.charAt(0).toLowerCase() + name.slice(1));
@@ -252,7 +251,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     const [searchInputs, setSearchInputs] = useState({ 
         status: "전체", 
-        dateType: "오늘", // 기본값 오늘
+        dateType: "오늘", 
         startDate: getToday(), 
         endDate: getToday(), 
         searchType: "주문자명", 
@@ -626,7 +625,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                     <tr key={p.id} className="hover:bg-slate-50">
                                         <td className="p-4 text-2xl">{p.image && (p.image.startsWith('data:') || p.image.startsWith('http')) ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
                                         <td className="p-4"><div className="font-bold">{p.name}</div><div className="text-xs text-slate-400">{p.category}</div></td>
-                                        {/* [수정] 상태 표시 */}
                                         <td className="p-4">{p.isHidden ? <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">노출중지</span> : <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded font-bold">판매중</span>}</td>
                                         <td className="p-4">₩{formatPrice(p.price)}</td>
                                         <td className="p-4 font-bold text-blue-600">{p.stock}</td>
@@ -755,7 +753,6 @@ const LoginPage = ({ onAdminLogin, onImmediateLogin }) => {
                 await window.fb.setPersistence(window.auth, persistence);
                 await window.fb.signInUser(window.auth, formData.username, formData.password);
             } else {
-                // [수정] 회원가입 아이디 삭제, 비밀번호 유효성 검사 강화
                 const pwdRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
                 if(!pwdRegex.test(formData.password)) {
                     alert("비밀번호는 영문+숫자 포함 8자리 이상이어야 합니다.");
@@ -766,7 +763,6 @@ const LoginPage = ({ onAdminLogin, onImmediateLogin }) => {
                 const cred = await window.fb.createUser(window.auth, formData.email, formData.password);
                 const newUser = {
                     email: formData.email, 
-                    // [수정] 아이디는 이메일 앞자리 자동 사용
                     displayId: formData.email.split("@")[0], 
                     name: formData.name, mobile: formData.mobile,
                     address: `${formData.address} ${formData.addressDetail}`, businessType: formData.businessType,
@@ -778,7 +774,6 @@ const LoginPage = ({ onAdminLogin, onImmediateLogin }) => {
                 
                 await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), newUser);
                 
-                // [수정] 속도 개선: DB 리스너 기다리지 않고 즉시 로그인 처리
                 alert("가입 완료! 환영합니다.");
                 onImmediateLogin({ ...cred.user, ...newUser });
             }
@@ -801,7 +796,6 @@ const LoginPage = ({ onAdminLogin, onImmediateLogin }) => {
                         <div className="space-y-6">
                             <section className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                 <h3 className="font-bold mb-4 border-b border-slate-200 pb-2 text-slate-700">필수정보 <span className="text-red-500">*</span></h3>
-                                {/* [수정] 아이디 입력칸 삭제됨 */}
                                 <div className="grid md:grid-cols-2 gap-4">
                                     <div><label className="block text-sm font-bold mb-1">이름</label><input name="name" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
                                     <div><label className="block text-sm font-bold mb-1">연락처</label><input name="mobile" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
@@ -852,7 +846,6 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
         else { if (newQuantity >= min) setQty(newQuantity); else alert(`최소 주문 수량은 ${min}개입니다.`); }
     };
 
-    // [수정] 장바구니 담기 후 페이지 유지
     const handleAdd = () => {
         onAddToCart(product, qty);
     };
@@ -870,7 +863,6 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
                         {product.image.startsWith('data:') || product.image.startsWith('.') || product.image.startsWith('http') ? <img src={product.image} alt={product.name} className="w-full h-full object-contain" /> : <span className="text-[8rem] drop-shadow-2xl">{product.image}</span>}
                     </div>
                     <div className="px-5 pb-8">
-                        {/* [수정] 상품명 표시 추가 */}
                         <h1 className="text-2xl font-bold text-slate-900 mb-2 leading-tight">{product.name}</h1>
                         <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100"><span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{formatPrice(product.price)}</span><span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{formatPrice(product.originPrice)}</span><span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">{Math.round((1-product.price/product.originPrice)*100)}% OFF</span></div>
                         <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100"><Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" /><div><span className="font-bold block text-sm">최소 {product.minQty}개 발주 가능 (1카톤 = {product.cartonQty}개)</span><span className="text-xs text-indigo-700 mt-1 block">도매 전용 상품 (카톤 단위 출고)</span><span className="text-xs text-red-600 font-bold mt-1 block">최대 5박스 한정 (대량 발주는 개별 문의)</span></div></div>
@@ -885,7 +877,6 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 sm:p-4 shadow z-30 safe-area-bottom transition-all duration-300">
                 <div className="max-w-3xl mx-auto flex gap-3">
                     <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1"><button onClick={()=>handleQuantityChange(-1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Minus" className="w-4 h-4"/></button><span className="font-bold w-8 text-center">{qty}</span><button onClick={()=>handleQuantityChange(1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Plus" className="w-4 h-4"/></button></div>
-                    {/* [수정] onClick 핸들러 변경: 뒤로가기 제거 */}
                     <button onClick={handleAdd} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-slate-900"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
                 </div>
             </div>
@@ -907,7 +898,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     const [showMyPage, setShowMyPage] = useState(false);
     const [banners, setBanners] = useState(DEFAULT_BANNERS);
     
-    // [수정] 장바구니 담기 알림 팝업 상태
     const [toastMessage, setToastMessage] = useState("");
     
     useLucide();
@@ -924,14 +914,12 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
 
     const goHome = () => { setSelectedCategory("전체"); setSearchTerm(""); setSelectedProduct(null); setShowMyPage(false); window.scrollTo(0, 0); };
     
-    // [수정] 장바구니 담기 시 팝업 띄우고 유지
     const addToCart = (product, quantity = 1) => {
         setCart(prev => {
             const idx = prev.findIndex(item => item.id === product.id);
             if (idx > -1) { const newCart = [...prev]; newCart[idx].quantity += quantity; return newCart; }
             return [...prev, { ...product, quantity }];
         });
-        // 토스트 메시지 표시
         setToastMessage("장바구니에 제품이 담겼습니다.");
         setTimeout(() => setToastMessage(""), 2000);
     };
@@ -962,7 +950,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     };
 
     const filteredProducts = products.filter(p => {
-        // [수정] 판매 중지 상품 숨김
         if (p.isHidden) return false;
         const matchCat = selectedCategory === "전체" || p.category === selectedCategory;
         const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -988,7 +975,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     if (selectedProduct) return (
         <>
             <ProductDetail product={selectedProduct} onBack={handleClose} onAddToCart={addToCart} goHome={goHome} />
-            {/* 토스트 팝업 */}
             {toastMessage && (
                 <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-lg z-[60] animate-in fade-in slide-in-from-bottom-5">
                     {toastMessage}
@@ -1013,7 +999,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                         {isAdmin && (
                             <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1"><Icon name="Settings" className="w-3 h-3"/>관리자</button>
                         )}
-                        {/* [수정] 아이콘 변경 (상자 -> 쇼핑카트) */}
                         <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="ShoppingCart" className="w-6 h-6" />{cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}</button>
                         <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
                         <button onClick={openMyPage} className="flex items-center gap-2 text-sm font-medium hover:bg-slate-100 p-2 rounded-full transition-all"><div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center"><Icon name="User" className="w-4 h-4" /></div><span className="hidden sm:block">{user.storeName || "내 정보"}</span></button>
@@ -1124,7 +1109,6 @@ const App = () => {
     const [loading, setLoading] = useState(true);
     const [firebaseReady, setFirebaseReady] = useState(false);
 
-    // [수정] Firebase 연결 확인 로직 개선 (로딩 단축)
     useEffect(() => {
         const checkFirebase = () => {
             if (window.fb && window.auth && window.db) {
@@ -1140,15 +1124,12 @@ const App = () => {
         if (!firebaseReady) return;
         const { collection, onSnapshot, getDoc, doc } = window.fb;
         
-        // 상품 로드
         const unsub = onSnapshot(collection(window.db, "products_final_v5"), (snap) => {
             setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         });
 
-        // 인증 상태 확인
         const authUnsub = window.fb.onAuthStateChanged(window.auth, async (u) => {
             if (u) {
-                // 이미 유저 정보가 있으면(로그인 직후 등) 스킵
                 if(user && user.uid === u.uid) { setLoading(false); return; }
 
                 try {
@@ -1171,7 +1152,6 @@ const App = () => {
 
     const handleForceAdmin = () => { setIsAdmin(true); setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); };
     
-    // [수정] 회원가입 즉시 로그인 처리 함수
     const handleImmediateLogin = (userData) => {
         setUser(userData);
         setIsAdmin(false);
