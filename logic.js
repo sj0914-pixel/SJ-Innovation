@@ -119,7 +119,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
 };
 
 // ----------------------------------------------------
-// [2] 마이페이지
+// [2] 마이페이지 (추천인 표시 추가됨)
 // ----------------------------------------------------
 const MyPage = ({ user, onClose }) => {
     const [myOrders, setMyOrders] = useState([]);
@@ -164,6 +164,8 @@ const MyPage = ({ user, onClose }) => {
                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">대표자</div><div className="font-bold">{user.repName}</div></div>
                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">이메일</div><div className="font-bold">{user.email}</div></div>
                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">연락처</div><div className="font-bold">{user.mobile || "정보 없음"}</div></div>
+                            {/* ▼ 추천인 정보 추가됨 */}
+                            <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">추천인</div><div className="font-bold text-indigo-600">{user.recommender || "없음"}</div></div>
                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">주소</div><div className="font-bold">{user.address || "정보 없음"}</div></div>
                         </div>
                     ) : (
@@ -424,7 +426,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">대표자명</span><span className="font-bold">{selectedUser.repName || "미입력"}</span></div>
                                 <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">연락처</span><span className="font-bold">{selectedUser.mobile || "미입력"}</span></div>
                             </div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">추천인(영업담당)</span><span className="font-bold text-indigo-600">{selectedUser.recommender || "없음"}</span></div>
+                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">추천인</span><span className="font-bold text-indigo-600">{selectedUser.recommender || "없음"}</span></div>
                             <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">사업자등록번호</span><span className="font-bold">{selectedUser.businessNumber || "미입력"}</span></div>
                             <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">주소</span><span className="font-bold">{selectedUser.address || "미입력"}</span></div>
                             <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">이메일</span><span className="font-bold">{selectedUser.email || "미입력"}</span></div>
