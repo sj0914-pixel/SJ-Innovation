@@ -865,7 +865,7 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
                 <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="ArrowLeft" className="w-7 h-7 text-slate-800" /></button>
                 <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
                 {/* 글씨 태그를 싹 지우고 이미지만 남깁니다 */}
-                <img src="여기에_대표님_로고_주소" alt="Logo" className="h-10 w-auto object-contain" />
+                <img src="https://i.ibb.co/LdPMppLv/image.png" alt="Logo" className="h-10 w-auto object-contain" />
             </div>
                 <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="X" className="w-6 h-6 text-slate-600" /></button>
             </div>
