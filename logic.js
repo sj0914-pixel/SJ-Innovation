@@ -1,4 +1,4 @@
-/* logic.js - Refresh Fix Version */
+/* logic.js - Banner Freeze Fix & Final Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -54,7 +54,12 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const [preview, setPreview] = useState(currentImage || "");
     const [isCompressing, setIsCompressing] = useState(false);
 
-    useEffect(() => { setPreview(currentImage); }, [currentImage]);
+    // 이미지 변경 감지 (무한 루프 방지)
+    useEffect(() => { 
+        if (currentImage !== preview) {
+            setPreview(currentImage); 
+        }
+    }, [currentImage]);
 
     const compressImageToWebP = (file) => {
         return new Promise((resolve, reject) => {
@@ -265,9 +270,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     useEffect(() => {
         if(!window.fb) return;
-        const { collection, onSnapshot, doc, getDocs } = window.fb;
+        const { collection, onSnapshot, doc, getDocs, getDoc } = window.fb;
         const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+        
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             const orderGroups = {};
@@ -288,16 +294,17 @@ const AdminPage = ({ onLogout, onToShop }) => {
             setOrders(list);
         });
 
-        const unsubBanner = onSnapshot(doc(window.db, "config", "banners"), (d) => {
+        // ★ [수정됨] 배너는 '실시간 감지' 끄고 '1회 불러오기'로 변경 (먹통 방지)
+        getDoc(doc(window.db, "config", "banners")).then(d => {
             if(d.exists()) {
                 const data = d.data();
                 setBannerConfig(data);
                 setTopBanner(data.top || "");
                 setMiddleBanner(data.middle || "");
             }
-        });
+        }).catch(e => console.log("배너 설정 없음"));
 
-        return () => { unsubProd(); unsubUser(); unsubOrder(); unsubBanner(); };
+        return () => { unsubProd(); unsubUser(); unsubOrder(); };
     }, []);
 
     const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
@@ -439,7 +446,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
         }
     };
     
-    // ★ [수정됨] 회원 목록 수동 새로고침 (페이지 새로고침 X -> 데이터만 다시 불러옴)
+    // 회원 목록 수동 새로고침 (데이터만 다시 불러옴)
     const handleRefreshUsers = async () => {
         try {
             const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
@@ -601,7 +608,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                         <div className="p-4 border-b flex justify-between items-center bg-slate-50">
                             <span className="font-bold text-slate-600">총 회원수: {users.length}명</span>
-                            {/* ★ [수정됨] 새로고침 버튼이 handleRefreshUsers 함수를 호출하도록 변경 */}
                             <button onClick={handleRefreshUsers} className="bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-900 flex gap-1 items-center"><Icon name="RefreshCw" className="w-3 h-3"/>목록 새로고침</button>
                         </div>
                         <table className="w-full text-left text-sm whitespace-nowrap">
