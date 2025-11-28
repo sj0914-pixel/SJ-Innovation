@@ -25,26 +25,25 @@ const BANK_INFO = {
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-// ★ 수정된 아이콘 컴포넌트 (최종: 가볍고 이름 잘 찾는 버전)
+// ★ 수정 2: 아이콘 컴포넌트 완전 재설계 (충돌 원천 차단)
+// 화면을 스캔해서 바꾸는 방식이 아니라, 리액트가 직접 SVG 코드를 심는 방식으로 변경
 const Icon = ({ name, className, ...props }) => {
-    // 1. 아직 라이브러리가 로드 안 됐으면 그냥 빈칸 (오류 방지)
+    // 아직 라이브러리 로드 안됐으면 빈칸
     if (!window.lucide || !window.lucide.icons) return null;
 
-    // 2. 대소문자 무시하고 아이콘 찾기 (Search, search, SEARCH 다 OK)
-    const targetName = (name || 'Box').toLowerCase();
-    const iconKeys = Object.keys(window.lucide.icons);
-    const foundKey = iconKeys.find(key => key.toLowerCase() === targetName);
-    
-    // 3. 찾은 이름으로 아이콘 가져오기 (없으면 상자 아이콘으로 대체)
-    const lucideIcon = foundKey ? window.lucide.icons[foundKey] : window.lucide.icons.Box;
+    const iconName = name ? name.charAt(0).toLowerCase() + name.slice(1) : 'box';
+    const lucideIcon = window.lucide.icons[iconName];
 
-    // 4. 그래도 없으면 물음표
-    if (!lucideIcon) return <span className={`text-slate-400 font-bold ${className}`}>?</span>;
+    // 아이콘 없으면 물음표
+    if (!lucideIcon) return <span className={className}>?</span>;
 
-    // 5. SVG로 변환해서 그리기 (안전한 방식)
+    // SVG 코드를 직접 생성
     const svgString = lucideIcon.toSvg({ class: className, ...props });
+
+    // 리액트 내부에 안전하게 삽입 (이러면 리액트가 오류를 안 냄)
     return <span dangerouslySetInnerHTML={{ __html: svgString }} style={{ display: 'inline-flex', alignItems: 'center' }} />;
 };
+
 const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
 const formatDate = (dateInput) => {
