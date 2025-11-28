@@ -25,61 +25,66 @@ const BANK_INFO = {
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-// ★ 수정된 아이콘 컴포넌트 (버전 3: 안보임 현상 해결 + 디버깅 로그 추가)
+// ----------------------------------------------------
+// [수정 완료] 아이콘 컴포넌트 (외부 스크립트 제거 -> 이모지/텍스트 매핑)
+// ----------------------------------------------------
 const Icon = ({ name, className, ...props }) => {
-    // 1. 아이콘 라이브러리가 로드되었는지 확인
-    const [isReady, setIsReady] = useState(!!(window.lucide && window.lucide.icons));
-
-    useEffect(() => {
-        if (isReady) return;
-
-        // 0.1초마다 로드 여부 체크 (최대 3초간 시도)
-        let attempts = 0;
-        const checkInterval = setInterval(() => {
-            attempts++;
-            if (window.lucide && window.lucide.icons) {
-                setIsReady(true);
-                clearInterval(checkInterval);
-            } else if (attempts > 30) {
-                // 3초가 지나도 안 오면 체크 중단
-                console.error("Lucide 라이브러리 로딩 실패: index.html의 스크립트 주소를 확인하세요.");
-                clearInterval(checkInterval);
-            }
-        }, 100);
-
-        return () => clearInterval(checkInterval);
-    }, [isReady]);
-
-    // 2. 준비 안 됐을 때 (로딩 중이거나 실패 시)
-    // 아예 안 보이는 대신, 회색 박스와 글자를 보여줘서 위치를 확인시켜줌
-    if (!isReady) {
-        return (
-            <span className={`inline-flex items-center justify-center bg-slate-100 text-[10px] text-slate-400 border border-slate-200 rounded ${className}`} style={{ minWidth: '20px', minHeight: '20px' }}>
-                ...
-            </span>
-        );
-    }
-
-    try {
-        // 3. 아이콘 찾기 (대소문자 무시)
-        const targetName = (name || 'Box').toLowerCase();
-        const iconKeys = Object.keys(window.lucide.icons);
-        const foundKey = iconKeys.find(key => key.toLowerCase() === targetName);
+    // 1. 아이콘 이름에 따른 이모지 매핑표
+    const iconMap = {
+        // 검색 및 기능
+        Search: "🔍",
+        X: "✕",
+        Menu: "☰",
+        RefreshCw: "↻",
+        Loader2: "⌛",
+        Settings: "⚙️",
         
-        // 4. 해당 아이콘이 없으면 Box 아이콘 사용
-        const lucideIcon = foundKey ? window.lucide.icons[foundKey] : window.lucide.icons.Box;
+        // 쇼핑몰 관련
+        ShoppingBag: "🛍️",
+        Store: "🏪",
+        Truck: "🚚",
+        Package: "📦",
+        Boxes: "📚",
+        CreditCard: "💳",
+        
+        // 사용자 및 화살표
+        User: "👤",
+        ArrowLeft: "←",
+        ChevronRight: "〉",
+        Plus: "➕",
+        Minus: "➖",
+        Star: "⭐",
+        
+        // 업로드/다운로드/이미지
+        Image: "🖼️",
+        Upload: "⬆️",
+        Download: "⬇️",
+        LayoutTemplate: "📄",
+        AlertCircle: "!",
+        
+        // 기본값
+        Box: "□"
+    };
 
-        // 5. 안전하게 렌더링
-        if (!lucideIcon) return <span className="text-slate-400 text-xs">?</span>;
+    // 2. 매핑된 이모지가 있으면 보여주고, 없으면 이름의 첫 글자만 보여줌
+    const displayIcon = iconMap[name] || name || "?";
 
-        const svgString = lucideIcon.toSvg({ 
-            class: className, 
-            width: 24, 
-            height: 24, 
-            stroke: "currentColor", 
-            "stroke-width": 2, 
-            ...props 
-        });
+    // 3. 텍스트/이모지 형태로 렌더링 (SVG 아님)
+    return (
+        <span 
+            className={className} 
+            style={{ 
+                display: 'inline-block', 
+                fontStyle: 'normal', 
+                lineHeight: '1', 
+                textAlign: 'center' 
+            }} 
+            {...props}
+        >
+            {displayIcon}
+        </span>
+    );
+};
 
         return (
             <span 
