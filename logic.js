@@ -1,4 +1,4 @@
-/* logic.js - Rescue Version */
+/* logic.js - Final Full Version (All Fixes Included) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,13 +10,16 @@ const useLucide = () => {
     }); 
 };
 
-// 기본 배너
-const DEFAULT_BANNERS = { top: "", middle: "" };
+// 기본 배너 (관리자 미등록 시 빈칸)
+const DEFAULT_BANNERS = {
+    top: "", 
+    middle: "" 
+};
 
 // 택배사 목록
 const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
 
-// 계좌 정보
+// 계좌 정보 (카카오뱅크)
 const BANK_INFO = {
     bankName: "카카오뱅크",
     accountNumber: "3333-24-2073558",
@@ -44,16 +47,17 @@ const formatDate = (dateInput) => {
 };
 
 // ----------------------------------------------------
-// [1] 공통 컴포넌트
+// [1] 공통 컴포넌트 (이미지 업로더 - JPG 안전 변환)
 // ----------------------------------------------------
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
     const [isCompressing, setIsCompressing] = useState(false);
 
-    // 이미지 보여주기용 변수
+    // 이미지 보여주기용 변수 (State 아님 - 무한루프 방지)
     const displayImage = (typeof currentImage === 'string') ? currentImage : "";
 
-    const compressImageToWebP = (file) => {
+    // JPG 변환 엔진 (멈춤 방지)
+    const compressImageToJPG = (file) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -62,7 +66,9 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     const canvas = document.createElement("canvas");
                     let width = img.width;
                     let height = img.height;
-                    const MAX_WIDTH = 1200; 
+                    
+                    // 최대 크기 제한 (안전성 확보)
+                    const MAX_WIDTH = 1000; 
                     if (width > MAX_WIDTH) { 
                         height *= MAX_WIDTH / width; 
                         width = MAX_WIDTH; 
@@ -70,8 +76,13 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
+                    // 투명 배경을 흰색으로 처리 (JPG 변환 시 검게 나오는 것 방지)
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.fillRect(0, 0, width, height);
                     ctx.drawImage(img, 0, 0, width, height);
-                    const dataUrl = canvas.toDataURL("image/webp", 0.8);
+                    
+                    // JPG 포맷, 품질 0.7 (용량 절감)
+                    const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
                     resolve(dataUrl);
                 };
                 img.onerror = reject;
@@ -84,29 +95,33 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const handleFile = async (file) => {
         if (!file) return;
         setIsCompressing(true);
-        try {
-            if (file.size < 500 * 1024 && file.type.includes("webp")) {
-                const reader = new FileReader();
-                reader.onloadend = () => { 
-                    onImageSelect(reader.result); 
-                    setIsCompressing(false); 
-                };
-                reader.readAsDataURL(file);
-            } else {
-                const compressedDataUrl = await compressImageToWebP(file);
-                if (compressedDataUrl.length > 2000000) { 
-                    alert("이미지 용량이 너무 큽니다. 더 작은 이미지를 사용해주세요.");
-                    onImageSelect("");
+        
+        // 브라우저 멈춤 방지를 위한 지연 처리
+        setTimeout(async () => {
+            try {
+                if (file.size < 300 * 1024) { // 300KB 이하는 원본 사용
+                    const reader = new FileReader();
+                    reader.onloadend = () => { 
+                        onImageSelect(reader.result); 
+                        setIsCompressing(false); 
+                    };
+                    reader.readAsDataURL(file);
                 } else {
-                    onImageSelect(compressedDataUrl);
+                    const compressedDataUrl = await compressImageToJPG(file);
+                    if (compressedDataUrl.length > 3000000) { 
+                        alert("이미지 용량이 너무 큽니다. 더 작은 이미지를 사용해주세요.");
+                        onImageSelect("");
+                    } else {
+                        onImageSelect(compressedDataUrl);
+                    }
+                    setIsCompressing(false);
                 }
-                setIsCompressing(false);
+            } catch (e) { 
+                console.error(e);
+                alert("이미지 처리 오류"); 
+                setIsCompressing(false); 
             }
-        } catch (e) { 
-            console.error(e);
-            alert("변환 오류"); 
-            setIsCompressing(false); 
-        }
+        }, 100);
     };
 
     return (
@@ -117,17 +132,21 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 onDrop={(e) => { e.preventDefault(); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
                 onClick={() => fileInputRef.current.click()}>
                 {isCompressing ? (
-                    <div className="text-indigo-600 font-bold text-xs"><Icon name="Loader2" className="animate-spin inline mr-1"/>변환 중...</div>
+                    <div className="text-indigo-600 font-bold text-xs flex flex-col items-center">
+                        <Icon name="Loader2" className="animate-spin mb-1"/>
+                        <span>최적화 중...</span>
+                    </div>
                 ) : (
                     displayImage && !displayImage.includes("📦") ? ( 
                         <div className="relative w-full h-full">
-                            <img src={displayImage} className="absolute inset-0 w-full h-full object-cover bg-slate-50" />
-                            <button onClick={(e)=>{e.stopPropagation(); if(confirm("삭제?")) onImageSelect("");}} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 z-10"><Icon name="X" className="w-4 h-4" /></button>
+                            <img src={displayImage} className="absolute inset-0 w-full h-full object-cover bg-slate-50" alt="preview" />
+                            <button onClick={(e)=>{e.stopPropagation(); if(confirm("이미지를 삭제하시겠습니까?")) onImageSelect("");}} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 z-10 shadow-sm"><Icon name="X" className="w-4 h-4" /></button>
                         </div>
                     ) : ( 
                         <div className="text-center p-4">
                             <Icon name="Image" className="w-5 h-5 mx-auto text-slate-400 mb-2" />
-                            <p className="text-sm text-slate-500">클릭하여 업로드</p>
+                            <p className="text-sm text-slate-500 font-medium">클릭하여 업로드</p>
+                            <span className="text-[10px] text-blue-400 mt-1 block">자동 최적화 (JPG)</span>
                         </div> 
                     )
                 )}
@@ -225,6 +244,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [products, setProducts] = useState([]);
     const [users, setUsers] = useState([]);
     const [orders, setOrders] = useState([]);
+    const [bannerConfig, setBannerConfig] = useState(DEFAULT_BANNERS);
     const [tab, setTab] = useState("orders");
     
     // 배너 State
@@ -271,11 +291,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
             setOrders(list);
         });
 
-        // 배너 설정 불러오기 (안전 장치 추가)
+        // 배너 설정 불러오기 (안전 장치 포함)
         if(getDoc) {
             getDoc(doc(window.db, "config", "banners")).then(d => {
                 if(d.exists()) {
                     const data = d.data();
+                    setBannerConfig(data);
                     setTopBanner(data.top || "");
                     setMiddleBanner(data.middle || "");
                 }
@@ -641,11 +662,13 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         <div className="space-y-8">
                             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                 <h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="LayoutTemplate" className="w-5 h-5"/> 메인 상단 배너</h4>
+                                <p className="text-sm text-slate-500 mb-4">권장 크기: 1200 x 300px</p>
                                 <ImageUploader label="상단 배너 이미지 업로드" currentImage={topBanner} onImageSelect={setTopBanner} />
                             </div>
                             
                             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                 <h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="CreditCard" className="w-5 h-5"/> 중간 띠 배너</h4>
+                                <p className="text-sm text-slate-500 mb-4">권장 크기: 1200 x 250px</p>
                                 <ImageUploader label="중간 배너 이미지 업로드" currentImage={middleBanner} onImageSelect={setMiddleBanner} />
                             </div>
                         </div>
@@ -653,6 +676,25 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 )}
             </div>
 
+            {selectedUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative">
+                        <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
+                        <h3 className="font-bold text-lg mb-4 border-b pb-2">회원 상세 정보</h3>
+                        <div className="space-y-3 text-sm">
+                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">상호명</span><span className="font-bold text-lg">{selectedUser.storeName || "미입력"}</span></div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">대표자명</span><span className="font-bold">{selectedUser.repName || "미입력"}</span></div>
+                                <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">연락처</span><span className="font-bold">{selectedUser.mobile || "미입력"}</span></div>
+                            </div>
+                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">추천인</span><span className="font-bold text-indigo-600">{selectedUser.recommender || "없음"}</span></div>
+                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">사업자등록번호</span><span className="font-bold">{selectedUser.businessNumber || "미입력"}</span></div>
+                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">주소</span><span className="font-bold">{selectedUser.address || "미입력"}</span></div>
+                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">이메일</span><span className="font-bold">{selectedUser.email || "미입력"}</span></div>
+                        </div>
+                    </div>
+                </div>
+            )}
             {isProductModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
