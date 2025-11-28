@@ -1,4 +1,4 @@
-/* logic.js - Final Complete Version */
+/* logic.js - Logo Fixed & Member Sync Fixed Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,7 +10,7 @@ const useLucide = () => {
     }); 
 };
 
-// ★ 기본 배너 (관리자 미등록 시 빈칸) ★
+// 기본 배너 (관리자 미등록 시 빈칸)
 const DEFAULT_BANNERS = {
     top: "", 
     middle: "" 
@@ -19,7 +19,7 @@ const DEFAULT_BANNERS = {
 // 택배사 목록
 const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
 
-// ★ 계좌 정보 (카카오뱅크) ★
+// 계좌 정보 (카카오뱅크)
 const BANK_INFO = {
     bankName: "카카오뱅크",
     accountNumber: "3333-24-2073558",
@@ -57,7 +57,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     useEffect(() => { setPreview(currentImage); }, [currentImage]);
 
     const compressImageToWebP = (file) => {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (event) => {
                 const img = new Image();
@@ -77,6 +77,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     const dataUrl = canvas.toDataURL("image/webp", 0.8);
                     resolve(dataUrl);
                 };
+                img.onerror = reject;
                 img.src = event.target.result;
             };
             reader.readAsDataURL(file);
@@ -135,7 +136,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                         <span className="text-xs font-bold">변환 중...</span>
                     </div>
                 ) : (
-                    preview && !preview.includes("📦") ? ( 
+                    preview && typeof preview === 'string' && !preview.includes("📦") ? ( 
                         <div className="relative w-full h-full">
                             <img src={preview} className="absolute inset-0 w-full h-full object-cover bg-slate-50" alt="preview" />
                             <button onClick={handleDelete} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors shadow-md z-10" title="삭제"><Icon name="X" className="w-4 h-4" /></button>
@@ -248,7 +249,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
     
-    // 기본값 날짜 오늘로 설정
     const getTodayStr = () => formatDate(new Date());
     const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
     const [appliedFilters, setAppliedFilters] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
@@ -267,7 +267,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
         if(!window.fb) return;
         const { collection, onSnapshot, doc } = window.fb;
         const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+        // ★ 회원 목록 실시간 감지 ★
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+        
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             const orderGroups = {};
@@ -292,8 +294,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
             if(d.exists()) {
                 const data = d.data();
                 setBannerConfig(data);
-                setTopBanner(data.top);
-                setMiddleBanner(data.middle);
+                setTopBanner(data.top || "");
+                setMiddleBanner(data.middle || "");
             }
         });
 
@@ -330,20 +332,11 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const handleDateBtn = (type) => {
         const today = new Date();
         let start = new Date();
-        
-        if (type === "오늘") {
-            // start, today 모두 오늘
-        } else if (type === "7일") {
-            start.setDate(today.getDate() - 7);
-        } else if (type === "30일") {
-            start.setDate(today.getDate() - 30);
-        }
-
+        if (type === "오늘") { } 
+        else if (type === "7일") { start.setDate(today.getDate() - 7); } 
+        else if (type === "30일") { start.setDate(today.getDate() - 30); }
         setSearchInputs(prev => ({ 
-            ...prev, 
-            dateType: type, 
-            startDate: type === "전체" ? "" : formatDate(start), 
-            endDate: type === "전체" ? "" : formatDate(today) 
+            ...prev, dateType: type, startDate: type === "전체" ? "" : formatDate(start), endDate: type === "전체" ? "" : formatDate(today) 
         }));
     };
     
@@ -446,6 +439,15 @@ const AdminPage = ({ onLogout, onToShop }) => {
         } catch(e) {
             alert("배너 저장 실패: " + e.message);
         }
+    };
+    
+    // 회원 목록 수동 새로고침 (반영 안될 때용)
+    const handleRefreshUsers = async () => {
+        try {
+            const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
+            setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            alert("회원 목록을 새로 불러왔습니다.");
+        } catch(e) { alert("불러오기 실패: " + e.message); }
     };
 
     const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
@@ -596,6 +598,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 )}
                 {tab === "users" && (
                     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                        <div className="p-4 border-b flex justify-between items-center bg-slate-50">
+                            <span className="font-bold text-slate-600">총 회원수: {users.length}명</span>
+                            <button onClick={()=>window.location.reload()} className="bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-900 flex gap-1 items-center"><Icon name="RefreshCw" className="w-3 h-3"/>목록 새로고침</button>
+                        </div>
                         <table className="w-full text-left text-sm whitespace-nowrap">
                             <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">추천인</th><th className="p-4">관리</th></tr></thead>
                             <tbody className="divide-y divide-slate-100">
@@ -657,6 +663,25 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 )}
             </div>
 
+            {selectedUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative">
+                        <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
+                        <h3 className="font-bold text-lg mb-4 border-b pb-2">회원 상세 정보</h3>
+                        <div className="space-y-3 text-sm">
+                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">상호명</span><span className="font-bold text-lg">{selectedUser.storeName || "미입력"}</span></div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">대표자명</span><span className="font-bold">{selectedUser.repName || "미입력"}</span></div>
+                                <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">연락처</span><span className="font-bold">{selectedUser.mobile || "미입력"}</span></div>
+                            </div>
+                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">추천인</span><span className="font-bold text-indigo-600">{selectedUser.recommender || "없음"}</span></div>
+                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">사업자등록번호</span><span className="font-bold">{selectedUser.businessNumber || "미입력"}</span></div>
+                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">주소</span><span className="font-bold">{selectedUser.address || "미입력"}</span></div>
+                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">이메일</span><span className="font-bold">{selectedUser.email || "미입력"}</span></div>
+                        </div>
+                    </div>
+                </div>
+            )}
             {isProductModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -775,9 +800,9 @@ const LoginPage = ({ onAdminLogin }) => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8">
             <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all duration-300 ${isLoginMode?'max-w-md p-8':'max-w-3xl p-8'}`}>
-                {/* ★ 로그인 상단 로고 (큰 이미지) ★ */}
+                {/* ★ 로그인 상단 로고 (10% 축소: h-16) ★ */}
                 <div className="text-center mb-8">
-                    <img src="https://i.ibb.co/LF7PbQv/image.png" alt="Logo" className="h-20 w-auto object-contain mx-auto mb-4" />
+                    <img src="https://i.ibb.co/LF7PbQv/image.png" alt="Logo" className="h-16 w-auto object-contain mx-auto mb-4" />
                     <h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1>
                     <p className="text-slate-500 mt-2 text-sm">SJ Innovation</p>
                 </div>
@@ -849,9 +874,9 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
             <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center justify-between">
                 <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="ArrowLeft" className="w-7 h-7 text-slate-800" /></button>
                 
-                {/* ★ 상세페이지 상단 로고 (메인과 동일 이미지 적용) ★ */}
+                {/* ★ 상세페이지 상단 로고 (10% 축소: h-9) ★ */}
                 <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
-                    <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-10 w-auto object-contain" />
+                    <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-9 w-auto object-contain" />
                 </div>
                 
                 <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="X" className="w-6 h-6 text-slate-600" /></button>
@@ -976,9 +1001,9 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100 transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                     
-                    {/* ★ 메인페이지 상단 로고 (글자X, 이미지 1개만) ★ */}
+                    {/* ★ 메인페이지 상단 로고 (10% 축소: h-9) ★ */}
                     <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
-                        <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-10 w-auto object-contain" />
+                        <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-9 w-auto object-contain" />
                     </div>
 
                     <div className="flex-1 max-w-lg mx-4 relative hidden sm:block">
@@ -990,7 +1015,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                             <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1"><Icon name="Settings" className="w-3 h-3"/>관리자</button>
                         )}
                         <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all">
-                            {/* ★ 장바구니 이모지 ★ */}
                             <span className="text-2xl">🛒</span>
                             {cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}
                         </button>
@@ -1001,7 +1025,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
-                {/* Top Banner (Dynamic) - 배너 없으면 안보임 */}
                 {banners.top && (
                     <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 min-h-[160px]">
                         <img 
@@ -1037,7 +1060,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                     </div>
                                 </div>
                             </div>
-                            {/* Middle Banner (Dynamic) - 배너 없으면 안보임 */}
                             {index === 7 && banners.middle && (
                                 <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 min-h-[128px]">
                                     <img src={banners.middle} alt="Middle Banner" className="w-full h-32 sm:h-40 object-cover" />
