@@ -1,4 +1,4 @@
-/* logic.js - Banner Fix & Stability Final Version */
+/* logic.js - Final Stable Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -16,7 +16,7 @@ const DEFAULT_BANNERS = { top: "", middle: "" };
 // 택배사 목록
 const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
 
-// 계좌 정보 (카카오뱅크)
+// 계좌 정보
 const BANK_INFO = {
     bankName: "카카오뱅크",
     accountNumber: "3333-24-2073558",
@@ -46,12 +46,11 @@ const formatDate = (dateInput) => {
 // ----------------------------------------------------
 // [1] 공통 컴포넌트
 // ----------------------------------------------------
-// ★ [수정됨] 무한 루프 방지를 위해 preview 상태 제거 및 로직 단순화
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
     const [isCompressing, setIsCompressing] = useState(false);
 
-    // 데이터가 문자열인지 확인하는 안전장치
+    // 이미지 보여주기용 변수 (State 아님)
     const displayImage = (typeof currentImage === 'string') ? currentImage : "";
 
     const compressImageToWebP = (file) => {
@@ -96,7 +95,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             } else {
                 const compressedDataUrl = await compressImageToWebP(file);
                 if (compressedDataUrl.length > 2000000) { 
-                    alert("이미지 용량이 너무 큽니다.");
+                    alert("이미지 용량이 너무 큽니다. 더 작은 이미지를 사용해주세요.");
                     onImageSelect("");
                 } else {
                     onImageSelect(compressedDataUrl);
@@ -105,15 +104,8 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             }
         } catch (e) { 
             console.error(e);
-            alert("이미지 변환 오류"); 
+            alert("변환 오류"); 
             setIsCompressing(false); 
-        }
-    };
-
-    const handleDelete = (e) => {
-        e.stopPropagation();
-        if (confirm("이미지를 삭제하시겠습니까?")) {
-            onImageSelect("");
         }
     };
 
@@ -125,20 +117,17 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 onDrop={(e) => { e.preventDefault(); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
                 onClick={() => fileInputRef.current.click()}>
                 {isCompressing ? (
-                    <div className="flex flex-col items-center justify-center text-indigo-600">
-                        <Icon name="Loader2" className="w-8 h-8 animate-spin mb-2" />
-                        <span className="text-xs font-bold">변환 중...</span>
-                    </div>
+                    <div className="text-indigo-600 font-bold text-xs"><Icon name="Loader2" className="animate-spin inline mr-1"/>변환 중...</div>
                 ) : (
                     displayImage && !displayImage.includes("📦") ? ( 
                         <div className="relative w-full h-full">
-                            <img src={displayImage} className="absolute inset-0 w-full h-full object-cover bg-slate-50" alt="preview" />
-                            <button onClick={handleDelete} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors shadow-md z-10" title="삭제"><Icon name="X" className="w-4 h-4" /></button>
+                            <img src={displayImage} className="absolute inset-0 w-full h-full object-cover bg-slate-50" />
+                            <button onClick={(e)=>{e.stopPropagation(); if(confirm("삭제?")) onImageSelect("");}} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 z-10"><Icon name="X" className="w-4 h-4" /></button>
                         </div>
                     ) : ( 
                         <div className="text-center p-4">
                             <Icon name="Image" className="w-5 h-5 mx-auto text-slate-400 mb-2" />
-                            <p className="text-sm text-slate-500 font-medium">클릭하여 업로드</p>
+                            <p className="text-sm text-slate-500">클릭하여 업로드</p>
                         </div> 
                     )
                 )}
@@ -236,10 +225,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [products, setProducts] = useState([]);
     const [users, setUsers] = useState([]);
     const [orders, setOrders] = useState([]);
-    const [bannerConfig, setBannerConfig] = useState(DEFAULT_BANNERS);
     const [tab, setTab] = useState("orders");
     
-    // 배너 관리용 State
+    // 배너 State
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
     
@@ -259,7 +247,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     useEffect(() => {
         if(!window.fb) return;
-        const { collection, onSnapshot, doc, getDocs, getDoc } = window.fb;
+        const { collection, onSnapshot, doc, getDoc } = window.fb;
         const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         
@@ -287,11 +275,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
         getDoc(doc(window.db, "config", "banners")).then(d => {
             if(d.exists()) {
                 const data = d.data();
-                setBannerConfig(data);
                 setTopBanner(data.top || "");
                 setMiddleBanner(data.middle || "");
             }
-        }).catch(e => console.log("배너 로딩 에러 혹은 없음"));
+        }).catch(e => console.log("배너 설정 없음"));
 
         return () => { unsubProd(); unsubUser(); unsubOrder(); };
     }, []);
@@ -435,7 +422,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         }
     };
     
-    // 회원 목록 수동 새로고침 (페이지 새로고침 X)
     const handleRefreshUsers = async () => {
         try {
             const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
@@ -660,25 +646,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 )}
             </div>
 
-            {selectedUser && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative">
-                        <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
-                        <h3 className="font-bold text-lg mb-4 border-b pb-2">회원 상세 정보</h3>
-                        <div className="space-y-3 text-sm">
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">상호명</span><span className="font-bold text-lg">{selectedUser.storeName || "미입력"}</span></div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">대표자명</span><span className="font-bold">{selectedUser.repName || "미입력"}</span></div>
-                                <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">연락처</span><span className="font-bold">{selectedUser.mobile || "미입력"}</span></div>
-                            </div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">추천인</span><span className="font-bold text-indigo-600">{selectedUser.recommender || "없음"}</span></div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">사업자등록번호</span><span className="font-bold">{selectedUser.businessNumber || "미입력"}</span></div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">주소</span><span className="font-bold">{selectedUser.address || "미입력"}</span></div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">이메일</span><span className="font-bold">{selectedUser.email || "미입력"}</span></div>
-                        </div>
-                    </div>
-                </div>
-            )}
             {isProductModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -1133,7 +1100,7 @@ const App = () => {
     const [firebaseReady, setFirebaseReady] = useState(false);
 
     useEffect(() => {
-        // ★ [복구] 새로고침 시에도 관리자 모드 기억하기
+        // 새로고침 시에도 관리자 모드 기억
         const savedAdminMode = localStorage.getItem("adminViewMode") === "true";
         if (savedAdminMode) setAdminViewMode(true);
 
@@ -1166,7 +1133,6 @@ const App = () => {
                 } catch (e) { setUser(u); }
             } else {
                 setUser(null); setIsAdmin(false);
-                // 로그아웃 되면 관리자 모드 기억 삭제
                 localStorage.removeItem("adminViewMode");
             }
             setLoading(false);
@@ -1176,7 +1142,7 @@ const App = () => {
 
     const handleForceAdmin = () => { setIsAdmin(true); setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); };
     
-    // ★ [수정됨] 관리자 모드 진입/해제 시 기억하기
+    // 관리자 모드 진입/해제 시 기억하기
     const handleToAdmin = () => {
         setAdminViewMode(true);
         localStorage.setItem("adminViewMode", "true");
@@ -1190,7 +1156,7 @@ const App = () => {
         setIsAdmin(false); 
         setAdminViewMode(false); 
         setUser(null); 
-        localStorage.removeItem("adminViewMode"); // 로그아웃 시 삭제
+        localStorage.removeItem("adminViewMode"); 
         window.fb.logOut(window.auth); 
     };
 
@@ -1200,9 +1166,7 @@ const App = () => {
              <div>시스템 연결중...</div>
         </div>
     );
-    // ★ [연결] handleToShop 함수 전달
     if (isAdmin && adminViewMode) return <AdminPage onLogout={handleLogout} onToShop={handleToShop} />;
-    // ★ [연결] handleToAdmin 함수 전달
     if (user) return <ShopPage products={products} user={user} onLogout={handleLogout} isAdmin={isAdmin} onToAdmin={handleToAdmin} />;
     return <LoginPage onAdminLogin={handleForceAdmin} />;
 };
