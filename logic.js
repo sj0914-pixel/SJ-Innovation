@@ -688,7 +688,46 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 )}
             </div>
 
-            {isProductModalOpen && (
+            {/* ★ 여기부터 회원 상세 팝업 코드 시작 ★ */}
+                        {selectedUser && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+                                <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 relative overflow-hidden">
+                                    <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors"><Icon name="X"/></button>
+                                    <h3 className="font-bold text-xl mb-6 flex items-center gap-2"><Icon name="User" className="w-6 h-6"/> 회원 상세 정보</h3>
+                                    <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 text-sm">
+                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                            <h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">기본 정보</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><div className="text-slate-400 text-xs mb-1">이름</div><div className="font-bold">{selectedUser.name}</div></div>
+                                                <div><div className="text-slate-400 text-xs mb-1">연락처</div><div className="font-bold">{selectedUser.mobile}</div></div>
+                                                <div className="col-span-2"><div className="text-slate-400 text-xs mb-1">이메일</div><div className="font-bold">{selectedUser.email}</div></div>
+                                                <div className="col-span-2"><div className="text-slate-400 text-xs mb-1">주소</div><div className="font-bold">{selectedUser.address}</div></div>
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                            <h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">사업자 정보</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><div className="text-slate-400 text-xs mb-1">상호명</div><div className="font-bold">{selectedUser.storeName}</div></div>
+                                                <div><div className="text-slate-400 text-xs mb-1">대표자</div><div className="font-bold">{selectedUser.repName}</div></div>
+                                                <div><div className="text-slate-400 text-xs mb-1">사업자번호</div><div className="font-bold">{selectedUser.businessNumber}</div></div>
+                                                <div><div className="text-slate-400 text-xs mb-1">업태</div><div className="font-bold">{selectedUser.businessType}</div></div>
+                                            </div>
+                                        </div>
+                                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                            <div className="text-indigo-800 text-xs mb-1 font-bold">추천인</div>
+                                            <div className="font-bold text-indigo-600 text-lg">{selectedUser.recommender || "없음"}</div>
+                                        </div>
+                                        <div className="text-xs text-slate-400 text-right">가입일: {new Date(selectedUser.joinedAt).toLocaleString()}</div>
+                                    </div>
+                                    <div className="mt-6 pt-4 border-t flex justify-end">
+                                        <button onClick={()=>setSelectedUser(null)} className="bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-900 transition-colors">닫기</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {/* ★ 여기까지 끝 ★ */}
+            
+                {isProductModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
