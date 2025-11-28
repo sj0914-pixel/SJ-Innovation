@@ -27,23 +27,41 @@ const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기
 
 // ★ 수정 2: 아이콘 컴포넌트 완전 재설계 (충돌 원천 차단)
 // 화면을 스캔해서 바꾸는 방식이 아니라, 리액트가 직접 SVG 코드를 심는 방식으로 변경
+// ★ 수정된 아이콘 컴포넌트 (절대 방어 모드: 대소문자 무시 + 기다리기 기능)
 const Icon = ({ name, className, ...props }) => {
-    // 아직 라이브러리 로드 안됐으면 빈칸
-    if (!window.lucide || !window.lucide.icons) return null;
+    const [libReady, setLibReady] = useState(false);
 
-    const iconName = name ? name.charAt(0).toLowerCase() + name.slice(1) : 'box';
-    const lucideIcon = window.lucide.icons[iconName];
+    // 1. 라이브러리가 로드될 때까지 0.1초마다 끈질기게 확인
+    useEffect(() => {
+        if (window.lucide && window.lucide.icons) {
+            setLibReady(true);
+        } else {
+            const interval = setInterval(() => {
+                if (window.lucide && window.lucide.icons) {
+                    setLibReady(true);
+                    clearInterval(interval);
+                }
+            }, 100);
+            return () => clearInterval(interval);
+        }
+    }, []);
 
-    // 아이콘 없으면 물음표
-    if (!lucideIcon) return <span className={className}>?</span>;
+    // 아직 준비 안 됐으면 투명한 박스 유지 (물음표 띄우지 않음)
+    if (!libReady) return <span className={`inline-block w-4 h-4 ${className}`}></span>;
 
-    // SVG 코드를 직접 생성
+    // 2. 대소문자 무시하고 아이콘 찾아내기 (Search, search, SEARCH 다 찾음)
+    const targetName = (name || 'Box').toLowerCase();
+    const iconKeys = Object.keys(window.lucide.icons);
+    const foundKey = iconKeys.find(key => key.toLowerCase() === targetName);
+    const lucideIcon = foundKey ? window.lucide.icons[foundKey] : null;
+
+    // 그래도 없으면 진짜 물음표
+    if (!lucideIcon) return <span className={`text-slate-400 font-bold ${className}`}>?</span>;
+
+    // 3. 안전하게 그리기
     const svgString = lucideIcon.toSvg({ class: className, ...props });
-
-    // 리액트 내부에 안전하게 삽입 (이러면 리액트가 오류를 안 냄)
     return <span dangerouslySetInnerHTML={{ __html: svgString }} style={{ display: 'inline-flex', alignItems: 'center' }} />;
 };
-
 const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
 const formatDate = (dateInput) => {
