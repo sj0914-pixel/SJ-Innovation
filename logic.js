@@ -27,41 +27,23 @@ const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기
 
 // ★ 수정 2: 아이콘 컴포넌트 완전 재설계 (충돌 원천 차단)
 // 화면을 스캔해서 바꾸는 방식이 아니라, 리액트가 직접 SVG 코드를 심는 방식으로 변경
-// ★ 수정된 아이콘 컴포넌트 (절대 방어 모드: 대소문자 무시 + 기다리기 기능)
 const Icon = ({ name, className, ...props }) => {
-    const [libReady, setLibReady] = useState(false);
+    // 아직 라이브러리 로드 안됐으면 빈칸
+    if (!window.lucide || !window.lucide.icons) return null;
 
-    // 1. 라이브러리가 로드될 때까지 0.1초마다 끈질기게 확인
-    useEffect(() => {
-        if (window.lucide && window.lucide.icons) {
-            setLibReady(true);
-        } else {
-            const interval = setInterval(() => {
-                if (window.lucide && window.lucide.icons) {
-                    setLibReady(true);
-                    clearInterval(interval);
-                }
-            }, 100);
-            return () => clearInterval(interval);
-        }
-    }, []);
+    const iconName = name ? name.charAt(0).toLowerCase() + name.slice(1) : 'box';
+    const lucideIcon = window.lucide.icons[iconName];
 
-    // 아직 준비 안 됐으면 투명한 박스 유지 (물음표 띄우지 않음)
-    if (!libReady) return <span className={`inline-block w-4 h-4 ${className}`}></span>;
+    // 아이콘 없으면 물음표
+    if (!lucideIcon) return <span className={className}>?</span>;
 
-    // 2. 대소문자 무시하고 아이콘 찾아내기 (Search, search, SEARCH 다 찾음)
-    const targetName = (name || 'Box').toLowerCase();
-    const iconKeys = Object.keys(window.lucide.icons);
-    const foundKey = iconKeys.find(key => key.toLowerCase() === targetName);
-    const lucideIcon = foundKey ? window.lucide.icons[foundKey] : null;
-
-    // 그래도 없으면 진짜 물음표
-    if (!lucideIcon) return <span className={`text-slate-400 font-bold ${className}`}>?</span>;
-
-    // 3. 안전하게 그리기
+    // SVG 코드를 직접 생성
     const svgString = lucideIcon.toSvg({ class: className, ...props });
+
+    // 리액트 내부에 안전하게 삽입 (이러면 리액트가 오류를 안 냄)
     return <span dangerouslySetInnerHTML={{ __html: svgString }} style={{ display: 'inline-flex', alignItems: 'center' }} />;
 };
+
 const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
 const formatDate = (dateInput) => {
@@ -706,46 +688,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 )}
             </div>
 
-            {/* ★ 여기부터 회원 상세 팝업 코드 시작 ★ */}
-                        {selectedUser && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-                                <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 relative overflow-hidden">
-                                    <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors"><Icon name="X"/></button>
-                                    <h3 className="font-bold text-xl mb-6 flex items-center gap-2"><Icon name="User" className="w-6 h-6"/> 회원 상세 정보</h3>
-                                    <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 text-sm">
-                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                            <h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">기본 정보</h4>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div><div className="text-slate-400 text-xs mb-1">이름</div><div className="font-bold">{selectedUser.name}</div></div>
-                                                <div><div className="text-slate-400 text-xs mb-1">연락처</div><div className="font-bold">{selectedUser.mobile}</div></div>
-                                                <div className="col-span-2"><div className="text-slate-400 text-xs mb-1">이메일</div><div className="font-bold">{selectedUser.email}</div></div>
-                                                <div className="col-span-2"><div className="text-slate-400 text-xs mb-1">주소</div><div className="font-bold">{selectedUser.address}</div></div>
-                                            </div>
-                                        </div>
-                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                            <h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">사업자 정보</h4>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div><div className="text-slate-400 text-xs mb-1">상호명</div><div className="font-bold">{selectedUser.storeName}</div></div>
-                                                <div><div className="text-slate-400 text-xs mb-1">대표자</div><div className="font-bold">{selectedUser.repName}</div></div>
-                                                <div><div className="text-slate-400 text-xs mb-1">사업자번호</div><div className="font-bold">{selectedUser.businessNumber}</div></div>
-                                                <div><div className="text-slate-400 text-xs mb-1">업태</div><div className="font-bold">{selectedUser.businessType}</div></div>
-                                            </div>
-                                        </div>
-                                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                                            <div className="text-indigo-800 text-xs mb-1 font-bold">추천인</div>
-                                            <div className="font-bold text-indigo-600 text-lg">{selectedUser.recommender || "없음"}</div>
-                                        </div>
-                                        <div className="text-xs text-slate-400 text-right">가입일: {new Date(selectedUser.joinedAt).toLocaleString()}</div>
-                                    </div>
-                                    <div className="mt-6 pt-4 border-t flex justify-end">
-                                        <button onClick={()=>setSelectedUser(null)} className="bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-900 transition-colors">닫기</button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        {/* ★ 여기까지 끝 ★ */}
-            
-                {isProductModalOpen && (
+            {isProductModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
