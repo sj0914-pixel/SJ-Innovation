@@ -1,9 +1,11 @@
-/* logic.js - Final Fixed Version (Smart Icon Finder) */
+/* logic.js - Final Fix for Crash & White Screen */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
 // [0] 전역 상수 및 유틸리티
 // ----------------------------------------------------
+
+// ★ 수정 1: 충돌의 원흉이었던 useLucide 훅 제거 (더 이상 사용 안 함)
 
 // 기본 배너 (관리자 미등록 시 빈칸)
 const DEFAULT_BANNERS = {
@@ -23,34 +25,22 @@ const BANK_INFO = {
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-// ★ 수정된 아이콘 컴포넌트 (스마트 탐색 기능 추가)
+// ★ 수정 2: 아이콘 컴포넌트 완전 재설계 (충돌 원천 차단)
+// 화면을 스캔해서 바꾸는 방식이 아니라, 리액트가 직접 SVG 코드를 심는 방식으로 변경
 const Icon = ({ name, className, ...props }) => {
-    // 1. 라이브러리가 로드되지 않았으면 빈칸 리턴 (에러 방지)
+    // 아직 라이브러리 로드 안됐으면 빈칸
     if (!window.lucide || !window.lucide.icons) return null;
 
-    // 2. 아이콘 이름이 없을 경우 기본값 'Box'
-    const targetName = name || 'Box';
+    const iconName = name ? name.charAt(0).toLowerCase() + name.slice(1) : 'box';
+    const lucideIcon = window.lucide.icons[iconName];
 
-    // 3. [스마트 탐색] 아이콘을 찾는 3단계 전략
-    // 전략 A: 원래 이름 그대로 찾아보기 (예: "Box")
-    let lucideIcon = window.lucide.icons[targetName];
+    // 아이콘 없으면 물음표
+    if (!lucideIcon) return <span className={className}>?</span>;
 
-    // 전략 B: 첫 글자만 소문자로 바꿔서 찾아보기 (CDN 버전에서 주로 쓰는 방식, 예: "Search" -> "search")
-    if (!lucideIcon) {
-        const camelName = targetName.charAt(0).toLowerCase() + targetName.slice(1);
-        lucideIcon = window.lucide.icons[camelName];
-    }
-
-    // 전략 C: 전부 소문자로 바꿔서 찾아보기 (혹시 모를 경우 대비)
-    if (!lucideIcon) {
-        lucideIcon = window.lucide.icons[targetName.toLowerCase()];
-    }
-
-    // 4. 그래도 없으면 물음표(?) 표시
-    if (!lucideIcon) return <span className={`text-slate-400 font-bold ${className}`}>?</span>;
-
-    // 5. SVG 코드 생성 및 렌더링 (리액트 충돌 방지 방식)
+    // SVG 코드를 직접 생성
     const svgString = lucideIcon.toSvg({ class: className, ...props });
+
+    // 리액트 내부에 안전하게 삽입 (이러면 리액트가 오류를 안 냄)
     return <span dangerouslySetInnerHTML={{ __html: svgString }} style={{ display: 'inline-flex', alignItems: 'center' }} />;
 };
 
@@ -68,7 +58,7 @@ const formatDate = (dateInput) => {
 };
 
 // ----------------------------------------------------
-// [1] 공통 컴포넌트 (이미지 업로더)
+// [1] 공통 컴포넌트 (이미지 업로더 - 안전 강화)
 // ----------------------------------------------------
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
@@ -87,7 +77,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     let width = img.width;
                     let height = img.height;
                     
-                    const MAX_WIDTH = 1200; 
+                    const MAX_WIDTH = 1200; // 배너 사이즈 고려하여 1200으로 상향
                     if (width > MAX_WIDTH) { 
                         height *= MAX_WIDTH / width; 
                         width = MAX_WIDTH; 
@@ -115,8 +105,10 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
         if (!file) return;
         setIsCompressing(true);
         
+        // 브라우저 멈춤 방지용 지연
         setTimeout(async () => {
             try {
+                // 300KB 이하는 원본 사용
                 if (file.size < 300 * 1024) { 
                     const reader = new FileReader();
                     reader.onloadend = () => { 
@@ -126,6 +118,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     reader.readAsDataURL(file);
                 } else {
                     const compressedDataUrl = await compressImageToJPG(file);
+                    // 3MB 제한 (Safe guard)
                     if (compressedDataUrl.length > 3000000) { 
                         alert("이미지 용량이 너무 큽니다.");
                         onImageSelect("");
@@ -150,6 +143,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 onDrop={(e) => { e.preventDefault(); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
                 onClick={() => fileInputRef.current.click()}>
                 
+                {/* 로딩바는 순수 CSS로 처리 (아이콘 사용 X) */}
                 {isCompressing ? (
                     <div className="text-indigo-600 font-bold text-xs flex flex-col items-center">
                         <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-2"></div>
@@ -181,6 +175,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
 const MyPage = ({ user, onClose }) => {
     const [myOrders, setMyOrders] = useState([]);
     const [tab, setTab] = useState("info");
+    // useLucide 삭제됨
 
     useEffect(() => {
         if(!window.fb || !window.auth.currentUser) return;
@@ -268,7 +263,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
     
-    // 배너 불러오기
+    // 배너 불러오기 (한 번만 실행 - 안전장치)
     useEffect(() => {
         if(window.fb && window.fb.getDoc) {
             window.fb.getDoc(window.fb.doc(window.db, "config", "banners")).then(d => {
@@ -293,11 +288,13 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [detailImage, setDetailImage] = useState("");
     
     const excelInputRef = useRef(null);
+    // useLucide 삭제됨
 
     useEffect(() => {
         if(!window.fb) return;
         const { collection, onSnapshot, doc, getDocs } = window.fb;
         const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+        // 회원 목록 실시간 (기본)
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
@@ -736,6 +733,7 @@ const LoginPage = ({ onAdminLogin }) => {
     const addrWrapRef = useRef(null);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '', name: '', mobile: '', email: '', zipcode: '', address: '', addressDetail: '', businessType: '문구/팬시점', storeName: '', repName: '', businessNumber: '', businessCategory: '', businessItem: '', taxEmail: '', recommender: '' });
+    // useLucide 삭제됨
 
     useEffect(() => {
         if(isAddrOpen && addrWrapRef.current && window.daum) {
@@ -867,6 +865,7 @@ const LoginPage = ({ onAdminLogin }) => {
 // ----------------------------------------------------
 const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
     const [qty, setQty] = useState(product.minQty || 1);
+    // useLucide 삭제됨
     
     const handleQuantityChange = (delta) => {
         const min = product.minQty || 1;
@@ -931,6 +930,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showMyPage, setShowMyPage] = useState(false);
     const [banners, setBanners] = useState(DEFAULT_BANNERS);
+    // useLucide 삭제됨
 
     useEffect(() => {
         if(window.fb) {
