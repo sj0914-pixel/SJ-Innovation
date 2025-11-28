@@ -1,13 +1,11 @@
-/* logic.js - Final Fix for Crash & White Screen */
+/* logic.js - Final Fix (No External Icons) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
 // [0] 전역 상수 및 유틸리티
 // ----------------------------------------------------
 
-// ★ 수정 1: 충돌의 원흉이었던 useLucide 훅 제거 (더 이상 사용 안 함)
-
-// 기본 배너 (관리자 미등록 시 빈칸)
+// 기본 배너
 const DEFAULT_BANNERS = {
     top: "", 
     middle: "" 
@@ -26,76 +24,29 @@ const BANK_INFO = {
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
 // ----------------------------------------------------
-// [수정 완료] 아이콘 컴포넌트 (외부 스크립트 제거 -> 이모지/텍스트 매핑)
+// [수정 완료] 아이콘 컴포넌트 (이모지 버전)
 // ----------------------------------------------------
 const Icon = ({ name, className, ...props }) => {
-    // 1. 아이콘 이름에 따른 이모지 매핑표
+    // 이모지 매핑표
     const iconMap = {
-        // 검색 및 기능
-        Search: "🔍",
-        X: "✕",
-        Menu: "☰",
-        RefreshCw: "↻",
-        Loader2: "⌛",
-        Settings: "⚙️",
-        
-        // 쇼핑몰 관련
-        ShoppingBag: "🛍️",
-        Store: "🏪",
-        Truck: "🚚",
-        Package: "📦",
-        Boxes: "📚",
-        CreditCard: "💳",
-        
-        // 사용자 및 화살표
-        User: "👤",
-        ArrowLeft: "←",
-        ChevronRight: "〉",
-        Plus: "➕",
-        Minus: "➖",
-        Star: "⭐",
-        
-        // 업로드/다운로드/이미지
-        Image: "🖼️",
-        Upload: "⬆️",
-        Download: "⬇️",
-        LayoutTemplate: "📄",
-        AlertCircle: "!",
-        
-        // 기본값
+        Search: "🔍", X: "✕", Menu: "☰", RefreshCw: "↻", Loader2: "⌛", Settings: "⚙️",
+        ShoppingBag: "🛍️", Store: "🏪", Truck: "🚚", Package: "📦", Boxes: "📚", CreditCard: "💳",
+        User: "👤", ArrowLeft: "←", ChevronRight: "〉", Plus: "➕", Minus: "➖", Star: "⭐",
+        Image: "🖼️", Upload: "⬆️", Download: "⬇️", LayoutTemplate: "📄", AlertCircle: "!",
         Box: "□"
     };
 
-    // 2. 매핑된 이모지가 있으면 보여주고, 없으면 이름의 첫 글자만 보여줌
     const displayIcon = iconMap[name] || name || "?";
 
-    // 3. 텍스트/이모지 형태로 렌더링 (SVG 아님)
     return (
         <span 
             className={className} 
-            style={{ 
-                display: 'inline-block', 
-                fontStyle: 'normal', 
-                lineHeight: '1', 
-                textAlign: 'center' 
-            }} 
+            style={{ display: 'inline-block', fontStyle: 'normal', lineHeight: '1', textAlign: 'center' }} 
             {...props}
         >
             {displayIcon}
         </span>
     );
-};
-
-        return (
-            <span 
-                dangerouslySetInnerHTML={{ __html: svgString }} 
-                style={{ display: 'inline-flex', alignItems: 'center' }} 
-            />
-        );
-    } catch (e) {
-        console.error(`Icon Error (${name}):`, e);
-        return <span className="text-red-500 text-xs">Err</span>;
-    }
 };
 
 const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
@@ -112,13 +63,12 @@ const formatDate = (dateInput) => {
 };
 
 // ----------------------------------------------------
-// [1] 공통 컴포넌트 (이미지 업로더 - 안전 강화)
+// [1] 공통 컴포넌트 (이미지 업로더)
 // ----------------------------------------------------
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
     const [isCompressing, setIsCompressing] = useState(false);
 
-    // 이미지 보여주기용 변수
     const displayImage = (typeof currentImage === 'string') ? currentImage : "";
 
     const compressImageToJPG = (file) => {
@@ -130,8 +80,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     const canvas = document.createElement("canvas");
                     let width = img.width;
                     let height = img.height;
-                    
-                    const MAX_WIDTH = 1200; // 배너 사이즈 고려하여 1200으로 상향
+                    const MAX_WIDTH = 1200; 
                     if (width > MAX_WIDTH) { 
                         height *= MAX_WIDTH / width; 
                         width = MAX_WIDTH; 
@@ -139,11 +88,9 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
-                    
                     ctx.fillStyle = "#FFFFFF";
                     ctx.fillRect(0, 0, width, height);
                     ctx.drawImage(img, 0, 0, width, height);
-                    
                     const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
                     resolve(dataUrl);
                 };
@@ -158,11 +105,8 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const handleFile = async (file) => {
         if (!file) return;
         setIsCompressing(true);
-        
-        // 브라우저 멈춤 방지용 지연
         setTimeout(async () => {
             try {
-                // 300KB 이하는 원본 사용
                 if (file.size < 300 * 1024) { 
                     const reader = new FileReader();
                     reader.onloadend = () => { 
@@ -172,7 +116,6 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     reader.readAsDataURL(file);
                 } else {
                     const compressedDataUrl = await compressImageToJPG(file);
-                    // 3MB 제한 (Safe guard)
                     if (compressedDataUrl.length > 3000000) { 
                         alert("이미지 용량이 너무 큽니다.");
                         onImageSelect("");
@@ -197,7 +140,6 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 onDrop={(e) => { e.preventDefault(); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
                 onClick={() => fileInputRef.current.click()}>
                 
-                {/* 로딩바는 순수 CSS로 처리 (아이콘 사용 X) */}
                 {isCompressing ? (
                     <div className="text-indigo-600 font-bold text-xs flex flex-col items-center">
                         <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-2"></div>
@@ -229,7 +171,6 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
 const MyPage = ({ user, onClose }) => {
     const [myOrders, setMyOrders] = useState([]);
     const [tab, setTab] = useState("info");
-    // useLucide 삭제됨
 
     useEffect(() => {
         if(!window.fb || !window.auth.currentUser) return;
@@ -317,7 +258,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
     
-    // 배너 불러오기 (한 번만 실행 - 안전장치)
+    // 배너 불러오기
     useEffect(() => {
         if(window.fb && window.fb.getDoc) {
             window.fb.getDoc(window.fb.doc(window.db, "config", "banners")).then(d => {
@@ -342,13 +283,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [detailImage, setDetailImage] = useState("");
     
     const excelInputRef = useRef(null);
-    // useLucide 삭제됨
 
     useEffect(() => {
         if(!window.fb) return;
         const { collection, onSnapshot, doc, getDocs } = window.fb;
         const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-        // 회원 목록 실시간 (기본)
+        // 회원 목록 실시간
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
@@ -724,7 +664,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 {tab === "banners" && (
                     <div className="bg-white rounded-lg shadow-sm border p-6 max-w-3xl mx-auto">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="font-bold text-lg">쇼핑몰 배너 관리 (JPG 자동 최적화)</h3>
+                            <h3 className="font-bold text-lg">쇼핑몰 배너 관리</h3>
                             <button onClick={handleSaveBanners} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg">설정 저장</button>
                         </div>
                         <div className="space-y-8">
@@ -741,44 +681,43 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     </div>
                 )}
             </div>
-            {/* ★ 여기부터 회원 상세 팝업 코드 시작 ★ */}
-                        {selectedUser && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-                                <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 relative overflow-hidden">
-                                    <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors"><Icon name="X"/></button>
-                                    <h3 className="font-bold text-xl mb-6 flex items-center gap-2"><Icon name="User" className="w-6 h-6"/> 회원 상세 정보</h3>
-                                    <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 text-sm">
-                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                            <h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">기본 정보</h4>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div><div className="text-slate-400 text-xs mb-1">이름</div><div className="font-bold">{selectedUser.name}</div></div>
-                                                <div><div className="text-slate-400 text-xs mb-1">연락처</div><div className="font-bold">{selectedUser.mobile}</div></div>
-                                                <div className="col-span-2"><div className="text-slate-400 text-xs mb-1">이메일</div><div className="font-bold">{selectedUser.email}</div></div>
-                                                <div className="col-span-2"><div className="text-slate-400 text-xs mb-1">주소</div><div className="font-bold">{selectedUser.address}</div></div>
-                                            </div>
-                                        </div>
-                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                            <h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">사업자 정보</h4>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div><div className="text-slate-400 text-xs mb-1">상호명</div><div className="font-bold">{selectedUser.storeName}</div></div>
-                                                <div><div className="text-slate-400 text-xs mb-1">대표자</div><div className="font-bold">{selectedUser.repName}</div></div>
-                                                <div><div className="text-slate-400 text-xs mb-1">사업자번호</div><div className="font-bold">{selectedUser.businessNumber}</div></div>
-                                                <div><div className="text-slate-400 text-xs mb-1">업태</div><div className="font-bold">{selectedUser.businessType}</div></div>
-                                            </div>
-                                        </div>
-                                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                                            <div className="text-indigo-800 text-xs mb-1 font-bold">추천인</div>
-                                            <div className="font-bold text-indigo-600 text-lg">{selectedUser.recommender || "없음"}</div>
-                                        </div>
-                                        <div className="text-xs text-slate-400 text-right">가입일: {new Date(selectedUser.joinedAt).toLocaleString()}</div>
-                                    </div>
-                                    <div className="mt-6 pt-4 border-t flex justify-end">
-                                        <button onClick={()=>setSelectedUser(null)} className="bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-900 transition-colors">닫기</button>
-                                    </div>
+            {/* 회원 상세 팝업 */}
+            {selectedUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 relative overflow-hidden">
+                        <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors"><Icon name="X"/></button>
+                        <h3 className="font-bold text-xl mb-6 flex items-center gap-2"><Icon name="User" className="w-6 h-6"/> 회원 상세 정보</h3>
+                        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 text-sm">
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">기본 정보</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><div className="text-slate-400 text-xs mb-1">이름</div><div className="font-bold">{selectedUser.name}</div></div>
+                                    <div><div className="text-slate-400 text-xs mb-1">연락처</div><div className="font-bold">{selectedUser.mobile}</div></div>
+                                    <div className="col-span-2"><div className="text-slate-400 text-xs mb-1">이메일</div><div className="font-bold">{selectedUser.email}</div></div>
+                                    <div className="col-span-2"><div className="text-slate-400 text-xs mb-1">주소</div><div className="font-bold">{selectedUser.address}</div></div>
                                 </div>
                             </div>
-                        )}
-                        {/* ★ 여기까지 끝 ★ */}
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">사업자 정보</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><div className="text-slate-400 text-xs mb-1">상호명</div><div className="font-bold">{selectedUser.storeName}</div></div>
+                                    <div><div className="text-slate-400 text-xs mb-1">대표자</div><div className="font-bold">{selectedUser.repName}</div></div>
+                                    <div><div className="text-slate-400 text-xs mb-1">사업자번호</div><div className="font-bold">{selectedUser.businessNumber}</div></div>
+                                    <div><div className="text-slate-400 text-xs mb-1">업태</div><div className="font-bold">{selectedUser.businessType}</div></div>
+                                </div>
+                            </div>
+                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                <div className="text-indigo-800 text-xs mb-1 font-bold">추천인</div>
+                                <div className="font-bold text-indigo-600 text-lg">{selectedUser.recommender || "없음"}</div>
+                            </div>
+                            <div className="text-xs text-slate-400 text-right">가입일: {new Date(selectedUser.joinedAt).toLocaleString()}</div>
+                        </div>
+                        <div className="mt-6 pt-4 border-t flex justify-end">
+                            <button onClick={()=>setSelectedUser(null)} className="bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-900 transition-colors">닫기</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             
             {isProductModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -825,7 +764,6 @@ const LoginPage = ({ onAdminLogin }) => {
     const addrWrapRef = useRef(null);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '', name: '', mobile: '', email: '', zipcode: '', address: '', addressDetail: '', businessType: '문구/팬시점', storeName: '', repName: '', businessNumber: '', businessCategory: '', businessItem: '', taxEmail: '', recommender: '' });
-    // useLucide 삭제됨
 
     useEffect(() => {
         if(isAddrOpen && addrWrapRef.current && window.daum) {
@@ -898,7 +836,7 @@ const LoginPage = ({ onAdminLogin }) => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8">
             <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all duration-300 ${isLoginMode?'max-w-md p-8':'max-w-3xl p-8'}`}>
-                {/* ★ 로그인 상단 로고 (10% 축소: h-16) ★ */}
+                {/* 로그인 상단 로고 */}
                 <div className="text-center mb-8">
                     <img src="https://i.ibb.co/LF7PbQv/image.png" alt="Logo" className="h-16 w-auto object-contain mx-auto mb-4" />
                     <h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1>
@@ -957,7 +895,6 @@ const LoginPage = ({ onAdminLogin }) => {
 // ----------------------------------------------------
 const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
     const [qty, setQty] = useState(product.minQty || 1);
-    // useLucide 삭제됨
     
     const handleQuantityChange = (delta) => {
         const min = product.minQty || 1;
@@ -972,7 +909,7 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
             <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center justify-between">
                 <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="ArrowLeft" className="w-7 h-7 text-slate-800" /></button>
                 
-                {/* ★ 상세페이지 상단 로고 (10% 축소: h-9) ★ */}
+                {/* 상세페이지 상단 로고 */}
                 <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
                     <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-9 w-auto object-contain" />
                 </div>
@@ -1022,7 +959,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showMyPage, setShowMyPage] = useState(false);
     const [banners, setBanners] = useState(DEFAULT_BANNERS);
-    // useLucide 삭제됨
 
     useEffect(() => {
         if(window.fb) {
@@ -1099,7 +1035,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100 transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                     
-                    {/* ★ 메인페이지 상단 로고 (10% 축소: h-9) ★ */}
+                    {/* 메인페이지 상단 로고 */}
                     <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
                         <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-9 w-auto object-contain" />
                     </div>
@@ -1113,7 +1049,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                             <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1"><Icon name="Settings" className="w-3 h-3"/>관리자</button>
                         )}
                         <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all">
-                            <span className="text-2xl">🛒</span>
+                            <span className="text-2xl">🛍️</span>
                             {cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}
                         </button>
                         <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
