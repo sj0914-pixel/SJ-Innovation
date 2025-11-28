@@ -1,4 +1,4 @@
-/* logic.js - Final Fix Version */
+/* logic.js - Final Complete Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,7 +10,7 @@ const useLucide = () => {
     }); 
 };
 
-// ★ [수정됨] 기본 배너 (이미지 주소 삭제 - 관리자에서 등록 안하면 빈칸) ★
+// ★ 기본 배너 (관리자 미등록 시 빈칸) ★
 const DEFAULT_BANNERS = {
     top: "", 
     middle: "" 
@@ -19,7 +19,7 @@ const DEFAULT_BANNERS = {
 // 택배사 목록
 const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
 
-// ★ [수정됨] 계좌 정보 변경 (카카오뱅크) ★
+// ★ 계좌 정보 (카카오뱅크) ★
 const BANK_INFO = {
     bankName: "카카오뱅크",
     accountNumber: "3333-24-2073558",
@@ -657,25 +657,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 )}
             </div>
 
-            {selectedUser && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative">
-                        <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
-                        <h3 className="font-bold text-lg mb-4 border-b pb-2">회원 상세 정보</h3>
-                        <div className="space-y-3 text-sm">
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">상호명</span><span className="font-bold text-lg">{selectedUser.storeName || "미입력"}</span></div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">대표자명</span><span className="font-bold">{selectedUser.repName || "미입력"}</span></div>
-                                <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">연락처</span><span className="font-bold">{selectedUser.mobile || "미입력"}</span></div>
-                            </div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">추천인</span><span className="font-bold text-indigo-600">{selectedUser.recommender || "없음"}</span></div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">사업자등록번호</span><span className="font-bold">{selectedUser.businessNumber || "미입력"}</span></div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">주소</span><span className="font-bold">{selectedUser.address || "미입력"}</span></div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">이메일</span><span className="font-bold">{selectedUser.email || "미입력"}</span></div>
-                        </div>
-                    </div>
-                </div>
-            )}
             {isProductModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -794,8 +775,12 @@ const LoginPage = ({ onAdminLogin }) => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8">
             <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all duration-300 ${isLoginMode?'max-w-md p-8':'max-w-3xl p-8'}`}>
-                <div className="text-center mb-8">{/* 로고 이미지 (높이 h-16 등으로 크기 조절 가능) */}
-                <img src="https://i.ibb.co/LF7PbQv/image.png" alt="Logo" className="h-20 w-auto object-contain mx-auto mb-4" /><h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1><p className="text-slate-500 mt-2 text-sm">SJ Innovation</p></div>
+                {/* ★ 로그인 상단 로고 (큰 이미지) ★ */}
+                <div className="text-center mb-8">
+                    <img src="https://i.ibb.co/LF7PbQv/image.png" alt="Logo" className="h-20 w-auto object-contain mx-auto mb-4" />
+                    <h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1>
+                    <p className="text-slate-500 mt-2 text-sm">SJ Innovation</p>
+                </div>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {isLoginMode ? (
                         <div className="space-y-4">
@@ -845,7 +830,7 @@ const LoginPage = ({ onAdminLogin }) => {
 };
 
 // ----------------------------------------------------
-// [5] 상세 페이지 (ShopPage 밖으로 분리됨)
+// [5] 상세 페이지
 // ----------------------------------------------------
 const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
     const [qty, setQty] = useState(product.minQty || 1);
@@ -863,10 +848,12 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
         <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-right duration-300 min-h-screen flex flex-col pb-[80px]">
             <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center justify-between">
                 <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="ArrowLeft" className="w-7 h-7 text-slate-800" /></button>
+                
+                {/* ★ 상세페이지 상단 로고 (메인과 동일 이미지 적용) ★ */}
                 <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
-                {/* 글씨 태그를 싹 지우고 이미지만 남깁니다 */}
-                <img src="https://i.ibb.co/LdPMppLv/image.png" alt="Logo" className="h-10 w-auto object-contain" />
-            </div>
+                    <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-10 w-auto object-contain" />
+                </div>
+                
                 <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="X" className="w-6 h-6 text-slate-600" /></button>
             </div>
             <div className="flex-1 overflow-y-auto">
@@ -988,14 +975,12 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
             <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100 transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                    
+                    {/* ★ 메인페이지 상단 로고 (글자X, 이미지 1개만) ★ */}
                     <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
-                        {/* 상단 미니 로고 */}
-                        <img src="https://i.ibb.co/LdPMppLv/image.png" alt="Logo" className="h-8 w-auto object-contain rounded-lg" />
-                        <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
-                        {/* 글씨 태그 삭제하고 이미지만 남김 */}
-                        <img src="https://i.ibb.co/LdPMppLv/image.png" alt="Logo" className="h-8 w-auto object-contain rounded-lg" />
-</div>
+                        <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-10 w-auto object-contain" />
                     </div>
+
                     <div className="flex-1 max-w-lg mx-4 relative hidden sm:block">
                         <input type="text" placeholder="상품 검색..." className="w-full bg-slate-100 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-slate-500 focus:bg-white transition-all" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
                         <Icon name="Search" className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
@@ -1005,6 +990,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                             <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1"><Icon name="Settings" className="w-3 h-3"/>관리자</button>
                         )}
                         <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all">
+                            {/* ★ 장바구니 이모지 ★ */}
                             <span className="text-2xl">🛒</span>
                             {cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}
                         </button>
