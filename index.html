@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SJ Innovation - 파트너몰</title>
     
-    <!-- 필수 라이브러리 -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -24,11 +23,10 @@
 <body class="bg-slate-50">
     <div id="root"></div>
 
-    <!-- 파이어베이스 연결 설정 (웹사이트용 주소 적용 완료) -->
     <script type="module">
-        // ⚠️ 여기 주소가 https://... 로 시작해야 웹에서 작동합니다. (수정 완료)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDoc, setDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+        // ★ 중요: 여기에 getDocs를 추가했습니다!
+        import { getFirestore, collection, addDoc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
         // 사장님이 찾으신 정확한 키값입니다.
@@ -52,7 +50,8 @@
             window.db = db;
             window.auth = auth;
             window.fb = {
-                collection, addDoc, getDoc, setDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot,
+                // ★ 여기에도 getDocs를 추가했습니다!
+                collection, addDoc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot,
                 createUser: createUserWithEmailAndPassword,
                 signInUser: signInWithEmailAndPassword,
                 logOut: signOut,
@@ -65,7 +64,6 @@
         }
     </script>
 
-    <!-- 로직 파일 실행 -->
     <script type="text/babel" src="./logic.js"></script>
 </body>
 </html>
