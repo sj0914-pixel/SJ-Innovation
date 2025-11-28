@@ -1,4 +1,4 @@
-/* logic.js - Final Full Version (All Fixes Included) */
+/* logic.js - Final Full Version (No Truncation) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -53,10 +53,10 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
     const [isCompressing, setIsCompressing] = useState(false);
 
-    // 이미지 보여주기용 변수 (State 아님 - 무한루프 방지)
+    // 이미지 보여주기용 변수
     const displayImage = (typeof currentImage === 'string') ? currentImage : "";
 
-    // JPG 변환 엔진 (멈춤 방지)
+    // ★ JPG 변환 엔진 (멈춤 방지 & 용량 최적화)
     const compressImageToJPG = (file) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -67,7 +67,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     let width = img.width;
                     let height = img.height;
                     
-                    // 최대 크기 제한 (안전성 확보)
+                    // 최대 크기 제한 (1000px)
                     const MAX_WIDTH = 1000; 
                     if (width > MAX_WIDTH) { 
                         height *= MAX_WIDTH / width; 
@@ -76,6 +76,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
+                    
                     // 투명 배경을 흰색으로 처리 (JPG 변환 시 검게 나오는 것 방지)
                     ctx.fillStyle = "#FFFFFF";
                     ctx.fillRect(0, 0, width, height);
@@ -108,6 +109,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     reader.readAsDataURL(file);
                 } else {
                     const compressedDataUrl = await compressImageToJPG(file);
+                    // 결과물이 3MB 넘으면 경고
                     if (compressedDataUrl.length > 3000000) { 
                         alert("이미지 용량이 너무 큽니다. 더 작은 이미지를 사용해주세요.");
                         onImageSelect("");
@@ -244,12 +246,24 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [products, setProducts] = useState([]);
     const [users, setUsers] = useState([]);
     const [orders, setOrders] = useState([]);
-    const [bannerConfig, setBannerConfig] = useState(DEFAULT_BANNERS);
     const [tab, setTab] = useState("orders");
     
     // 배너 State
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
+    
+    // 배너 불러오기 (한 번만 실행 - 안전장치)
+    useEffect(() => {
+        if(window.fb && window.fb.getDoc) {
+            window.fb.getDoc(window.fb.doc(window.db, "config", "banners")).then(d => {
+                if(d.exists()) {
+                    const data = d.data();
+                    setTopBanner(data.top || "");
+                    setMiddleBanner(data.middle || "");
+                }
+            }).catch(e => console.log("배너 없음"));
+        }
+    }, []);
     
     const getTodayStr = () => formatDate(new Date());
     const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
@@ -267,8 +281,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     useEffect(() => {
         if(!window.fb) return;
-        const { collection, onSnapshot, doc, getDocs, getDoc } = window.fb;
+        const { collection, onSnapshot, doc, getDocs } = window.fb;
         const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+        // 회원 목록 실시간 (기본)
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
@@ -290,18 +305,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
             list.sort((a,b) => new Date(b.date) - new Date(a.date));
             setOrders(list);
         });
-
-        // 배너 설정 불러오기 (안전 장치 포함)
-        if(getDoc) {
-            getDoc(doc(window.db, "config", "banners")).then(d => {
-                if(d.exists()) {
-                    const data = d.data();
-                    setBannerConfig(data);
-                    setTopBanner(data.top || "");
-                    setMiddleBanner(data.middle || "");
-                }
-            }).catch(e => console.log("배너 설정 없음"));
-        }
 
         return () => { unsubProd(); unsubUser(); unsubOrder(); };
     }, []);
@@ -451,9 +454,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
             if(window.fb && window.fb.getDocs) {
                 const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
                 setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                alert("회원 목록을 최신으로 갱신했습니다.");
+                alert("회원 목록 갱신 완료");
             } else {
-                alert("기능을 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
+                alert("기능 로딩중...");
             }
         } catch(e) { 
             console.error(e);
@@ -656,19 +659,17 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 {tab === "banners" && (
                     <div className="bg-white rounded-lg shadow-sm border p-6 max-w-3xl mx-auto">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="font-bold text-lg">쇼핑몰 배너 관리 (WebP 자동 변환)</h3>
+                            <h3 className="font-bold text-lg">쇼핑몰 배너 관리 (JPG 자동 최적화)</h3>
                             <button onClick={handleSaveBanners} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg">설정 저장</button>
                         </div>
                         <div className="space-y-8">
                             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                 <h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="LayoutTemplate" className="w-5 h-5"/> 메인 상단 배너</h4>
-                                <p className="text-sm text-slate-500 mb-4">권장 크기: 1200 x 300px</p>
                                 <ImageUploader label="상단 배너 이미지 업로드" currentImage={topBanner} onImageSelect={setTopBanner} />
                             </div>
                             
                             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                 <h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="CreditCard" className="w-5 h-5"/> 중간 띠 배너</h4>
-                                <p className="text-sm text-slate-500 mb-4">권장 크기: 1200 x 250px</p>
                                 <ImageUploader label="중간 배너 이미지 업로드" currentImage={middleBanner} onImageSelect={setMiddleBanner} />
                             </div>
                         </div>
@@ -676,25 +677,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 )}
             </div>
 
-            {selectedUser && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl relative">
-                        <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
-                        <h3 className="font-bold text-lg mb-4 border-b pb-2">회원 상세 정보</h3>
-                        <div className="space-y-3 text-sm">
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">상호명</span><span className="font-bold text-lg">{selectedUser.storeName || "미입력"}</span></div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">대표자명</span><span className="font-bold">{selectedUser.repName || "미입력"}</span></div>
-                                <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">연락처</span><span className="font-bold">{selectedUser.mobile || "미입력"}</span></div>
-                            </div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">추천인</span><span className="font-bold text-indigo-600">{selectedUser.recommender || "없음"}</span></div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">사업자등록번호</span><span className="font-bold">{selectedUser.businessNumber || "미입력"}</span></div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">주소</span><span className="font-bold">{selectedUser.address || "미입력"}</span></div>
-                            <div className="p-3 bg-slate-50 rounded"><span className="text-slate-500 block mb-1 text-xs">이메일</span><span className="font-bold">{selectedUser.email || "미입력"}</span></div>
-                        </div>
-                    </div>
-                </div>
-            )}
             {isProductModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
