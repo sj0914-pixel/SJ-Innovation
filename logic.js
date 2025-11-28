@@ -25,44 +25,63 @@ const BANK_INFO = {
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-// ★ 수정된 아이콘 컴포넌트 (먹통 방지 + 대소문자 해결 + 안전 대기)
+// ★ 수정된 아이콘 컴포넌트 (먹통 방지 + 대소문자 해결 + 안전 대기 + 버전 호환성)
 const Icon = ({ name, className, ...props }) => {
-    // 1. 아이콘 창고가 도착했는지 확인하는 상태 (도착 안했으면 false)
+    // 1. 아이콘 창고가 도착했는지 확인하는 상태
     const [isReady, setIsReady] = useState(!!(window.lucide && window.lucide.icons));
 
     useEffect(() => {
-        // 이미 도착했으면 아무것도 안 함
         if (isReady) return;
-
-        // 도착 안 했으면 0.1초마다 가볍게 체크 (최대 10번만 시도)
         const checkInterval = setInterval(() => {
             if (window.lucide && window.lucide.icons) {
                 setIsReady(true);
                 clearInterval(checkInterval);
             }
         }, 100);
-
-        // 컴포넌트가 사라지면 체크도 중단 (안전장치)
         return () => clearInterval(checkInterval);
     }, [isReady]);
 
-    // 2. 아직도 준비 안 됐으면 투명한 박스로 자리만 잡아둠 (먹통 방지)
+    // 2. 준비 안 됐으면 투명 박스
     if (!isReady) return <span className={`inline-block w-4 h-4 ${className}`} />;
 
     try {
-        // 3. 대소문자 무시하고 이름 찾기 (Search, search, SEARCH 다 됨)
+        // 3. 대소문자 무시하고 이름 찾기
         const targetName = (name || 'Box').toLowerCase();
         const iconKeys = Object.keys(window.lucide.icons);
         const foundKey = iconKeys.find(key => key.toLowerCase() === targetName);
         
-        // 4. 찾은 이름으로 아이콘 가져오기 (없으면 Box)
+        // 4. 아이콘 객체 가져오기
         const lucideIcon = foundKey ? window.lucide.icons[foundKey] : window.lucide.icons.Box;
 
-        // 5. 그리기
+        // 5. 그리기 (toSvg 함수가 없는 경우 대비)
         if (!lucideIcon) return <span className="text-slate-400">?</span>;
-        const svgString = lucideIcon.toSvg({ class: className, ...props });
-        return <span dangerouslySetInnerHTML={{ __html: svgString }} style={{ display: 'inline-flex', alignItems: 'center' }} />;
+
+        // ★ 중요: toSvg가 함수인지 확인 후 실행
+        if (typeof lucideIcon.toSvg !== 'function') {
+            console.error(`Lucide Error: ${targetName} 아이콘의 toSvg 함수를 찾을 수 없습니다.`);
+            return <span className="text-red-500 font-bold">E</span>;
+        }
+
+        // SVG 생성 (className을 class 속성으로 변환)
+        const svgString = lucideIcon.toSvg({ 
+            class: className, 
+            width: 24, 
+            height: 24, 
+            stroke: "currentColor", 
+            "stroke-width": 2, 
+            ...props 
+        });
+
+        return (
+            <span 
+                dangerouslySetInnerHTML={{ __html: svgString }} 
+                style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 0 }} 
+                {...props} // 클릭 이벤트 등은 span에 직접 연결
+            />
+        );
     } catch (e) {
+        // 에러 발생 시 콘솔에 원인 출력
+        console.error(`Icon Render Error (${name}):`, e);
         return <span className="text-slate-400">!</span>;
     }
 };
