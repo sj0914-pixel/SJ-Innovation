@@ -1,12 +1,16 @@
-/* logic.js - Final Full Version (No Truncation) */
+/* logic.js - Fixed Version for Banner Upload Crash */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
 // [0] 전역 상수 및 유틸리티
 // ----------------------------------------------------
+// ★ 수정 1: 아이콘 로딩 훅을 좀 더 안전하게 변경 (오류 방지)
 const useLucide = () => { 
     useEffect(() => { 
-        if (window.lucide) window.lucide.createIcons(); 
+        if (window.lucide) {
+            // 약간의 지연을 주어 리액트가 렌더링을 마친 후 아이콘을 변환하도록 함
+            setTimeout(() => window.lucide.createIcons(), 50);
+        }
     }); 
 };
 
@@ -47,7 +51,7 @@ const formatDate = (dateInput) => {
 };
 
 // ----------------------------------------------------
-// [1] 공통 컴포넌트 (이미지 업로더 - JPG 안전 변환)
+// [1] 공통 컴포넌트 (이미지 업로더 - 버그 수정됨)
 // ----------------------------------------------------
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
@@ -56,7 +60,6 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     // 이미지 보여주기용 변수
     const displayImage = (typeof currentImage === 'string') ? currentImage : "";
 
-    // ★ JPG 변환 엔진 (멈춤 방지 & 용량 최적화)
     const compressImageToJPG = (file) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -67,7 +70,6 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     let width = img.width;
                     let height = img.height;
                     
-                    // 최대 크기 제한 (1000px)
                     const MAX_WIDTH = 1000; 
                     if (width > MAX_WIDTH) { 
                         height *= MAX_WIDTH / width; 
@@ -77,18 +79,17 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
                     
-                    // 투명 배경을 흰색으로 처리 (JPG 변환 시 검게 나오는 것 방지)
                     ctx.fillStyle = "#FFFFFF";
                     ctx.fillRect(0, 0, width, height);
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // JPG 포맷, 품질 0.7 (용량 절감)
                     const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
                     resolve(dataUrl);
                 };
                 img.onerror = reject;
                 img.src = event.target.result;
             };
+            reader.onerror = reject; // 읽기 에러 처리 추가
             reader.readAsDataURL(file);
         });
     };
@@ -97,19 +98,27 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
         if (!file) return;
         setIsCompressing(true);
         
-        // 브라우저 멈춤 방지를 위한 지연 처리
+        // ★ 수정 2: 파일 처리 로직에 안전장치(try-catch) 강화
         setTimeout(async () => {
             try {
-                if (file.size < 300 * 1024) { // 300KB 이하는 원본 사용
+                // 300KB 이하는 원본 사용 (208kb 오류 해결 포인트)
+                if (file.size < 300 * 1024) { 
                     const reader = new FileReader();
                     reader.onloadend = () => { 
-                        onImageSelect(reader.result); 
+                        if(reader.result) {
+                            onImageSelect(reader.result); 
+                        } else {
+                            alert("이미지 읽기 실패");
+                        }
                         setIsCompressing(false); 
+                    };
+                    reader.onerror = () => {
+                        alert("파일을 읽는 중 오류가 발생했습니다.");
+                        setIsCompressing(false);
                     };
                     reader.readAsDataURL(file);
                 } else {
                     const compressedDataUrl = await compressImageToJPG(file);
-                    // 결과물이 3MB 넘으면 경고
                     if (compressedDataUrl.length > 3000000) { 
                         alert("이미지 용량이 너무 큽니다. 더 작은 이미지를 사용해주세요.");
                         onImageSelect("");
@@ -120,7 +129,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 }
             } catch (e) { 
                 console.error(e);
-                alert("이미지 처리 오류"); 
+                alert("이미지 처리 중 오류가 발생했습니다: " + e.message); 
                 setIsCompressing(false); 
             }
         }, 100);
@@ -133,9 +142,11 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => { e.preventDefault(); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
                 onClick={() => fileInputRef.current.click()}>
+                
+                {/* ★ 수정 3: 아이콘 충돌 방지를 위해 Icon 컴포넌트 대신 순수 CSS 로딩바 사용 */}
                 {isCompressing ? (
                     <div className="text-indigo-600 font-bold text-xs flex flex-col items-center">
-                        <Icon name="Loader2" className="animate-spin mb-1"/>
+                        <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-2"></div>
                         <span>최적화 중...</span>
                     </div>
                 ) : (
