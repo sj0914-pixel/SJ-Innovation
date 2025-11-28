@@ -25,41 +25,45 @@ const BANK_INFO = {
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-// ★ 수정된 아이콘 컴포넌트 (최종 안전판: 에러나도 멈추지 않음 + 기본 아이콘)
+// ★ 수정된 아이콘 컴포넌트 (먹통 방지 + 대소문자 해결 + 안전 대기)
 const Icon = ({ name, className, ...props }) => {
-    // 1. 라이브러리가 로드될 때까지 재렌더링 유도 (0.5초 뒤 한번만 체크)
-    const [isLoaded, setIsLoaded] = useState(!!window.lucide);
-    
-    useEffect(() => {
-        if (!isLoaded) {
-            const timer = setTimeout(() => {
-                if (window.lucide) setIsLoaded(true);
-            }, 500);
-            return () => clearTimeout(timer);
-        }
-    }, [isLoaded]);
+    // 1. 아이콘 창고가 도착했는지 확인하는 상태 (도착 안했으면 false)
+    const [isReady, setIsReady] = useState(!!(window.lucide && window.lucide.icons));
 
-    // 2. 라이브러리 없으면 빈칸 (에러 방지)
-    if (!window.lucide || !window.lucide.icons) return null;
+    useEffect(() => {
+        // 이미 도착했으면 아무것도 안 함
+        if (isReady) return;
+
+        // 도착 안 했으면 0.1초마다 가볍게 체크 (최대 10번만 시도)
+        const checkInterval = setInterval(() => {
+            if (window.lucide && window.lucide.icons) {
+                setIsReady(true);
+                clearInterval(checkInterval);
+            }
+        }, 100);
+
+        // 컴포넌트가 사라지면 체크도 중단 (안전장치)
+        return () => clearInterval(checkInterval);
+    }, [isReady]);
+
+    // 2. 아직도 준비 안 됐으면 투명한 박스로 자리만 잡아둠 (먹통 방지)
+    if (!isReady) return <span className={`inline-block w-4 h-4 ${className}`} />;
 
     try {
-        // 3. 아이콘 이름 정리 (대소문자/특수문자 무시하고 찾기)
-        // 예: "shopping-bag" -> "shoppingbag", "Search" -> "search"
-        const cleanName = String(name || 'box').toLowerCase().replace(/[^a-z0-9]/g, '');
-        
-        // 4. 전체 아이콘 목록에서 이름 매칭되는 것 찾기
+        // 3. 대소문자 무시하고 이름 찾기 (Search, search, SEARCH 다 됨)
+        const targetName = (name || 'Box').toLowerCase();
         const iconKeys = Object.keys(window.lucide.icons);
-        const foundKey = iconKeys.find(key => key.toLowerCase() === cleanName);
-
-        // 5. 찾은 거 가져오기 (없으면 무조건 'Box' 아이콘 사용 -> 에러 방지)
+        const foundKey = iconKeys.find(key => key.toLowerCase() === targetName);
+        
+        // 4. 찾은 이름으로 아이콘 가져오기 (없으면 Box)
         const lucideIcon = foundKey ? window.lucide.icons[foundKey] : window.lucide.icons.Box;
 
-        // 6. 진짜 그리기
+        // 5. 그리기
+        if (!lucideIcon) return <span className="text-slate-400">?</span>;
         const svgString = lucideIcon.toSvg({ class: className, ...props });
         return <span dangerouslySetInnerHTML={{ __html: svgString }} style={{ display: 'inline-flex', alignItems: 'center' }} />;
     } catch (e) {
-        // 7. 만약 이 과정에서 에러가 나면? 사이트 멈추지 말고 그냥 빈칸 리턴
-        return null;
+        return <span className="text-slate-400">!</span>;
     }
 };
 
