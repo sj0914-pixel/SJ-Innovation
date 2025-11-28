@@ -1,4 +1,4 @@
-/* logic.js - Logo Fixed & Member Sync Fixed Version */
+/* logic.js - Refresh Fix Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -265,11 +265,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     useEffect(() => {
         if(!window.fb) return;
-        const { collection, onSnapshot, doc } = window.fb;
+        const { collection, onSnapshot, doc, getDocs } = window.fb;
         const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-        // ★ 회원 목록 실시간 감지 ★
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-        
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             const orderGroups = {};
@@ -441,13 +439,16 @@ const AdminPage = ({ onLogout, onToShop }) => {
         }
     };
     
-    // 회원 목록 수동 새로고침 (반영 안될 때용)
+    // ★ [수정됨] 회원 목록 수동 새로고침 (페이지 새로고침 X -> 데이터만 다시 불러옴)
     const handleRefreshUsers = async () => {
         try {
             const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
             setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-            alert("회원 목록을 새로 불러왔습니다.");
-        } catch(e) { alert("불러오기 실패: " + e.message); }
+            alert("회원 목록을 최신으로 갱신했습니다.");
+        } catch(e) { 
+            console.error(e);
+            alert("불러오기 실패: " + e.message); 
+        }
     };
 
     const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
@@ -600,7 +601,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                         <div className="p-4 border-b flex justify-between items-center bg-slate-50">
                             <span className="font-bold text-slate-600">총 회원수: {users.length}명</span>
-                            <button onClick={()=>window.location.reload()} className="bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-900 flex gap-1 items-center"><Icon name="RefreshCw" className="w-3 h-3"/>목록 새로고침</button>
+                            {/* ★ [수정됨] 새로고침 버튼이 handleRefreshUsers 함수를 호출하도록 변경 */}
+                            <button onClick={handleRefreshUsers} className="bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-900 flex gap-1 items-center"><Icon name="RefreshCw" className="w-3 h-3"/>목록 새로고침</button>
                         </div>
                         <table className="w-full text-left text-sm whitespace-nowrap">
                             <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">추천인</th><th className="p-4">관리</th></tr></thead>
