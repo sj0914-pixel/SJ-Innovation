@@ -1,4 +1,4 @@
-/* logic.js - Banner Freeze Fix & Final Version */
+/* logic.js - Banner Fix & Stability Final Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -10,11 +10,8 @@ const useLucide = () => {
     }); 
 };
 
-// 기본 배너 (관리자 미등록 시 빈칸)
-const DEFAULT_BANNERS = {
-    top: "", 
-    middle: "" 
-};
+// 기본 배너
+const DEFAULT_BANNERS = { top: "", middle: "" };
 
 // 택배사 목록
 const COURIERS = ["CJ대한통운", "우체국택배", "한진택배", "로젠택배", "롯데택배", "직접전달", "화물배송"];
@@ -49,17 +46,13 @@ const formatDate = (dateInput) => {
 // ----------------------------------------------------
 // [1] 공통 컴포넌트
 // ----------------------------------------------------
+// ★ [수정됨] 무한 루프 방지를 위해 preview 상태 제거 및 로직 단순화
 const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
-    const [preview, setPreview] = useState(currentImage || "");
     const [isCompressing, setIsCompressing] = useState(false);
 
-    // 이미지 변경 감지 (무한 루프 방지)
-    useEffect(() => { 
-        if (currentImage !== preview) {
-            setPreview(currentImage); 
-        }
-    }, [currentImage]);
+    // 데이터가 문자열인지 확인하는 안전장치
+    const displayImage = (typeof currentImage === 'string') ? currentImage : "";
 
     const compressImageToWebP = (file) => {
         return new Promise((resolve, reject) => {
@@ -96,7 +89,6 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             if (file.size < 500 * 1024 && file.type.includes("webp")) {
                 const reader = new FileReader();
                 reader.onloadend = () => { 
-                    setPreview(reader.result); 
                     onImageSelect(reader.result); 
                     setIsCompressing(false); 
                 };
@@ -104,11 +96,9 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
             } else {
                 const compressedDataUrl = await compressImageToWebP(file);
                 if (compressedDataUrl.length > 2000000) { 
-                        alert("이미지 용량이 너무 큽니다. 더 작은 이미지를 사용해주세요.");
-                        setPreview(""); 
-                        onImageSelect("");
+                    alert("이미지 용량이 너무 큽니다.");
+                    onImageSelect("");
                 } else {
-                    setPreview(compressedDataUrl);
                     onImageSelect(compressedDataUrl);
                 }
                 setIsCompressing(false);
@@ -123,7 +113,6 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const handleDelete = (e) => {
         e.stopPropagation();
         if (confirm("이미지를 삭제하시겠습니까?")) {
-            setPreview("");
             onImageSelect("");
         }
     };
@@ -141,9 +130,9 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                         <span className="text-xs font-bold">변환 중...</span>
                     </div>
                 ) : (
-                    preview && typeof preview === 'string' && !preview.includes("📦") ? ( 
+                    displayImage && !displayImage.includes("📦") ? ( 
                         <div className="relative w-full h-full">
-                            <img src={preview} className="absolute inset-0 w-full h-full object-cover bg-slate-50" alt="preview" />
+                            <img src={displayImage} className="absolute inset-0 w-full h-full object-cover bg-slate-50" alt="preview" />
                             <button onClick={handleDelete} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors shadow-md z-10" title="삭제"><Icon name="X" className="w-4 h-4" /></button>
                         </div>
                     ) : ( 
@@ -294,7 +283,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
             setOrders(list);
         });
 
-        // ★ [수정됨] 배너는 '실시간 감지' 끄고 '1회 불러오기'로 변경 (먹통 방지)
+        // 배너 설정 불러오기 (1회성)
         getDoc(doc(window.db, "config", "banners")).then(d => {
             if(d.exists()) {
                 const data = d.data();
@@ -302,7 +291,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 setTopBanner(data.top || "");
                 setMiddleBanner(data.middle || "");
             }
-        }).catch(e => console.log("배너 설정 없음"));
+        }).catch(e => console.log("배너 로딩 에러 혹은 없음"));
 
         return () => { unsubProd(); unsubUser(); unsubOrder(); };
     }, []);
@@ -446,7 +435,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
         }
     };
     
-    // 회원 목록 수동 새로고침 (데이터만 다시 불러옴)
+    // 회원 목록 수동 새로고침 (페이지 새로고침 X)
     const handleRefreshUsers = async () => {
         try {
             const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
@@ -1144,6 +1133,10 @@ const App = () => {
     const [firebaseReady, setFirebaseReady] = useState(false);
 
     useEffect(() => {
+        // ★ [복구] 새로고침 시에도 관리자 모드 기억하기
+        const savedAdminMode = localStorage.getItem("adminViewMode") === "true";
+        if (savedAdminMode) setAdminViewMode(true);
+
         const interval = setInterval(() => {
             if (window.fb && window.auth && window.db) {
                 setFirebaseReady(true);
@@ -1173,6 +1166,8 @@ const App = () => {
                 } catch (e) { setUser(u); }
             } else {
                 setUser(null); setIsAdmin(false);
+                // 로그아웃 되면 관리자 모드 기억 삭제
+                localStorage.removeItem("adminViewMode");
             }
             setLoading(false);
         });
@@ -1180,7 +1175,24 @@ const App = () => {
     }, [firebaseReady]);
 
     const handleForceAdmin = () => { setIsAdmin(true); setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); };
-    const handleLogout = () => { setIsAdmin(false); setAdminViewMode(false); setUser(null); window.fb.logOut(window.auth); };
+    
+    // ★ [수정됨] 관리자 모드 진입/해제 시 기억하기
+    const handleToAdmin = () => {
+        setAdminViewMode(true);
+        localStorage.setItem("adminViewMode", "true");
+    };
+    const handleToShop = () => {
+        setAdminViewMode(false);
+        localStorage.removeItem("adminViewMode");
+    };
+    
+    const handleLogout = () => { 
+        setIsAdmin(false); 
+        setAdminViewMode(false); 
+        setUser(null); 
+        localStorage.removeItem("adminViewMode"); // 로그아웃 시 삭제
+        window.fb.logOut(window.auth); 
+    };
 
     if (!firebaseReady || loading) return (
         <div className="h-screen flex flex-col items-center justify-center font-bold text-slate-400 bg-slate-50 gap-4">
@@ -1188,8 +1200,10 @@ const App = () => {
              <div>시스템 연결중...</div>
         </div>
     );
-    if (isAdmin && adminViewMode) return <AdminPage onLogout={handleLogout} onToShop={() => setAdminViewMode(false)} />;
-    if (user) return <ShopPage products={products} user={user} onLogout={handleLogout} isAdmin={isAdmin} onToAdmin={() => setAdminViewMode(true)} />;
+    // ★ [연결] handleToShop 함수 전달
+    if (isAdmin && adminViewMode) return <AdminPage onLogout={handleLogout} onToShop={handleToShop} />;
+    // ★ [연결] handleToAdmin 함수 전달
+    if (user) return <ShopPage products={products} user={user} onLogout={handleLogout} isAdmin={isAdmin} onToAdmin={handleToAdmin} />;
     return <LoginPage onAdminLogin={handleForceAdmin} />;
 };
 
