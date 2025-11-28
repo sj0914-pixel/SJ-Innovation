@@ -25,23 +25,46 @@ const BANK_INFO = {
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-// ★ 수정 2: 아이콘 컴포넌트 완전 재설계 (충돌 원천 차단)
-// 화면을 스캔해서 바꾸는 방식이 아니라, 리액트가 직접 SVG 코드를 심는 방식으로 변경
+// ★ 수정된 아이콘 컴포넌트 (먹통 방지 + 대소문자 해결 + 안전 대기)
 const Icon = ({ name, className, ...props }) => {
-    // 아직 라이브러리 로드 안됐으면 빈칸
-    if (!window.lucide || !window.lucide.icons) return null;
+    // 1. 아이콘 창고가 도착했는지 확인하는 상태 (도착 안했으면 false)
+    const [isReady, setIsReady] = useState(!!(window.lucide && window.lucide.icons));
 
-    const iconName = name ? name.charAt(0).toLowerCase() + name.slice(1) : 'box';
-    const lucideIcon = window.lucide.icons[iconName];
+    useEffect(() => {
+        // 이미 도착했으면 아무것도 안 함
+        if (isReady) return;
 
-    // 아이콘 없으면 물음표
-    if (!lucideIcon) return <span className={className}>?</span>;
+        // 도착 안 했으면 0.1초마다 가볍게 체크 (최대 10번만 시도)
+        const checkInterval = setInterval(() => {
+            if (window.lucide && window.lucide.icons) {
+                setIsReady(true);
+                clearInterval(checkInterval);
+            }
+        }, 100);
 
-    // SVG 코드를 직접 생성
-    const svgString = lucideIcon.toSvg({ class: className, ...props });
+        // 컴포넌트가 사라지면 체크도 중단 (안전장치)
+        return () => clearInterval(checkInterval);
+    }, [isReady]);
 
-    // 리액트 내부에 안전하게 삽입 (이러면 리액트가 오류를 안 냄)
-    return <span dangerouslySetInnerHTML={{ __html: svgString }} style={{ display: 'inline-flex', alignItems: 'center' }} />;
+    // 2. 아직도 준비 안 됐으면 투명한 박스로 자리만 잡아둠 (먹통 방지)
+    if (!isReady) return <span className={`inline-block w-4 h-4 ${className}`} />;
+
+    try {
+        // 3. 대소문자 무시하고 이름 찾기 (Search, search, SEARCH 다 됨)
+        const targetName = (name || 'Box').toLowerCase();
+        const iconKeys = Object.keys(window.lucide.icons);
+        const foundKey = iconKeys.find(key => key.toLowerCase() === targetName);
+        
+        // 4. 찾은 이름으로 아이콘 가져오기 (없으면 Box)
+        const lucideIcon = foundKey ? window.lucide.icons[foundKey] : window.lucide.icons.Box;
+
+        // 5. 그리기
+        if (!lucideIcon) return <span className="text-slate-400">?</span>;
+        const svgString = lucideIcon.toSvg({ class: className, ...props });
+        return <span dangerouslySetInnerHTML={{ __html: svgString }} style={{ display: 'inline-flex', alignItems: 'center' }} />;
+    } catch (e) {
+        return <span className="text-slate-400">!</span>;
+    }
 };
 
 const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
