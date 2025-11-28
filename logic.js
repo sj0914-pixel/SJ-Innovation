@@ -1,4 +1,4 @@
-/* logic.js - Final Stable Version */
+/* logic.js - Rescue Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -50,7 +50,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
     const fileInputRef = useRef(null);
     const [isCompressing, setIsCompressing] = useState(false);
 
-    // 이미지 보여주기용 변수 (State 아님)
+    // 이미지 보여주기용 변수
     const displayImage = (typeof currentImage === 'string') ? currentImage : "";
 
     const compressImageToWebP = (file) => {
@@ -247,7 +247,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     useEffect(() => {
         if(!window.fb) return;
-        const { collection, onSnapshot, doc, getDoc } = window.fb;
+        const { collection, onSnapshot, doc, getDocs, getDoc } = window.fb;
         const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         
@@ -271,14 +271,16 @@ const AdminPage = ({ onLogout, onToShop }) => {
             setOrders(list);
         });
 
-        // 배너 설정 불러오기 (1회성)
-        getDoc(doc(window.db, "config", "banners")).then(d => {
-            if(d.exists()) {
-                const data = d.data();
-                setTopBanner(data.top || "");
-                setMiddleBanner(data.middle || "");
-            }
-        }).catch(e => console.log("배너 설정 없음"));
+        // 배너 설정 불러오기 (안전 장치 추가)
+        if(getDoc) {
+            getDoc(doc(window.db, "config", "banners")).then(d => {
+                if(d.exists()) {
+                    const data = d.data();
+                    setTopBanner(data.top || "");
+                    setMiddleBanner(data.middle || "");
+                }
+            }).catch(e => console.log("배너 설정 없음"));
+        }
 
         return () => { unsubProd(); unsubUser(); unsubOrder(); };
     }, []);
@@ -422,11 +424,16 @@ const AdminPage = ({ onLogout, onToShop }) => {
         }
     };
     
+    // 회원 목록 수동 새로고침
     const handleRefreshUsers = async () => {
         try {
-            const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
-            setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-            alert("회원 목록을 최신으로 갱신했습니다.");
+            if(window.fb && window.fb.getDocs) {
+                const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
+                setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                alert("회원 목록을 최신으로 갱신했습니다.");
+            } else {
+                alert("기능을 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
+            }
         } catch(e) { 
             console.error(e);
             alert("불러오기 실패: " + e.message); 
