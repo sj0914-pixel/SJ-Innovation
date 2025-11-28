@@ -1,4 +1,4 @@
-/* logic.js - Final Fix (No External Icons) */
+/* logic.js - Final Fix (Sold Out Feature Added) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -24,7 +24,7 @@ const BANK_INFO = {
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
 // ----------------------------------------------------
-// [수정 완료] 아이콘 컴포넌트 (이모지 버전)
+// 아이콘 컴포넌트 (이모지 버전)
 // ----------------------------------------------------
 const Icon = ({ name, className, ...props }) => {
     // 이모지 매핑표
@@ -434,7 +434,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
             detailImage: detailImage || "", 
             description: form.pDescription.value, 
             rating: "5.0",
-            isHidden: form.pIsHidden.checked 
+            isHidden: form.pIsHidden.checked,
+            // [수정: 품절 및 입고예정일 저장]
+            isSoldOut: form.pIsSoldOut.checked,
+            restockDate: form.pRestockDate.value
         };
         try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨"); } catch (err) { alert(err.message); }
     };
@@ -453,7 +456,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         }
     };
     
-    // 회원 목록 수동 새로고침
     const handleRefreshUsers = async () => {
         try {
             if(window.fb && window.fb.getDocs) {
@@ -650,7 +652,11 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 {products.map(p=>(
                                     <tr key={p.id} className={`hover:bg-slate-50 ${p.isHidden ? "bg-slate-100 opacity-60" : ""}`}>
                                         <td className="p-4 text-2xl">{p.image && (p.image.startsWith('data:') || p.image.startsWith('http')) ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
-                                        <td className="p-4"><div className="font-bold">{p.name}</div><div className="text-xs text-slate-400">{p.category}</div></td>
+                                        <td className="p-4">
+                                            <div className="font-bold">{p.name}</div>
+                                            <div className="text-xs text-slate-400">{p.category}</div>
+                                            {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">※ 일시품절 처리됨</div>}
+                                        </td>
                                         <td className="p-4">₩{formatPrice(p.price)}</td>
                                         <td className="p-4 font-bold text-blue-600">{p.stock}</td>
                                         <td className="p-4">{p.isHidden ? <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">판매중지</span> : <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded font-bold">판매중</span>}</td>
@@ -729,6 +735,16 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 <input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/>
                                 <label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label>
                             </div>
+
+                             {/* [추가] 품절 처리 체크박스 및 입고 예정일 입력 */}
+                            <div className="p-3 bg-yellow-50 rounded border border-yellow-100 mb-2 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <input type="checkbox" name="pIsSoldOut" defaultChecked={editingProduct?.isSoldOut} id="soldOutCheck" className="w-4 h-4 accent-yellow-600"/>
+                                    <label htmlFor="soldOutCheck" className="text-yellow-700 font-bold cursor-pointer">일시 품절 처리 (상품은 보이나 구매 불가)</label>
+                                </div>
+                                <input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-2">
                                 <div><label className="block mb-1 font-bold">카테고리</label><select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded">{CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}</select></div>
                                 <div><label className="block mb-1 font-bold">재고</label><input name="pStock" type="number" defaultValue={editingProduct?.stock || 0} className="w-full border p-2 rounded" required /></div>
@@ -938,8 +954,18 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
             </div>
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 sm:p-4 shadow z-30 safe-area-bottom transition-all duration-300">
                 <div className="max-w-3xl mx-auto flex gap-3">
-                    <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1"><button onClick={()=>handleQuantityChange(-1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Minus" className="w-4 h-4"/></button><span className="font-bold w-8 text-center">{qty}</span><button onClick={()=>handleQuantityChange(1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Plus" className="w-4 h-4"/></button></div>
-                    <button onClick={()=>{onAddToCart(product,qty);}} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-slate-900"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
+                    {/* [수정] 품절 상태일 경우 구매 버튼 비활성화 */}
+                    {product.isSoldOut ? (
+                        <div className="w-full bg-slate-400 text-white font-bold rounded-xl flex flex-col items-center justify-center py-2 cursor-not-allowed">
+                            <span className="text-lg">일시 품절</span>
+                            <span className="text-xs text-slate-100">{product.restockDate || "빠른 시일 내에 재입고 하겠습니다."}</span>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1"><button onClick={()=>handleQuantityChange(-1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Minus" className="w-4 h-4"/></button><span className="font-bold w-8 text-center">{qty}</span><button onClick={()=>handleQuantityChange(1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Plus" className="w-4 h-4"/></button></div>
+                            <button onClick={()=>{onAddToCart(product,qty);}} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-slate-900"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
@@ -1078,7 +1104,16 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
                     {filteredProducts.map((p, index) => (
                         <React.Fragment key={p.id}>
-                            <div onClick={() => openProduct(p)} className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group overflow-hidden flex flex-col">
+                            <div onClick={() => openProduct(p)} className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group overflow-hidden flex flex-col relative">
+                                
+                                {/* [추가] 품절 오버레이 */}
+                                {p.isSoldOut && (
+                                    <div className="absolute inset-0 z-10 bg-black/50 flex flex-col items-center justify-center text-white backdrop-blur-[1px]">
+                                        <div className="font-bold text-xl mb-1">SOLD OUT</div>
+                                        <div className="text-xs bg-black/50 px-2 py-1 rounded">{p.restockDate || "재입고 준비중"}</div>
+                                    </div>
+                                )}
+                                
                                 <div className="aspect-[4/3] bg-slate-100 relative flex items-center justify-center overflow-hidden">
                                     {p.image.startsWith('data:') || p.image.startsWith('http') || p.image.startsWith('.') ? <img src={p.image} alt={p.name} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" /> : <span className="text-6xl transform group-hover:scale-110 transition-transform duration-500">{p.image}</span>}
                                     <div className="absolute top-3 left-3 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">인기</div>
