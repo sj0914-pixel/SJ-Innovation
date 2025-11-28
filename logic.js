@@ -25,25 +25,42 @@ const BANK_INFO = {
 
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
-// ★ 수정된 아이콘 컴포넌트 (초경량 + 이름 자동 보정 버전)
+// ★ 수정된 아이콘 컴포넌트 (최종 안전판: 에러나도 멈추지 않음 + 기본 아이콘)
 const Icon = ({ name, className, ...props }) => {
-    // 1. 라이브러리 없으면 그냥 빈칸 (먹통/에러 방지)
+    // 1. 라이브러리가 로드될 때까지 재렌더링 유도 (0.5초 뒤 한번만 체크)
+    const [isLoaded, setIsLoaded] = useState(!!window.lucide);
+    
+    useEffect(() => {
+        if (!isLoaded) {
+            const timer = setTimeout(() => {
+                if (window.lucide) setIsLoaded(true);
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoaded]);
+
+    // 2. 라이브러리 없으면 빈칸 (에러 방지)
     if (!window.lucide || !window.lucide.icons) return null;
 
-    // 2. 이름 자동 보정 (예: "search" -> "Search", "shopping-bag" -> "ShoppingBag")
-    // 대소문자가 달라도, 중간에 -가 있어도 알아서 찾아줍니다.
-    const cleanName = (name || 'box').replace(/-./g, x => x[1].toUpperCase()); // camelCase 변환
-    const pascalName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1); // PascalCase 변환
-    
-    // 3. 3단계로 찾아보기 (원래이름 -> 대문자화 -> 소문자화)
-    const lucideIcon = window.lucide.icons[name] || window.lucide.icons[pascalName] || window.lucide.icons[cleanName];
+    try {
+        // 3. 아이콘 이름 정리 (대소문자/특수문자 무시하고 찾기)
+        // 예: "shopping-bag" -> "shoppingbag", "Search" -> "search"
+        const cleanName = String(name || 'box').toLowerCase().replace(/[^a-z0-9]/g, '');
+        
+        // 4. 전체 아이콘 목록에서 이름 매칭되는 것 찾기
+        const iconKeys = Object.keys(window.lucide.icons);
+        const foundKey = iconKeys.find(key => key.toLowerCase() === cleanName);
 
-    // 4. 그래도 없으면? 그냥 조용히 빈칸 (물음표/느낌표 안 띄움)
-    if (!lucideIcon) return null;
+        // 5. 찾은 거 가져오기 (없으면 무조건 'Box' 아이콘 사용 -> 에러 방지)
+        const lucideIcon = foundKey ? window.lucide.icons[foundKey] : window.lucide.icons.Box;
 
-    // 5. SVG 그리기
-    const svgString = lucideIcon.toSvg({ class: className, ...props });
-    return <span dangerouslySetInnerHTML={{ __html: svgString }} style={{ display: 'inline-flex', alignItems: 'center' }} />;
+        // 6. 진짜 그리기
+        const svgString = lucideIcon.toSvg({ class: className, ...props });
+        return <span dangerouslySetInnerHTML={{ __html: svgString }} style={{ display: 'inline-flex', alignItems: 'center' }} />;
+    } catch (e) {
+        // 7. 만약 이 과정에서 에러가 나면? 사이트 멈추지 말고 그냥 빈칸 리턴
+        return null;
+    }
 };
 
 const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
