@@ -1327,14 +1327,15 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
                 {banners.top && (
                     <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 min-h-[160px]">
-                    <img 
-                        src={banners.top} 
-                        alt="Top Banner" 
-                        className="w-full h-auto object-cover max-h-[400px]" 
-                        fetchPriority="high"
-                        decoding="sync"
-                    />
-                </div>
+                        <img 
+                            src={banners.top} 
+                            alt="Top Banner" 
+                            className="w-full h-auto object-cover max-h-[400px]" 
+                            fetchPriority="high"
+                            decoding="sync"
+                        />
+                    </div>
+                )}
 
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-2 scrollbar-hide sticky top-[110px] sm:static z-30">
                     {CATEGORIES.map(cat => ( <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all duration-300 ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button> ))}
