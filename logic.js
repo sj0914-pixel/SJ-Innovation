@@ -1,4 +1,4 @@
-/* logic.js - Final Fix (Sold Out Feature Added) */
+/* logic.js - Mobile Optimized Full Version (No compression) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -191,7 +191,7 @@ const MyPage = ({ user, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-all">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 transition-all safe-area-bottom">
             <div className="bg-white w-full max-w-2xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in duration-200">
                 <div className="p-4 border-b flex justify-between items-center bg-slate-50">
                     <h2 className="font-bold text-xl">마이페이지</h2>
@@ -474,10 +474,37 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
     const openEditModal = (p) => { setEditingProduct(p); setThumbImage(p.image); setDetailImage(p.detailImage); setIsProductModalOpen(true); };
 
+    // [★모바일 추가] 관리자용 카드 뷰 컴포넌트
+    const OrderCard = ({ o, u }) => (
+        <div className={`bg-white p-4 rounded-xl border shadow-sm mb-3 ${selectedIds.has(o.id) ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
+            <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={selectedIds.has(o.id)} onChange={() => toggleSelect(o.id)} className="w-5 h-5 rounded accent-blue-600" />
+                    <span className="font-mono font-bold text-blue-600 cursor-pointer" onClick={()=>setSelectedUser(u)}>{o.orderNo}</span>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded font-bold ${o.status==='접수대기'?'bg-blue-100 text-blue-600':o.status==='배송완료'?'bg-slate-100':'bg-green-100 text-green-700'}`}>{o.status}</span>
+            </div>
+            <div className="mb-2" onClick={()=>setSelectedUser(u)}>
+                <div className="font-bold text-slate-800">{u.storeName || o.userName} <span className="text-slate-400 font-normal text-xs">({u.repName})</span></div>
+                <div className="text-xs text-slate-500">{u.mobile} / {o.depositor ? `입금: ${o.depositor}` : "미입력"}</div>
+            </div>
+            <div className="bg-slate-50 p-2 rounded text-xs text-slate-600 mb-2 space-y-1">
+                {(o.items||[]).map((i,x)=><div key={x} className="flex justify-between"><span>{i.name}</span><span className="font-bold">{i.quantity}</span></div>)}
+            </div>
+            <div className="flex flex-col gap-2">
+                <select className="border rounded p-1 text-xs w-full bg-white" defaultValue={o.courier} onChange={(e)=>handleUpdateTracking(o.id, e.target.value, o.trackingNumber)}>{COURIERS.map(c=><option key={c}>{c}</option>)}</select>
+                <div className="flex gap-1">
+                    <input className="border rounded p-1 text-xs w-full" placeholder="송장번호" defaultValue={o.trackingNumber} onBlur={(e)=>handleUpdateTracking(o.id, o.courier||"CJ대한통운", e.target.value)} />
+                </div>
+            </div>
+            <div className="mt-2 text-right font-bold text-slate-800">{formatPrice(o.totalAmount)}원</div>
+        </div>
+    );
+
     return (
         <div className="min-h-screen bg-slate-100 pb-20">
             <nav className="bg-slate-900 text-white px-6 py-3 flex justify-between items-center shadow-lg sticky top-0 z-50">
-                <div className="flex items-center gap-3"><span className="bg-red-500 text-xs px-2 py-1 rounded font-bold">ADMIN</span><span className="font-bold text-lg">SJ 파트너스 관리자</span></div>
+                <div className="flex items-center gap-3"><span className="bg-red-500 text-xs px-2 py-1 rounded font-bold">ADMIN</span><span className="font-bold text-lg hidden sm:inline">SJ 파트너스 관리자</span><span className="font-bold text-lg sm:hidden">SJ 관리자</span></div>
                 <div className="flex gap-2">
                     <button onClick={onToShop} className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm font-bold flex gap-2 items-center"><Icon name="Store" className="w-4 h-4"/>쇼핑몰</button>
                     <button onClick={onLogout} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-bold">로그아웃</button>
@@ -485,7 +512,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
             </nav>
 
             <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6">
-                <div className="flex gap-2 border-b border-slate-300 pb-1 overflow-x-auto">
+                {/* [★모바일] 탭 버튼 스크롤 가능하도록 개선 */}
+                <div className="flex gap-2 border-b border-slate-300 pb-1 overflow-x-auto whitespace-nowrap">
                     {["orders", "users", "products", "banners"].map(t => (
                         <button key={t} onClick={()=>setTab(t)} className={`px-6 py-3 rounded-t-lg font-bold text-sm uppercase transition-colors whitespace-nowrap ${tab===t ? "bg-white text-slate-900 border border-b-0 border-slate-300 shadow-sm" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}>
                             {t === 'orders' ? '주문 통합 관리' : t === 'users' ? '회원 관리' : t === 'products' ? '상품 관리' : '배너 관리'}
@@ -495,7 +523,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* 대시보드 */}
+                        {/* 대시보드 - 모바일에서는 가로스크롤 대신 그리드로 보기 좋게 조정 */}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                             {[
                                 { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" },
@@ -515,16 +543,19 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">기간</span>
-                                <div className="flex gap-1">
-                                    {["오늘","7일","30일","전체"].map(d => ( <button key={d} onClick={()=>handleDateBtn(d)} className={`px-3 py-1.5 border rounded text-xs font-bold ${searchInputs.dateType===d ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 hover:bg-slate-50"}`}>{d}</button> ))}
+                                {/* [★모바일] 버튼 그룹 줄바꿈 방지 */}
+                                <div className="flex gap-1 overflow-x-auto">
+                                    {["오늘","7일","30일","전체"].map(d => ( <button key={d} onClick={()=>handleDateBtn(d)} className={`px-3 py-1.5 border rounded text-xs font-bold whitespace-nowrap ${searchInputs.dateType===d ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 hover:bg-slate-50"}`}>{d}</button> ))}
                                 </div>
-                                <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500" value={searchInputs.startDate} onChange={(e)=>setSearchInputs({...searchInputs, startDate: e.target.value})} />
-                                <span className="text-slate-400">~</span>
-                                <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500" value={searchInputs.endDate} onChange={(e)=>setSearchInputs({...searchInputs, endDate: e.target.value})} />
+                                <div className="flex gap-2 w-full md:w-auto">
+                                    <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500 w-full md:w-auto" value={searchInputs.startDate} onChange={(e)=>setSearchInputs({...searchInputs, startDate: e.target.value})} />
+                                    <span className="text-slate-400 self-center">~</span>
+                                    <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500 w-full md:w-auto" value={searchInputs.endDate} onChange={(e)=>setSearchInputs({...searchInputs, endDate: e.target.value})} />
+                                </div>
                             </div>
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">배송상태</span>
-                                <div className="flex gap-4">
+                                <div className="flex gap-4 flex-wrap">
                                     {["전체", "접수대기", "배송준비", "배송중", "배송완료", "주문취소"].map(s => (
                                         <label key={s} className="flex items-center gap-2 cursor-pointer text-sm">
                                             <input type="radio" name="status" checked={searchInputs.status === s} onChange={()=>setSearchInputs({...searchInputs, status: s})} className="accent-blue-600" /> 
@@ -535,13 +566,13 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
                             <div className="flex flex-col md:flex-row gap-4 items-center border-t pt-4">
                                 <span className="w-20 font-bold text-sm text-slate-600">상세조건</span>
-                                <select className="border rounded px-2 py-2 text-sm bg-slate-50 min-w-[120px]" value={searchInputs.searchType} onChange={(e)=>setSearchInputs({...searchInputs, searchType: e.target.value})}>
+                                <select className="border rounded px-2 py-2 text-sm bg-slate-50 min-w-[120px] w-full md:w-auto" value={searchInputs.searchType} onChange={(e)=>setSearchInputs({...searchInputs, searchType: e.target.value})}>
                                     <option value="주문자명">주문자명</option><option value="주문번호">주문번호</option>
                                 </select>
                                 <input className="border rounded px-3 py-2 text-sm w-full md:w-96" placeholder="검색어 입력" value={searchInputs.keyword} onChange={(e)=>setSearchInputs({...searchInputs, keyword: e.target.value})} onKeyDown={(e)=>{if(e.key==='Enter') handleSearch()}} />
-                                <div className="ml-auto flex gap-2">
-                                    <button onClick={handleReset} className="px-4 py-2 border rounded text-sm font-bold hover:bg-slate-50">초기화</button>
-                                    <button onClick={handleSearch} className="px-6 py-2 bg-blue-600 text-white rounded text-sm font-bold hover:bg-blue-700 shadow-sm">검색</button>
+                                <div className="ml-auto flex gap-2 w-full md:w-auto mt-2 md:mt-0">
+                                    <button onClick={handleReset} className="px-4 py-2 border rounded text-sm font-bold hover:bg-slate-50 flex-1 md:flex-none">초기화</button>
+                                    <button onClick={handleSearch} className="px-6 py-2 bg-blue-600 text-white rounded text-sm font-bold hover:bg-blue-700 shadow-sm flex-1 md:flex-none">검색</button>
                                 </div>
                             </div>
                         </div>
@@ -549,7 +580,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         {/* 리스트 */}
                         <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3 bg-slate-50/50">
-                                <div className="flex gap-2 items-center">
+                                <div className="flex gap-2 items-center flex-wrap">
                                     <span className="font-bold text-sm mr-2">{selectedIds.size}개 선택됨</span>
                                     <button onClick={()=>handleBatchStatus("배송준비")} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-700 flex items-center gap-1"><Icon name="Package" className="w-3 h-3"/> 배송준비</button>
                                     <button onClick={()=>handleBatchStatus("배송중")} className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700 flex items-center gap-1"><Icon name="Truck" className="w-3 h-3"/> 배송중 처리</button>
@@ -561,7 +592,14 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                     <input type="file" ref={excelInputRef} className="hidden" onChange={handleExcelUpload} />
                                 </div>
                             </div>
-                            <div className="overflow-x-auto min-h-[400px]">
+                            
+                            {/* [★모바일] 모바일에서는 Card View, 데스크탑에서는 Table View */}
+                            <div className="md:hidden p-2 bg-slate-100">
+                                {filteredOrders.length === 0 ? <div className="text-center text-slate-400 py-10">검색된 주문이 없습니다.</div> :
+                                filteredOrders.map(o => <OrderCard key={o.id} o={o} u={getUserInfo(o.userId)} />)}
+                            </div>
+
+                            <div className="hidden md:block overflow-x-auto min-h-[400px]">
                                 <table className="w-full text-sm text-left whitespace-nowrap">
                                     <thead className="bg-slate-100 text-slate-500 font-bold border-b text-xs uppercase">
                                         <tr>
@@ -623,12 +661,32 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <span className="font-bold text-slate-600">총 회원수: {users.length}명</span>
                             <button onClick={handleRefreshUsers} className="bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-900 flex gap-1 items-center"><Icon name="RefreshCw" className="w-3 h-3"/>목록 새로고침</button>
                         </div>
-                        <table className="w-full text-left text-sm whitespace-nowrap">
-                            <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">추천인</th><th className="p-4">관리</th></tr></thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {users.map(u=>(<tr key={u.id} className="hover:bg-slate-50"><td className="p-4 font-bold">{u.storeName}</td><td className="p-4">{u.repName}</td><td className="p-4">{u.email}</td><td className="p-4 text-indigo-600 font-medium">{u.recommender || "-"}</td><td className="p-4 flex gap-2"><button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs">삭제</button></td></tr>))}
-                            </tbody>
-                        </table>
+                        
+                        {/* [★모바일] 회원관리 모바일 뷰 */}
+                        <div className="md:hidden">
+                            {users.map(u => (
+                                <div key={u.id} className="p-4 border-b last:border-0 flex justify-between items-center">
+                                    <div onClick={()=>setSelectedUser(u)}>
+                                        <div className="font-bold">{u.storeName} <span className="text-sm font-normal text-slate-500">{u.repName}</span></div>
+                                        <div className="text-xs text-slate-400">{u.mobile}</div>
+                                        <div className="text-xs text-slate-500">{u.email}</div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={()=>setSelectedUser(u)} className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-bold">상세</button>
+                                        <button onClick={()=>handleDeleteUser(u.id)} className="bg-red-50 text-red-500 px-2 py-1 rounded text-xs font-bold">삭제</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="hidden md:block">
+                            <table className="w-full text-left text-sm whitespace-nowrap">
+                                <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">추천인</th><th className="p-4">관리</th></tr></thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {users.map(u=>(<tr key={u.id} className="hover:bg-slate-50"><td className="p-4 font-bold">{u.storeName}</td><td className="p-4">{u.repName}</td><td className="p-4">{u.email}</td><td className="p-4 text-indigo-600 font-medium">{u.recommender || "-"}</td><td className="p-4 flex gap-2"><button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs">삭제</button></td></tr>))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
                 {tab === "products" && (
@@ -637,34 +695,58 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <h3 className="font-bold text-lg">상품 목록</h3>
                             <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button>
                         </div>
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-100 uppercase font-bold text-slate-500">
-                                <tr>
-                                    <th className="p-4">이미지</th>
-                                    <th className="p-4">상품명</th>
-                                    <th className="p-4">가격</th>
-                                    <th className="p-4">재고</th>
-                                    <th className="p-4">상태</th>
-                                    <th className="p-4">관리</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {products.map(p=>(
-                                    <tr key={p.id} className={`hover:bg-slate-50 ${p.isHidden ? "bg-slate-100 opacity-60" : ""}`}>
-                                        <td className="p-4 text-2xl">{p.image && (p.image.startsWith('data:') || p.image.startsWith('http')) ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
-                                        <td className="p-4">
-                                            <div className="font-bold">{p.name}</div>
-                                            <div className="text-xs text-slate-400">{p.category}</div>
-                                            {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">※ 일시품절 처리됨</div>}
-                                        </td>
-                                        <td className="p-4">₩{formatPrice(p.price)}</td>
-                                        <td className="p-4 font-bold text-blue-600">{p.stock}</td>
-                                        <td className="p-4">{p.isHidden ? <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">판매중지</span> : <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded font-bold">판매중</span>}</td>
-                                        <td className="p-4 flex gap-2"><button onClick={()=>openEditModal(p)} className="bg-slate-200 px-3 py-1 rounded text-xs font-bold">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-3 py-1 rounded text-xs font-bold">삭제</button></td>
+                        
+                        {/* [★모바일] 상품관리 카드 리스트 뷰 */}
+                        <div className="md:hidden grid grid-cols-1 gap-3">
+                            {products.map(p => (
+                                <div key={p.id} className={`bg-white p-4 rounded-xl border flex gap-3 ${p.isHidden?"opacity-60 bg-slate-100":""}`}>
+                                    <div className="w-20 h-20 bg-slate-50 rounded flex items-center justify-center overflow-hidden border">
+                                        {p.image.includes("data") || p.image.includes("http") ? <img src={p.image} className="w-full h-full object-cover"/> : <span className="text-2xl">📦</span>}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="font-bold line-clamp-1">{p.name}</div>
+                                        <div className="text-xs text-slate-500 mb-1">{p.category} | 재고 {p.stock}</div>
+                                        <div className="font-bold text-slate-800">{formatPrice(p.price)}원</div>
+                                        {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">품절 (입고: {p.restockDate})</div>}
+                                    </div>
+                                    <div className="flex flex-col gap-2 justify-center">
+                                        <button onClick={()=>openEditModal(p)} className="bg-slate-100 p-2 rounded text-slate-600"><Icon name="Edit" className="w-4 h-4" /></button>
+                                        <button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-50 p-2 rounded text-red-500"><Icon name="Trash" className="w-4 h-4" /></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="hidden md:block">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-slate-100 uppercase font-bold text-slate-500">
+                                    <tr>
+                                        <th className="p-4">이미지</th>
+                                        <th className="p-4">상품명</th>
+                                        <th className="p-4">가격</th>
+                                        <th className="p-4">재고</th>
+                                        <th className="p-4">상태</th>
+                                        <th className="p-4">관리</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {products.map(p=>(
+                                        <tr key={p.id} className={`hover:bg-slate-50 ${p.isHidden ? "bg-slate-100 opacity-60" : ""}`}>
+                                            <td className="p-4 text-2xl">{p.image && (p.image.startsWith('data:') || p.image.startsWith('http')) ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
+                                            <td className="p-4">
+                                                <div className="font-bold">{p.name}</div>
+                                                <div className="text-xs text-slate-400">{p.category}</div>
+                                                {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">※ 일시품절 처리됨</div>}
+                                            </td>
+                                            <td className="p-4">₩{formatPrice(p.price)}</td>
+                                            <td className="p-4 font-bold text-blue-600">{p.stock}</td>
+                                            <td className="p-4">{p.isHidden ? <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">판매중지</span> : <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded font-bold">판매중</span>}</td>
+                                            <td className="p-4 flex gap-2"><button onClick={()=>openEditModal(p)} className="bg-slate-200 px-3 py-1 rounded text-xs font-bold">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-3 py-1 rounded text-xs font-bold">삭제</button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
                 {tab === "banners" && (
@@ -689,7 +771,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
             </div>
             {/* 회원 상세 팝업 */}
             {selectedUser && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200 safe-area-bottom">
                     <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 relative overflow-hidden">
                         <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors"><Icon name="X"/></button>
                         <h3 className="font-bold text-xl mb-6 flex items-center gap-2"><Icon name="User" className="w-6 h-6"/> 회원 상세 정보</h3>
@@ -726,7 +808,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
             )}
             
             {isProductModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 safe-area-bottom">
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
                         <h3 className="font-bold text-lg mb-4 border-b pb-2">{editingProduct ? "상품 수정" : "상품 등록"}</h3>
@@ -736,7 +818,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 <label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label>
                             </div>
 
-                             {/* [추가] 품절 처리 체크박스 및 입고 예정일 입력 */}
+                             {/* [수정: 품절 및 입고예정일 저장] */}
                             <div className="p-3 bg-yellow-50 rounded border border-yellow-100 mb-2 space-y-2">
                                 <div className="flex items-center gap-2">
                                     <input type="checkbox" name="pIsSoldOut" defaultChecked={editingProduct?.isSoldOut} id="soldOutCheck" className="w-4 h-4 accent-yellow-600"/>
@@ -850,11 +932,11 @@ const LoginPage = ({ onAdminLogin }) => {
     const handleChange = (e) => setFormData(prev=>({...prev, [e.target.name]: e.target.value}));
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8">
+        <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8 safe-area-pb">
             <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all duration-300 ${isLoginMode?'max-w-md p-8':'max-w-3xl p-8'}`}>
                 {/* 로그인 상단 로고 */}
                 <div className="text-center mb-8">
-                    <img src="https://i.ibb.co/LF7PbQv/image.png" alt="Logo" className="h-16 w-auto object-contain mx-auto mb-4" />
+                    <img src="https://i.ibb.co/LdPMppLv/image.png" alt="Logo" className="h-16 w-auto object-contain mx-auto mb-4" />
                     <h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1>
                     <p className="text-slate-500 mt-2 text-sm">SJ Innovation</p>
                 </div>
@@ -921,7 +1003,7 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-right duration-300 min-h-screen flex flex-col pb-[80px]">
+        <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-right duration-300 min-h-screen flex flex-col pb-[80px] safe-area-pb">
             <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center justify-between">
                 <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="ArrowLeft" className="w-7 h-7 text-slate-800" /></button>
                 
@@ -930,7 +1012,7 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
                     <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-9 w-auto object-contain" />
                 </div>
                 
-                <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="X" className="w-6 h-6 text-slate-600" /></button>
+                <button onClick={goHome} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="Store" className="w-6 h-6 text-slate-600" /></button>
             </div>
             <div className="flex-1 overflow-y-auto">
                 <div className="max-w-3xl mx-auto">
@@ -1057,20 +1139,18 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     if (selectedProduct) return <ProductDetail product={selectedProduct} onBack={handleClose} onAddToCart={addToCart} goHome={goHome} />;
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-800 safe-area-pb">
+            {/* [★모바일] 헤더 반응형 개선 */}
             <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100 transition-all duration-300">
-                <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div className="max-w-7xl mx-auto px-4 py-3 sm:py-0 sm:h-16 flex flex-wrap items-center justify-between gap-2">
                     
                     {/* 메인페이지 상단 로고 */}
                     <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
-                        <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-9 w-auto object-contain" />
+                        <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-8 w-auto object-contain" />
                     </div>
 
-                    <div className="flex-1 max-w-lg mx-4 relative hidden sm:block">
-                        <input type="text" placeholder="상품 검색..." className="w-full bg-slate-100 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-slate-500 focus:bg-white transition-all" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
-                        <Icon name="Search" className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
-                    </div>
-                    <div className="flex items-center gap-4">
+                    {/* [★모바일] 모바일에서는 아이콘 그룹이 검색창보다 위로 오거나 우측 정렬 */}
+                    <div className="flex items-center gap-3 order-2 sm:order-3 ml-auto sm:ml-0">
                         {isAdmin && (
                             <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1"><Icon name="Settings" className="w-3 h-3"/>관리자</button>
                         )}
@@ -1082,6 +1162,12 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                         <button onClick={openMyPage} className="flex items-center gap-2 text-sm font-medium hover:bg-slate-100 p-2 rounded-full transition-all"><div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center"><Icon name="User" className="w-4 h-4" /></div><span className="hidden sm:block">{user.storeName || "내 정보"}</span></button>
                         <button onClick={onLogout} className="bg-slate-200 hover:bg-red-500 hover:text-white px-3 py-1 rounded font-bold text-sm transition-all duration-300">로그아웃</button>
                     </div>
+
+                    {/* [★모바일] 검색창이 모바일에서는 줄바꿈되어 꽉 차게 표시 */}
+                    <div className="w-full sm:flex-1 sm:max-w-lg sm:mx-4 relative order-3 sm:order-2 mt-2 sm:mt-0">
+                        <input type="text" placeholder="상품 검색..." className="w-full bg-slate-100 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-slate-500 focus:bg-white transition-all" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
+                        <Icon name="Search" className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
+                    </div>
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
@@ -1090,21 +1176,22 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                         <img 
                             src={banners.top} 
                             alt="Top Banner" 
-                            className="w-full h-40 sm:h-52 object-cover" 
+                            className="w-full h-auto object-cover max-h-[400px]" 
                             fetchPriority="high"
                             decoding="sync"
                         />
                     </div>
                 )}
 
-                <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide">
+                <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide sticky top-[110px] sm:static z-30">
                     {CATEGORIES.map(cat => ( <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all duration-300 ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button> ))}
                 </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                {/* [★모바일] 그리드 간격 조정 */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
                     {filteredProducts.map((p, index) => (
                         <React.Fragment key={p.id}>
-                            <div onClick={() => openProduct(p)} className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group overflow-hidden flex flex-col relative">
+                            <div onClick={() => openProduct(p)} className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group overflow-hidden flex flex-col relative active:scale-95 sm:active:scale-100">
                                 
                                 {/* [추가] 품절 오버레이 */}
                                 {p.isSoldOut && (
@@ -1118,20 +1205,20 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                     {p.image.startsWith('data:') || p.image.startsWith('http') || p.image.startsWith('.') ? <img src={p.image} alt={p.name} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" /> : <span className="text-6xl transform group-hover:scale-110 transition-transform duration-500">{p.image}</span>}
                                     <div className="absolute top-3 left-3 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">인기</div>
                                 </div>
-                                <div className="p-5 flex flex-col flex-grow">
+                                <div className="p-3 sm:p-5 flex flex-col flex-grow">
                                     <div className="text-xs text-slate-400 mb-1 font-medium">{p.category}</div>
-                                    <h3 className="font-bold text-slate-800 mb-2 text-lg leading-tight line-clamp-2">{p.name}</h3>
+                                    <h3 className="font-bold text-slate-800 mb-2 text-sm sm:text-lg leading-tight line-clamp-2 min-h-[2.5em]">{p.name}</h3>
                                     <div className="flex items-center gap-1 mb-4"><Icon name="Star" className="w-4 h-4 text-yellow-400 fill-yellow-400" /><span className="text-sm font-bold text-slate-700">{p.rating || "5.0"}</span></div>
                                     <div className="mt-auto">
                                         <div className="flex justify-between items-center mb-1"><span className="text-xs text-slate-400">권장가</span><span className="text-xs text-slate-400 line-through">₩{formatPrice(p.originPrice)}</span></div>
-                                        <div className="flex justify-between items-baseline mb-3"><span className="text-sm font-bold text-slate-700">공급가</span><span className="text-xl font-bold text-slate-800">₩{formatPrice(p.price)}</span></div>
+                                        <div className="flex justify-between items-baseline mb-3"><span className="text-sm font-bold text-slate-700">공급가</span><span className="text-lg sm:text-xl font-bold text-slate-800">₩{formatPrice(p.price)}</span></div>
                                         <button className="w-full bg-slate-50 text-slate-700 border border-slate-200 group-hover:bg-slate-800 group-hover:text-white py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"><Icon name="Search" className="w-4 h-4" /> 상세</button>
                                     </div>
                                 </div>
                             </div>
                             {index === 7 && banners.middle && (
                                 <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 min-h-[128px]">
-                                    <img src={banners.middle} alt="Middle Banner" className="w-full h-32 sm:h-40 object-cover" />
+                                    <img src={banners.middle} alt="Middle Banner" className="w-full h-auto object-cover" />
                                 </div>
                             )}
                         </React.Fragment>
@@ -1141,19 +1228,19 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             {isCartOpen && (
                 <div className="fixed inset-0 z-50 flex justify-end transition-all duration-300">
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleClose}></div>
-                    <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col p-5 animate-in slide-in-from-right duration-300">
+                    <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col p-5 animate-in slide-in-from-right duration-300 safe-area-bottom">
                         <div className="flex justify-between items-center mb-4 border-b pb-4"><h2 className="font-bold text-lg">발주 목록 ({cart.length})</h2><button onClick={handleClose} className="hover:bg-slate-100 p-2 rounded-full"><Icon name="X" /></button></div>
                         <div className="flex-1 overflow-y-auto space-y-4">
                             {cart.map((item, idx) => (
                                 <div key={idx} className="flex gap-4 border-b pb-4 items-center">
-                                    <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center text-2xl overflow-hidden">
+                                    <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center text-2xl overflow-hidden flex-shrink-0">
                                         {item.image.startsWith('data:') || item.image.startsWith('http') ? <img src={item.image} className="w-full h-full object-contain"/> : item.image}
                                     </div>
                                     <div className="flex-1">
                                         <h4 className="font-medium line-clamp-1">{item.name}</h4>
                                         <div className="flex justify-between mt-1 text-sm"><span className="bg-slate-100 px-2 rounded">수량: {item.quantity}</span><span className="font-bold">₩{formatPrice(item.price * item.quantity)}</span></div>
                                     </div>
-                                    <button onClick={()=>{const nc=[...cart]; nc.splice(idx,1); setCart(nc);}} className="text-slate-400 hover:text-red-500 transition-colors duration-150"><Icon name="X" className="w-4 h-4" /></button>
+                                    <button onClick={()=>{const nc=[...cart]; nc.splice(idx,1); setCart(nc);}} className="text-slate-400 hover:text-red-500 transition-colors duration-150 p-2"><Icon name="X" className="w-4 h-4" /></button>
                                 </div>
                             ))}
                         </div>
@@ -1162,7 +1249,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 </div>
             )}
             {isOrderModalOpen && (
-                <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 transition-all animate-in fade-in">
+                <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 transition-all animate-in fade-in safe-area-bottom">
                     <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 relative">
                         <button onClick={()=>setIsOrderModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
                         <h3 className="text-xl font-bold mb-2">주문서 작성 및 계좌 확인</h3>
