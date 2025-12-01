@@ -864,7 +864,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                                 const priceInput = document.getElementsByName("pPrice")[0];
                                                 if(priceInput) {
                                                     // 권장가의 80% 가격으로 자동 입력 (반올림)
-                                                    priceInput.value = Math.round(origin * 0.8); 
+                                                    priceInput.value = Math.round(origin * 0.55); 
                                                 }
                                             }
                                         }}
