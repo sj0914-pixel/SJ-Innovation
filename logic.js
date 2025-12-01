@@ -21,7 +21,11 @@ const BANK_INFO = {
     holder: "에스제이이노베이션"
 };
 
+// ... 기존 상수들 ...
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
+
+// [★추가] 여기에 Gemini API 키를 입력하세요. (https://aistudio.google.com/app/apikey 에서 발급)
+const GEMINI_API_KEY = "AIzaSyCzfv6-BJyOU946qQuvwzbm22YqIXyJ7Qo";
 
 // ----------------------------------------------------
 // 아이콘 컴포넌트 (이모지 버전)
@@ -420,6 +424,55 @@ const AdminPage = ({ onLogout, onToShop }) => {
         reader.readAsArrayBuffer(file);
     };
 
+    // [★추가] AI 자동 생성 핸들러 (handleSaveProduct 위에 붙여넣기)
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const handleAIGenerate = async (productName) => {
+        if (!productName) return alert("상품명을 먼저 입력해주세요.");
+        if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("API_KEY")) return alert("코드 상단에 GEMINI_API_KEY를 설정해주세요.");
+
+        setIsGenerating(true);
+        try {
+            // Gemini에게 보낼 프롬프트
+            const prompt = `
+                상품명: "${productName}"
+                
+                위 상품에 대해 다음 두 가지 작업을 수행해서 JSON 형식으로만 답해줘:
+                1. 카테고리 분류: [${CATEGORIES.filter(c=>c!=="전체").join(", ")}] 중 가장 적절한 하나를 골라줘.
+                2. 상품 소개: 이 상품을 도매 사장님들에게 어필할 수 있는 매력적이고 전문적인 소개글을 3~4줄로 작성해줘 (이모지 포함).
+                
+                응답 형식: { "category": "카테고리명", "description": "소개글내용" }
+            `;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            });
+
+            const data = await response.json();
+            const text = data.candidates[0].content.parts[0].text;
+            
+            // JSON 파싱 (마크다운 코드블럭 제거)
+            const cleanText = text.replace(/```json|```/g, "").trim();
+            const result = JSON.parse(cleanText);
+
+            // 폼에 값 자동 입력
+            const form = document.getElementById("productForm");
+            if (form) {
+                if (result.category) form.pCategory.value = result.category;
+                if (result.description) form.pDescription.value = result.description;
+            }
+            alert("AI가 카테고리와 소개글을 작성했습니다!");
+
+        } catch (e) {
+            console.error(e);
+            alert("AI 생성 실패: " + e.message);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+    
     const handleSaveProduct = async (e) => {
         e.preventDefault(); const form = e.target;
         const newProd = { 
@@ -813,13 +866,13 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
                         <h3 className="font-bold text-lg mb-4 border-b pb-2">{editingProduct ? "상품 수정" : "상품 등록"}</h3>
-                        <form onSubmit={handleSaveProduct} className="space-y-3 text-sm">
+                        {/* [★교체] AI 기능이 추가된 새로운 폼 */}
+                        <form id="productForm" onSubmit={handleSaveProduct} className="space-y-3 text-sm">
                             <div className="flex items-center gap-2 p-3 bg-red-50 rounded border border-red-100 mb-2">
                                 <input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/>
                                 <label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label>
                             </div>
 
-                             {/* [수정: 품절 및 입고예정일 저장] */}
                             <div className="p-3 bg-yellow-50 rounded border border-yellow-100 mb-2 space-y-2">
                                 <div className="flex items-center gap-2">
                                     <input type="checkbox" name="pIsSoldOut" defaultChecked={editingProduct?.isSoldOut} id="soldOutCheck" className="w-4 h-4 accent-yellow-600"/>
@@ -828,29 +881,38 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 <input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/>
                             </div>
 
+                            {/* [★AI 버튼 추가된 상품명 입력란] */}
+                            <div>
+                                <label className="block mb-1 font-bold">상품명 <span className="text-xs text-indigo-500 font-normal">(입력 후 우측 버튼을 눌러보세요)</span></label>
+                                <div className="flex gap-2">
+                                    <input name="pName" id="pNameInput" defaultValue={editingProduct?.name} className="flex-1 border p-2 rounded" placeholder="예: 뽀로로 젓가락 세트" required />
+                                    <button 
+                                        type="button" 
+                                        onClick={() => handleAIGenerate(document.getElementById("pNameInput").value)}
+                                        className="bg-indigo-600 text-white px-3 py-2 rounded font-bold text-xs whitespace-nowrap flex items-center gap-1 hover:bg-indigo-700"
+                                        disabled={isGenerating}
+                                    >
+                                        {isGenerating ? <Icon name="Loader2" className="animate-spin"/> : "✨ AI 자동완성"}
+                                    </button>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="block mb-1 font-bold">카테고리</label>
-                                    <select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded">
+                                    <select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded bg-indigo-50">
                                         {CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
                                 <div>
                                     <label className="block mb-1 font-bold">재고</label>
-                                    {/* 재고 기본값 500 */}
                                     <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
                                 </div>
-                            </div>
-
-                            <div>
-                                <label className="block mb-1 font-bold">상품명</label>
-                                <input name="pName" defaultValue={editingProduct?.name} className="w-full border p-2 rounded" required />
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="block mb-1 font-bold">권장가 (소비자가)</label>
-                                    {/* [수정 완료] 권장가 입력 시 공급가(80%) 자동 계산 */}
                                     <input 
                                         name="pOriginPrice" 
                                         type="number" 
@@ -862,10 +924,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                             const origin = Number(e.target.value);
                                             if(origin > 0) {
                                                 const priceInput = document.getElementsByName("pPrice")[0];
-                                                if(priceInput) {
-                                                    // 권장가의 80% 가격으로 자동 입력 (반올림)
-                                                    priceInput.value = Math.round(origin * 0.55); 
-                                                }
+                                                if(priceInput) priceInput.value = Math.round(origin * 0.55); // 45% 할인
                                             }
                                         }}
                                     />
@@ -879,27 +938,28 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="block mb-1 font-bold">최소주문(MOQ)</label>
-                                    {/* 최소주문 기본값 10 */}
                                     <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 10} className="w-full border p-2 rounded" />
                                 </div>
                                 <div>
                                     <label className="block mb-1 font-bold">1카톤 수량</label>
-                                    {/* 1카톤 수량 기본값 10 */}
                                     <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 10} className="w-full border p-2 rounded" />
                                 </div>
                             </div>
 
-                            <ImageUploader label="썸네일 이미지" currentImage={thumbImage} onImageSelect={setThumbImage} />
-                            <ImageUploader label="상세페이지 이미지 (선택)" currentImage={detailImage} onImageSelect={setDetailImage} />
+                            <ImageUploader label="대표 이미지" currentImage={thumbImage} onImageSelect={setThumbImage} />
+                            <ImageUploader label="상세 이미지" currentImage={detailImage} onImageSelect={setDetailImage} />
                             
                             <div>
-                                <label className="block mb-1 font-bold">소개 문구</label>
-                                <textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-20"></textarea>
+                                <label className="block mb-1 font-bold">소개 문구 (AI 작성)</label>
+                                <textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-24 bg-indigo-50 focus:bg-white transition-colors leading-relaxed"></textarea>
                             </div>
                             
-                            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-indigo-700">
-                                {editingProduct ? "수정 저장" : "신규 등록"}
-                            </button>
+                            <div className="flex gap-2 mt-4">
+                                <button type="button" onClick={()=>setIsProductModalOpen(false)} className="flex-1 bg-slate-200 py-3 rounded-lg font-bold">취소</button>
+                                <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-bold">
+                                    {editingProduct ? "수정 저장" : "신규 등록"}
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
