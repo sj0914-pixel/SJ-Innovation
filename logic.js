@@ -923,15 +923,17 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
-                            <div>
-                                <label className="block mb-1 font-bold">최소주문(MOQ)</label>
-                                <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 5} className="w-full border p-2 rounded" />
+                                <div>
+                                    <label className="block mb-1 font-bold">최소주문(MOQ)</label>
+                                    {/* 여기 10을 5로 바꾸세요 */}
+                                    <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 10} className="w-full border p-2 rounded" />
+                                </div>
+                                <div>
+                                    <label className="block mb-1 font-bold">1카톤 수량</label>
+                                    {/* 여기도 10을 5로 바꾸세요 */}
+                                    <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 10} className="w-full border p-2 rounded" />
+                                </div>
                             </div>
-                            <div>
-                                <label className="block mb-1 font-bold">1카톤 수량</label>
-                                <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 5} className="w-full border p-2 rounded" />
-                            </div>
-                        </div>
                                     <label className="block mb-1 font-bold">재고</label>
                                     {/* [기본값] 500개 */}
                                     <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
