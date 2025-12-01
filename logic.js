@@ -1,11 +1,14 @@
-/* logic.js - Final Complete Version */
+/* logic.js - Final Full Version (No Omission) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
 // [0] 전역 상수 및 유틸리티
 // ----------------------------------------------------
 
-// 기본 배너
+// [★설정] Gemini API 키 (https://aistudio.google.com/app/apikey 에서 발급)
+const GEMINI_API_KEY = "AIzaSyCzfv6-BJyOU946qQuvwzbm22YqlXyJ7Qo";
+
+// 기본 배너 설정
 const DEFAULT_BANNERS = {
     top: "", 
     middle: "" 
@@ -21,23 +24,20 @@ const BANK_INFO = {
     holder: "에스제이이노베이션"
 };
 
-// ... 기존 상수들 ...
+// 카테고리 목록
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
-
-// [★추가] 여기에 Gemini API 키를 입력하세요. (https://aistudio.google.com/app/apikey 에서 발급)
-const GEMINI_API_KEY = "AIzaSyCzfv6-BJyOU946qQuvwzbm22YqIXyJ7Qo";
 
 // ----------------------------------------------------
 // 아이콘 컴포넌트 (이모지 버전)
 // ----------------------------------------------------
 const Icon = ({ name, className, ...props }) => {
-    // 이모지 매핑표 - LogOut 아이콘 포함
+    // 이모지 매핑표
     const iconMap = {
         Search: "🔍", X: "✕", Menu: "☰", RefreshCw: "↻", Loader2: "⌛", Settings: "⚙️",
         ShoppingBag: "🛍️", Store: "🏪", Truck: "🚚", Package: "📦", Boxes: "📚", CreditCard: "💳",
         User: "👤", ArrowLeft: "←", ChevronRight: "〉", Plus: "➕", Minus: "➖", Star: "⭐",
         Image: "🖼️", Upload: "⬆️", Download: "⬇️", LayoutTemplate: "📄", AlertCircle: "!",
-        Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪"
+        Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪", Sparkles: "✨"
     };
 
     const displayIcon = iconMap[name] || name || "?";
@@ -53,8 +53,10 @@ const Icon = ({ name, className, ...props }) => {
     );
 };
 
+// 가격 포맷팅 (쉼표 추가)
 const formatPrice = (price) => new Intl.NumberFormat('ko-KR').format(price);
 
+// 날짜 포맷팅 (YYYY-MM-DD)
 const formatDate = (dateInput) => {
     try {
         if (!dateInput) return "";
@@ -153,7 +155,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     displayImage && !displayImage.includes("📦") ? ( 
                         <div className="relative w-full h-full">
                             <img src={displayImage} className="absolute inset-0 w-full h-full object-cover bg-slate-50" alt="preview" />
-                            <button onClick={(e)=>{e.stopPropagation(); if(confirm("삭제하시겠습니까?")) onImageSelect("");}} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 z-10 shadow-sm"><Icon name="X" className="w-4 h-4" /></button>
+                            <button onClick={(e)=>{e.stopPropagation(); if(confirm("삭제하시겠습니까?")) onImageSelect("");}} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 z-10 shadow-sm flex items-center justify-center w-6 h-6"><Icon name="X" className="w-4 h-4" /></button>
                         </div>
                     ) : ( 
                         <div className="text-center p-4">
@@ -285,6 +287,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [editingProduct, setEditingProduct] = useState(null);
     const [thumbImage, setThumbImage] = useState("");
     const [detailImage, setDetailImage] = useState("");
+    
+    // AI 생성 상태
+    const [isGenerating, setIsGenerating] = useState(false);
     
     const excelInputRef = useRef(null);
 
@@ -424,7 +429,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
         reader.readAsArrayBuffer(file);
     };
 
-    // [★수정됨] AI 자동 생성 핸들러 (에러 처리 강화)
+    // [★추가] AI 자동 생성 핸들러 (에러 처리 강화)
     const handleAIGenerate = async (productName) => {
         if (!productName) return alert("상품명을 먼저 입력해주세요.");
         if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("API_KEY")) return alert("코드 상단에 GEMINI_API_KEY를 설정해주세요.");
@@ -449,15 +454,13 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
             const data = await response.json();
 
-            // [에러 체크] 구글이 에러를 보냈는지 확인
+            // 에러 체크
             if (data.error) {
                 console.error("Google AI Error:", data.error);
                 throw new Error(data.error.message || "API 호출 오류");
             }
-
-            // [응답 체크] candidates가 비어있는지 확인
             if (!data.candidates || data.candidates.length === 0) {
-                throw new Error("AI가 응답을 생성하지 못했습니다. (안전 필터 등)");
+                throw new Error("AI가 응답을 생성하지 못했습니다.");
             }
 
             const text = data.candidates[0].content.parts[0].text;
@@ -466,23 +469,21 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
             const form = document.getElementById("productForm");
             if (form) {
-                // 카테고리 매칭 (띄어쓰기 등 유연하게 처리)
+                // 카테고리 매칭
                 const matchedCat = CATEGORIES.find(c => result.category.includes(c));
                 if (matchedCat) form.pCategory.value = matchedCat;
-                
                 if (result.description) form.pDescription.value = result.description;
             }
-            alert("AI가 내용을 작성했습니다!");
+            alert("AI가 카테고리와 소개글을 작성했습니다!");
 
         } catch (e) {
             console.error(e);
-            // 에러 내용을 화면에 띄워줌
             alert("AI 오류 발생:\n" + e.message);
         } finally {
             setIsGenerating(false);
         }
     };
-    
+
     const handleSaveProduct = async (e) => {
         e.preventDefault(); const form = e.target;
         const newProd = { 
@@ -491,8 +492,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
             price: Number(form.pPrice.value)||0, 
             originPrice: Number(form.pOriginPrice.value)||0, 
             stock: Number(form.pStock.value)||0, 
-            minQty: Number(form.pMinQty.value)||1, 
-            cartonQty: Number(form.pCartonQty.value)||1, 
+            minQty: Number(form.pMinQty.value)||10, 
+            cartonQty: Number(form.pCartonQty.value)||10, 
             image: thumbImage || "📦", 
             detailImage: detailImage || "", 
             description: form.pDescription.value, 
@@ -537,7 +538,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
     const openEditModal = (p) => { setEditingProduct(p); setThumbImage(p.image); setDetailImage(p.detailImage); setIsProductModalOpen(true); };
 
-    // [★모바일 추가] 관리자용 카드 뷰 컴포넌트
+    // [★모바일 추가] 관리자용 주문 카드 뷰
     const OrderCard = ({ o, u }) => (
         <div className={`bg-white p-4 rounded-xl border shadow-sm mb-3 ${selectedIds.has(o.id) ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
             <div className="flex justify-between items-start mb-2">
@@ -872,11 +873,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
             )}
             
             {isProductModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 safe-area-bottom">
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 safe-area-bottom">
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
                         <h3 className="font-bold text-lg mb-4 border-b pb-2">{editingProduct ? "상품 수정" : "상품 등록"}</h3>
-                        {/* [★교체] AI 기능이 추가된 새로운 폼 */}
+                        
+                        {/* [★수정] AI 기능 및 가격 자동계산, 기본값 적용된 폼 */}
                         <form id="productForm" onSubmit={handleSaveProduct} className="space-y-3 text-sm">
                             <div className="flex items-center gap-2 p-3 bg-red-50 rounded border border-red-100 mb-2">
                                 <input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/>
@@ -891,7 +893,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 <input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/>
                             </div>
 
-                            {/* [★AI 버튼 추가된 상품명 입력란] */}
+                            {/* [★AI 버튼 추가] */}
                             <div>
                                 <label className="block mb-1 font-bold">상품명 <span className="text-xs text-indigo-500 font-normal">(입력 후 우측 버튼을 눌러보세요)</span></label>
                                 <div className="flex gap-2">
@@ -916,6 +918,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 </div>
                                 <div>
                                     <label className="block mb-1 font-bold">재고</label>
+                                    {/* [기본값] 500개 */}
                                     <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
                                 </div>
                             </div>
@@ -923,6 +926,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="block mb-1 font-bold">권장가 (소비자가)</label>
+                                    {/* [자동계산] 45% 할인된 가격 (0.55 곱하기) */}
                                     <input 
                                         name="pOriginPrice" 
                                         type="number" 
@@ -934,7 +938,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                             const origin = Number(e.target.value);
                                             if(origin > 0) {
                                                 const priceInput = document.getElementsByName("pPrice")[0];
-                                                if(priceInput) priceInput.value = Math.round(origin * 0.55); // 45% 할인
+                                                if(priceInput) {
+                                                    priceInput.value = Math.round(origin * 0.55); 
+                                                }
                                             }
                                         }}
                                     />
@@ -948,10 +954,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="block mb-1 font-bold">최소주문(MOQ)</label>
+                                    {/* [기본값] 10개 */}
                                     <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 10} className="w-full border p-2 rounded" />
                                 </div>
                                 <div>
                                     <label className="block mb-1 font-bold">1카톤 수량</label>
+                                    {/* [기본값] 10개 */}
                                     <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 10} className="w-full border p-2 rounded" />
                                 </div>
                             </div>
@@ -964,12 +972,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 <textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-24 bg-indigo-50 focus:bg-white transition-colors leading-relaxed"></textarea>
                             </div>
                             
-                            <div className="flex gap-2 mt-4">
-                                <button type="button" onClick={()=>setIsProductModalOpen(false)} className="flex-1 bg-slate-200 py-3 rounded-lg font-bold">취소</button>
-                                <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-bold">
-                                    {editingProduct ? "수정 저장" : "신규 등록"}
-                                </button>
-                            </div>
+                            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-indigo-700">
+                                {editingProduct ? "수정 저장" : "신규 등록"}
+                            </button>
                         </form>
                     </div>
                 </div>
