@@ -9,3 +9,8 @@
 .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom);
 }
+/* 추가: 모바일 최적화 */
+.mobile-container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
