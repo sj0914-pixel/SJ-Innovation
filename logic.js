@@ -1384,12 +1384,15 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                 </div>
                             </div>
                             {index === 7 && banners.middle && (
-                                <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 min-h-[128px]">
-                                    <img src={banners.middle} alt="Middle Banner" className="w-full h-auto object-cover" />
-                                </div>
-                            )}
-                        </React.Fragment>
-                    ))}
+                            <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 h-40 sm:h-60">
+                                <img 
+                                    src={banners.middle} 
+                                    alt="Middle Banner" 
+                                    className="w-full h-full object-cover object-center"
+                                />
+                            </div>
+                        )}
+
                 </div>
             </main>
             {isCartOpen && (
