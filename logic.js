@@ -259,50 +259,30 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [users, setUsers] = useState([]);
     const [orders, setOrders] = useState([]);
     const [tab, setTab] = useState("orders");
-    const [charFilter, setCharFilter] = useState("전체"); // 캐릭터 필터 상태
     
-    // 배너 State
-    const [topBanner, setTopBanner] = useState("");
-    const [middleBanner, setMiddleBanner] = useState("");
-    
-    // 배너 불러오기
-    useEffect(() => {
-        if(window.fb && window.fb.getDoc) {
-            window.fb.getDoc(window.fb.doc(window.db, "config", "banners")).then(d => {
-                if(d.exists()) {
-                    const data = d.data();
-                    setTopBanner(data.top || "");
-                    setMiddleBanner(data.middle || "");
-                }
-            }).catch(e => console.log("배너 없음"));
-        }
-    }, []);
-    
-    const getTodayStr = () => formatDate(new Date());
-    const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
-    const [appliedFilters, setAppliedFilters] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
+    // [★추가] 캐릭터 필터 상태
+    const [charFilter, setCharFilter] = useState("전체");
 
+    const [banners, setBanners] = useState({ top: "", middle: "" });
+    const [search, setSearch] = useState({ status: "전체", dateType: "오늘", startDate: formatDate(new Date()), endDate: formatDate(new Date()), keyword: "" });
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [selectedUser, setSelectedUser] = useState(null);
+    
+    // 상품 등록 관련 state
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
     const [thumbImage, setThumbImage] = useState("");
     const [detailImage, setDetailImage] = useState("");
-    
-    // AI 생성 상태
     const [isGenerating, setIsGenerating] = useState(false);
-    
+
     const excelInputRef = useRef(null);
 
     useEffect(() => {
-        if(!window.fb) return;
-        const { collection, onSnapshot, doc, getDocs } = window.fb;
-        const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-        // 회원 목록 실시간
-        const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-        
-        const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
-            let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        window.fb.getDoc(window.fb.doc(window.db, "config", "banners")).then(d => d.exists() && setBanners(d.data()));
+        const un1 = window.fb.onSnapshot(window.fb.collection(window.db, "products_final_v5"), s => setProducts(s.docs.map(d => ({id:d.id, ...d.data()}))));
+        const un2 = window.fb.onSnapshot(window.fb.collection(window.db, "users"), s => setUsers(s.docs.map(d => ({id:d.id, ...d.data()}))));
+        const un3 = window.fb.onSnapshot(window.fb.collection(window.db, "orders"), s => {
+            const list = s.docs.map(d => ({id:d.id, ...d.data()}));
             const orderGroups = {};
             list.forEach(o => {
                 if(o.date) {
@@ -320,117 +300,56 @@ const AdminPage = ({ onLogout, onToShop }) => {
             list.sort((a,b) => new Date(b.date) - new Date(a.date));
             setOrders(list);
         });
-
-        return () => { unsubProd(); unsubUser(); unsubOrder(); };
+        return () => { un1(); un2(); un3(); };
     }, []);
 
-    const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
+    const getUser = (uid) => users.find(u=>u.id===uid) || {};
 
     const filteredOrders = orders.filter(o => {
-        if (appliedFilters.status !== "전체" && o.status !== appliedFilters.status) return false;
-        if (appliedFilters.keyword) {
-            const u = getUserInfo(o.userId);
-            const keyword = appliedFilters.keyword.toLowerCase();
-            let target = "";
-            if (appliedFilters.searchType === "주문자명") target = `${o.userName} ${u.storeName || ""} ${u.repName || ""}`;
-            else if (appliedFilters.searchType === "주문번호") target = o.orderNo || "";
-            if (!target.toLowerCase().includes(keyword)) return false;
+        if (search.status !== "전체" && o.status !== search.status) return false;
+        if (search.keyword) {
+            const u = getUser(o.userId);
+            const txt = `${o.userName} ${u.storeName} ${u.repName} ${o.orderNo}`.toLowerCase();
+            if (!txt.includes(search.keyword.toLowerCase())) return false;
         }
-        if (appliedFilters.startDate && appliedFilters.endDate) {
-            const orderDate = formatDate(new Date(o.date));
-            if (orderDate < appliedFilters.startDate || orderDate > appliedFilters.endDate) return false;
+        if (search.startDate && search.endDate) {
+            const d = formatDate(o.date);
+            if (d < search.startDate || d > search.endDate) return false;
         }
         return true;
     });
 
     const countStatus = (status) => orders.filter(o => o.status === status).length;
 
-    const handleSearch = () => { setAppliedFilters({ ...searchInputs }); setSelectedIds(new Set()); };
-    const handleReset = () => {
-        const resetState = { status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" };
-        setSearchInputs(resetState); setAppliedFilters(resetState); setSelectedIds(new Set());
-    };
-    
     const handleDateBtn = (type) => {
         const today = new Date();
         let start = new Date();
         if (type === "오늘") { } 
         else if (type === "7일") { start.setDate(today.getDate() - 7); } 
         else if (type === "30일") { start.setDate(today.getDate() - 30); }
-        setSearchInputs(prev => ({ 
+        setSearch(prev => ({ 
             ...prev, dateType: type, startDate: type === "전체" ? "" : formatDate(start), endDate: type === "전체" ? "" : formatDate(today) 
         }));
     };
-    
+
     const handleCardClick = (targetStatus) => {
         let realStatus = targetStatus;
         if (targetStatus === "결제완료(신규)") realStatus = "접수대기";
-        const newState = { status: realStatus, dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" };
-        setSearchInputs(newState); setAppliedFilters(newState); setSelectedIds(new Set());
+        setSearch(prev => ({ ...prev, status: realStatus }));
+        setSelectedIds(new Set());
     };
+
     const toggleSelect = (id) => {
         const newSet = new Set(selectedIds);
         if(newSet.has(id)) newSet.delete(id); else newSet.add(id);
         setSelectedIds(newSet);
     };
+
     const toggleSelectAll = (e) => {
         if(e.target.checked) setSelectedIds(new Set(filteredOrders.map(o=>o.id))); else setSelectedIds(new Set());
     };
-    const handleBatchStatus = async (status) => {
-        if(selectedIds.size === 0) return alert("선택된 주문이 없습니다.");
-        if(!confirm(`선택한 ${selectedIds.size}건을 [${status}] 상태로 변경하시겠습니까?`)) return;
-        try {
-            const promises = Array.from(selectedIds).map(id => window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { status }));
-            await Promise.all(promises);
-            alert("처리되었습니다."); setSelectedIds(new Set());
-        } catch(e) { alert("오류: " + e.message); }
-    };
-    const handleUpdateTracking = async (id, courier, tracking) => {
-        try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { courier, trackingNumber: tracking, status: tracking ? "배송중" : "접수대기" }); } catch(e) { console.error(e); }
-    };
 
-    const handleExcelDownload = () => {
-        if(!window.XLSX) { alert("엑셀 라이브러리 오류"); return; }
-        const targetData = filteredOrders.length > 0 ? filteredOrders : orders;
-        const excelData = targetData.map(o => {
-            const u = getUserInfo(o.userId);
-            return {
-                "시스템ID": o.id, "주문번호": o.orderNo, "상태": o.status, "주문일": formatDate(o.date),
-                "주문자": u.storeName || o.userName, "연락처": u.mobile, "입금자명": o.depositor || u.repName, "주소": u.address,
-                "상품": (o.items || []).map(i=>`${i.name}(${i.quantity})`).join(", "), "총액": o.totalAmount,
-                "택배사": o.courier || "", "송장번호": o.trackingNumber || ""
-            };
-        });
-        const ws = window.XLSX.utils.json_to_sheet(excelData);
-        const wb = window.XLSX.utils.book_new();
-        window.XLSX.utils.book_append_sheet(wb, ws, "주문목록");
-        window.XLSX.writeFile(wb, `주문목록_${new Date().toISOString().slice(0,10)}.xlsx`);
-    };
-    const handleExcelUpload = async (e) => {
-        const file = e.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = async (evt) => {
-            try {
-                const data = new Uint8Array(evt.target.result);
-                const workbook = window.XLSX.read(data, { type: 'array' });
-                const rows = window.XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                let cnt = 0;
-                for (let row of rows) {
-                    if(row["시스템ID"] && row["송장번호"]) {
-                        await window.fb.updateDoc(window.fb.doc(window.db, "orders", row["시스템ID"]), {
-                            status: "배송중", trackingNumber: String(row["송장번호"]), courier: row["택배사"] || "CJ대한통운"
-                        });
-                        cnt++;
-                    }
-                }
-                alert(`${cnt}건 송장 등록 완료`);
-            } catch(err) { alert("엑셀 오류: " + err.message); }
-        };
-        reader.readAsArrayBuffer(file);
-    };
-
-    // [★추가] AI 자동 생성 핸들러 (에러 처리 강화)
+    // AI 핸들러
     const handleAIGenerate = async (productName) => {
         if (!productName) return alert("상품명을 먼저 입력해주세요.");
         if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("API_KEY")) return alert("코드 상단에 GEMINI_API_KEY를 설정해주세요.");
@@ -439,60 +358,29 @@ const AdminPage = ({ onLogout, onToShop }) => {
         try {
             const prompt = `
                 상품명: "${productName}"
-                
                 위 상품에 대해 다음 두 가지 작업을 수행해서 JSON 형식으로만 답해줘:
                 1. 카테고리 분류: [${CATEGORIES.filter(c=>c!=="전체").join(", ")}] 중 가장 적절한 하나를 골라줘.
                 2. 상품 소개: 이 상품을 도매 사장님들에게 어필할 수 있는 매력적이고 전문적인 소개글을 3~4줄로 작성해줘 (이모지 포함).
-                
                 응답 형식: { "category": "카테고리명", "description": "소개글내용" }
             `;
-                
-            const response = await fetch(
-                  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "x-goog-api-key": GEMINI_API_KEY,   // ← API 키는 헤더로 전달
-                    },
-                    body: JSON.stringify({
-                      contents: [
-                        {
-                          parts: [{ text: prompt }],
-                        },
-                      ],
-                    }),
-                  }
-                );
-
-        
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=${GEMINI_API_KEY}`, {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            });
             const data = await response.json();
-
-            // 에러 체크
-            if (data.error) {
-                console.error("Google AI Error:", data.error);
-                throw new Error(data.error.message || "API 호출 오류");
-            }
-            if (!data.candidates || data.candidates.length === 0) {
-                throw new Error("AI가 응답을 생성하지 못했습니다.");
-            }
-
+            if (data.error) throw new Error(data.error.message || "API 호출 오류");
+            if (!data.candidates || data.candidates.length === 0) throw new Error("AI 응답 실패");
+            
             const text = data.candidates[0].content.parts[0].text;
-            const cleanText = text.replace(/```json|```/g, "").trim();
-            const result = JSON.parse(cleanText);
-
+            const result = JSON.parse(text.replace(/```json|```/g, "").trim());
             const form = document.getElementById("productForm");
             if (form) {
-                // 카테고리 매칭
                 const matchedCat = CATEGORIES.find(c => result.category.includes(c));
                 if (matchedCat) form.pCategory.value = matchedCat;
                 if (result.description) form.pDescription.value = result.description;
             }
-            alert("AI가 카테고리와 소개글을 작성했습니다!");
-
+            alert("AI가 내용을 작성했습니다!");
         } catch (e) {
-            console.error(e);
-            alert("AI 오류 발생:\n" + e.message);
+            console.error(e); alert("AI 오류: " + e.message);
         } finally {
             setIsGenerating(false);
         }
@@ -503,56 +391,42 @@ const AdminPage = ({ onLogout, onToShop }) => {
         const newProd = { 
             name: form.pName.value, 
             category: form.pCategory.value, 
-            price: Number(form.pPrice.value)||0, 
-            originPrice: Number(form.pOriginPrice.value)||0, 
-            stock: Number(form.pStock.value)||0, 
-            minQty: Number(form.pMinQty.value)||10, 
-            cartonQty: Number(form.pCartonQty.value)||10, 
-            image: thumbImage || "📦", 
-            detailImage: detailImage || "", 
-            description: form.pDescription.value, 
-            rating: "5.0",
-            isHidden: form.pIsHidden.checked,
-            // [수정: 품절 및 입고예정일 저장]
-            isSoldOut: form.pIsSoldOut.checked,
-            restockDate: form.pRestockDate.value
+            price: Number(form.pPrice.value)||0, originPrice: Number(form.pOriginPrice.value)||0, 
+            stock: Number(form.pStock.value)||0, minQty: Number(form.pMinQty.value)||10, cartonQty: Number(form.pCartonQty.value)||10, 
+            image: thumbImage || "📦", detailImage: detailImage || "", description: form.pDescription.value, 
+            rating: "5.0", isHidden: form.pIsHidden.checked, isSoldOut: form.pIsSoldOut.checked, restockDate: form.pRestockDate.value
         };
         try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨"); } catch (err) { alert(err.message); }
     };
+
     const handleDeleteProduct = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "products_final_v5", id)); };
     const handleDeleteUser = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "users", id)); };
     
-    const handleSaveBanners = async () => {
-        try {
-            await window.fb.setDoc(window.fb.doc(window.db, "config", "banners"), {
-                top: topBanner,
-                middle: middleBanner
-            });
-            alert("배너 저장 완료");
-        } catch(e) {
-            alert("배너 저장 실패: " + e.message);
-        }
+    const handleBatchStatus = async (status) => {
+        if(selectedIds.size === 0) return alert("선택된 주문 없음");
+        if(!confirm(`선택한 ${selectedIds.size}건을 [${status}] 처리하시겠습니까?`)) return;
+        await Promise.all([...selectedIds].map(id => window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { status })));
+        setSelectedIds(new Set()); alert("처리되었습니다.");
     };
     
+    const handleUpdateTracking = async (id, courier, tracking) => {
+        try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { courier, trackingNumber: tracking, status: tracking ? "배송중" : "접수대기" }); } catch(e) { console.error(e); }
+    };
+
     const handleRefreshUsers = async () => {
         try {
             if(window.fb && window.fb.getDocs) {
                 const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
                 setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                 alert("회원 목록 갱신 완료");
-            } else {
-                alert("기능 로딩중...");
             }
-        } catch(e) { 
-            console.error(e);
-            alert("불러오기 실패: " + e.message); 
-        }
+        } catch(e) { alert("실패: " + e.message); }
     };
 
     const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
     const openEditModal = (p) => { setEditingProduct(p); setThumbImage(p.image); setDetailImage(p.detailImage); setIsProductModalOpen(true); };
 
-    // [★모바일 추가] 관리자용 주문 카드 뷰
+    // [모바일용] 주문 카드
     const OrderCard = ({ o, u }) => (
         <div className={`bg-white p-4 rounded-xl border shadow-sm mb-3 ${selectedIds.has(o.id) ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
             <div className="flex justify-between items-start mb-2">
@@ -590,7 +464,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
             </nav>
 
             <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6">
-                {/* [★모바일] 탭 버튼 스크롤 가능하도록 개선 */}
                 <div className="flex gap-2 border-b border-slate-300 pb-1 overflow-x-auto whitespace-nowrap">
                     {["orders", "users", "products", "banners"].map(t => (
                         <button key={t} onClick={()=>setTab(t)} className={`px-6 py-3 rounded-t-lg font-bold text-sm uppercase transition-colors whitespace-nowrap ${tab===t ? "bg-white text-slate-900 border border-b-0 border-slate-300 shadow-sm" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}>
@@ -601,7 +474,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* 대시보드 - 모바일에서는 가로스크롤 대신 그리드로 보기 좋게 조정 */}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                             {[
                                 { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" },
@@ -617,11 +489,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             ))}
                         </div>
 
-                        {/* 필터 */}
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">기간</span>
-                                {/* [★모바일] 버튼 그룹 줄바꿈 방지 */}
                                 <div className="flex gap-1 overflow-x-auto">
                                     {["오늘","7일","30일","전체"].map(d => ( <button key={d} onClick={()=>handleDateBtn(d)} className={`px-3 py-1.5 border rounded text-xs font-bold whitespace-nowrap ${searchInputs.dateType===d ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 hover:bg-slate-50"}`}>{d}</button> ))}
                                 </div>
@@ -635,10 +505,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 <span className="w-20 font-bold text-sm text-slate-600">배송상태</span>
                                 <div className="flex gap-4 flex-wrap">
                                     {["전체", "접수대기", "배송준비", "배송중", "배송완료", "주문취소"].map(s => (
-                                        <label key={s} className="flex items-center gap-2 cursor-pointer text-sm">
-                                            <input type="radio" name="status" checked={searchInputs.status === s} onChange={()=>setSearchInputs({...searchInputs, status: s})} className="accent-blue-600" /> 
-                                            {s === "접수대기" ? "결제완료(신규)" : s}
-                                        </label>
+                                        <label key={s} className="flex items-center gap-2 cursor-pointer text-sm"><input type="radio" name="status" checked={searchInputs.status === s} onChange={()=>setSearchInputs({...searchInputs, status: s})} className="accent-blue-600" /> {s === "접수대기" ? "결제완료(신규)" : s}</label>
                                     ))}
                                 </div>
                             </div>
@@ -655,7 +522,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
                         </div>
 
-                        {/* 리스트 */}
                         <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3 bg-slate-50/50">
                                 <div className="flex gap-2 items-center flex-wrap">
@@ -671,7 +537,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 </div>
                             </div>
                             
-                            {/* [★모바일] 모바일에서는 Card View, 데스크탑에서는 Table View */}
                             <div className="md:hidden p-2 bg-slate-100">
                                 {filteredOrders.length === 0 ? <div className="text-center text-slate-400 py-10">검색된 주문이 없습니다.</div> :
                                 filteredOrders.map(o => <OrderCard key={o.id} o={o} u={getUserInfo(o.userId)} />)}
@@ -700,29 +565,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                                 <tr key={o.id} className={`hover:bg-blue-50/30 transition-colors ${selectedIds.has(o.id) ? "bg-blue-50" : ""}`}>
                                                     <td className="p-3 text-center"><input type="checkbox" checked={selectedIds.has(o.id)} onChange={()=>toggleSelect(o.id)} /></td>
                                                     <td className="p-3 font-mono text-blue-600 font-bold cursor-pointer hover:underline" onClick={()=>setSelectedUser(u)}>{o.orderNo}</td>
-                                                    <td className="p-3">
-                                                        <select className="border rounded px-2 py-1 text-xs bg-white w-24" defaultValue={o.courier || "CJ대한통운"} onChange={(e)=>handleUpdateTracking(o.id, e.target.value, o.trackingNumber)}>
-                                                            {COURIERS.map(c=><option key={c} value={c}>{c}</option>)}
-                                                        </select>
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <input type="text" className="border rounded px-2 py-1 text-xs w-32 focus:border-blue-500 outline-none" placeholder="송장번호 입력" defaultValue={o.trackingNumber || ""} 
-                                                            onBlur={(e)=>handleUpdateTracking(o.id, o.courier||"CJ대한통운", e.target.value)} 
-                                                            onKeyDown={(e)=>{if(e.key==='Enter') e.target.blur()}}
-                                                        />
-                                                    </td>
+                                                    <td className="p-3"><select className="border rounded px-2 py-1 text-xs bg-white w-24" defaultValue={o.courier || "CJ대한통운"} onChange={(e)=>handleUpdateTracking(o.id, e.target.value, o.trackingNumber)}>{COURIERS.map(c=><option key={c} value={c}>{c}</option>)}</select></td>
+                                                    <td className="p-3"><input type="text" className="border rounded px-2 py-1 text-xs w-32 focus:border-blue-500 outline-none" placeholder="송장번호 입력" defaultValue={o.trackingNumber || ""} onBlur={(e)=>handleUpdateTracking(o.id, o.courier||"CJ대한통운", e.target.value)} onKeyDown={(e)=>{if(e.key==='Enter') e.target.blur()}} /></td>
                                                     <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs font-bold ${o.status==='접수대기'?'bg-blue-100 text-blue-700':o.status==='배송준비'?'bg-indigo-100 text-indigo-700':o.status==='배송중'?'bg-green-100 text-green-700':o.status==='주문취소'?'bg-red-100 text-red-700':'bg-slate-100 text-slate-600'}`}>{o.status === '접수대기' ? '결제완료' : o.status}</span></td>
                                                     <td className="p-3 text-slate-500 text-xs">{new Date(o.date).toLocaleString()}</td>
-                                                    <td className="p-3">
-                                                        <div className="font-bold">{u.storeName || o.userName}</div>
-                                                        <div className="text-xs text-slate-400">{u.mobile}</div>
-                                                        {o.depositor && <div className="text-xs text-indigo-600 font-bold">입금: {o.depositor}</div>}
-                                                    </td>
-                                                    <td className="p-3 max-w-xs whitespace-normal">
-                                                        <div className="text-xs text-slate-600 leading-tight">
-                                                            {(o.items||[]).map((i,idx)=>(<div key={idx} className="mb-1"><span className="text-blue-600 font-bold">[{i.name}]</span> {i.quantity}개</div>))}
-                                                        </div>
-                                                    </td>
+                                                    <td className="p-3"><div className="font-bold">{u.storeName || o.userName}</div><div className="text-xs text-slate-400">{u.mobile}</div>{o.depositor && <div className="text-xs text-indigo-600 font-bold">입금: {o.depositor}</div>}</td>
+                                                    <td className="p-3 max-w-xs whitespace-normal"><div className="text-xs text-slate-600 leading-tight">{(o.items||[]).map((i,idx)=>(<div key={idx} className="mb-1"><span className="text-blue-600 font-bold">[{i.name}]</span> {i.quantity}개</div>))}</div></td>
                                                     <td className="p-3 font-bold text-slate-700">{formatPrice(o.totalAmount)}원</td>
                                                 </tr>
                                             );
@@ -733,131 +581,58 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         </div>
                     </div>
                 )}
+
                 {tab === "users" && (
                     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                         <div className="p-4 border-b flex justify-between items-center bg-slate-50">
                             <span className="font-bold text-slate-600">총 회원수: {users.length}명</span>
                             <button onClick={handleRefreshUsers} className="bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-900 flex gap-1 items-center"><Icon name="RefreshCw" className="w-3 h-3"/>목록 새로고침</button>
                         </div>
-                        
-                        {/* [★모바일] 회원관리 모바일 뷰 */}
                         <div className="md:hidden">
                             {users.map(u => (
                                 <div key={u.id} className="p-4 border-b last:border-0 flex justify-between items-center">
-                                    <div onClick={()=>setSelectedUser(u)}>
-                                        <div className="font-bold">{u.storeName} <span className="text-sm font-normal text-slate-500">{u.repName}</span></div>
-                                        <div className="text-xs text-slate-400">{u.mobile}</div>
-                                        <div className="text-xs text-slate-500">{u.email}</div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={()=>setSelectedUser(u)} className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-bold">상세</button>
-                                        <button onClick={()=>handleDeleteUser(u.id)} className="bg-red-50 text-red-500 px-2 py-1 rounded text-xs font-bold">삭제</button>
-                                    </div>
+                                    <div onClick={()=>setSelectedUser(u)}><div className="font-bold">{u.storeName} <span className="text-sm font-normal text-slate-500">{u.repName}</span></div><div className="text-xs text-slate-400">{u.mobile}</div><div className="text-xs text-slate-500">{u.email}</div></div>
+                                    <div className="flex gap-2"><button onClick={()=>setSelectedUser(u)} className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-bold">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-50 text-red-500 px-2 py-1 rounded text-xs font-bold">삭제</button></div>
                                 </div>
                             ))}
                         </div>
-
                         <div className="hidden md:block">
-                            <table className="w-full text-left text-sm whitespace-nowrap">
-                                <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">추천인</th><th className="p-4">관리</th></tr></thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {users.map(u=>(<tr key={u.id} className="hover:bg-slate-50"><td className="p-4 font-bold">{u.storeName}</td><td className="p-4">{u.repName}</td><td className="p-4">{u.email}</td><td className="p-4 text-indigo-600 font-medium">{u.recommender || "-"}</td><td className="p-4 flex gap-2"><button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs">삭제</button></td></tr>))}
-                                </tbody>
-                            </table>
+                            <table className="w-full text-left text-sm whitespace-nowrap"><thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">추천인</th><th className="p-4">관리</th></tr></thead><tbody className="divide-y divide-slate-100">{users.map(u=>(<tr key={u.id} className="hover:bg-slate-50"><td className="p-4 font-bold">{u.storeName}</td><td className="p-4">{u.repName}</td><td className="p-4">{u.email}</td><td className="p-4 text-indigo-600 font-medium">{u.recommender || "-"}</td><td className="p-4 flex gap-2"><button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs">삭제</button></td></tr>))}</tbody></table>
                         </div>
                     </div>
                 )}
+
                 {tab === "products" && (
                     <div className="bg-white rounded-lg shadow-sm border p-4">
                         <div className="flex flex-col md:flex-row justify-between mb-4 items-center gap-4">
-                            <h3 className="font-bold text-lg whitespace-nowrap">
-                                상품 목록 <span className="text-base text-slate-500 font-normal ml-1">
-                                    ({charFilter === "전체" ? products.length : products.filter(p => p.name.includes(charFilter)).length}개)
-                                </span>
-                            </h3>
-                            
-                            {/* [★추가] 캐릭터별 필터 버튼 */}
+                            <h3 className="font-bold text-lg whitespace-nowrap">상품 목록 <span className="text-base text-slate-500 font-normal ml-1">({charFilter === "전체" ? products.length : products.filter(p => p.name.includes(charFilter)).length}개)</span></h3>
                             <div className="flex gap-2 overflow-x-auto w-full md:w-auto scrollbar-hide pb-1">
                                 {["전체", "티니핑", "짱구", "또봇", "산리오", "포켓몬", "기타"].map(char => (
-                                    <button 
-                                        key={char} 
-                                        onClick={() => setCharFilter(char)}
-                                        className={`px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap transition-all ${
-                                            charFilter === char 
-                                            ? "bg-slate-800 text-white border-slate-800" 
-                                            : "bg-white text-slate-600 hover:bg-slate-100"
-                                        }`}
-                                    >
-                                        {char}
-                                    </button>
+                                    <button key={char} onClick={() => setCharFilter(char)} className={`px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap transition-all ${charFilter === char ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 hover:bg-slate-100"}`}>{char}</button>
                                 ))}
                             </div>
-
                             <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm whitespace-nowrap">+ 상품 등록</button>
                         </div>
                         
-                        {/* [★모바일] 상품관리 카드 리스트 뷰 (필터 적용됨) */}
                         <div className="md:hidden grid grid-cols-1 gap-3">
-                            {products
-                                .filter(p => {
-                                    if (charFilter === "전체") return true;
-                                    if (charFilter === "기타") {
-                                        // 주요 캐릭터 이름이 없는 상품들
-                                        return !["티니핑", "짱구", "또봇", "산리오", "포켓몬"].some(k => p.name.includes(k));
-                                    }
-                                    return p.name.includes(charFilter);
-                                })
-                                .map(p => (
+                            {products.filter(p => { if (charFilter === "전체") return true; if (charFilter === "기타") return !["티니핑", "짱구", "또봇", "산리오", "포켓몬"].some(k => p.name.includes(k)); return p.name.includes(charFilter); }).map(p => (
                                 <div key={p.id} className={`bg-white p-4 rounded-xl border flex gap-3 ${p.isHidden?"opacity-60 bg-slate-100":""}`}>
-                                    <div className="w-20 h-20 bg-slate-50 rounded flex items-center justify-center overflow-hidden border">
-                                        {p.image.includes("data") || p.image.includes("http") ? <img src={p.image} className="w-full h-full object-cover"/> : <span className="text-2xl">📦</span>}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="font-bold line-clamp-1">{p.name}</div>
-                                        <div className="text-xs text-slate-500 mb-1">{p.category} | 재고 {p.stock}</div>
-                                        <div className="font-bold text-slate-800">{formatPrice(p.price)}원</div>
-                                        {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">품절 (입고: {p.restockDate})</div>}
-                                    </div>
-                                    <div className="flex flex-col gap-2 justify-center">
-                                        <button onClick={()=>openEditModal(p)} className="bg-slate-100 p-2 rounded text-slate-600"><Icon name="Edit" className="w-4 h-4" /></button>
-                                        <button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-50 p-2 rounded text-red-500"><Icon name="Trash" className="w-4 h-4" /></button>
-                                    </div>
+                                    <div className="w-20 h-20 bg-slate-50 rounded flex items-center justify-center overflow-hidden border">{p.image.includes("data") || p.image.includes("http") ? <img src={p.image} className="w-full h-full object-cover"/> : <span className="text-2xl">📦</span>}</div>
+                                    <div className="flex-1"><div className="font-bold line-clamp-1">{p.name}</div><div className="text-xs text-slate-500 mb-1">{p.category} | 재고 {p.stock}</div><div className="font-bold text-slate-800">{formatPrice(p.price)}원</div>{p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">품절 (입고: {p.restockDate})</div>}</div>
+                                    <div className="flex flex-col gap-2 justify-center"><button onClick={()=>openEditModal(p)} className="bg-slate-100 p-2 rounded text-slate-600"><Icon name="Edit" className="w-4 h-4" /></button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-50 p-2 rounded text-red-500"><Icon name="Trash" className="w-4 h-4" /></button></div>
                                 </div>
                             ))}
                         </div>
 
-                        {/* [★PC] 테이블 뷰 (필터 적용됨) */}
                         <div className="hidden md:block">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-100 uppercase font-bold text-slate-500">
-                                    <tr>
-                                        <th className="p-4">이미지</th>
-                                        <th className="p-4">상품명</th>
-                                        <th className="p-4">가격</th>
-                                        <th className="p-4">재고</th>
-                                        <th className="p-4">상태</th>
-                                        <th className="p-4">관리</th>
-                                    </tr>
-                                </thead>
+                                <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">이미지</th><th className="p-4">상품명</th><th className="p-4">가격</th><th className="p-4">재고</th><th className="p-4">상태</th><th className="p-4">관리</th></tr></thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {products
-                                        .filter(p => {
-                                            if (charFilter === "전체") return true;
-                                            if (charFilter === "기타") {
-                                                return !["티니핑", "짱구", "또봇", "산리오", "포켓몬"].some(k => p.name.includes(k));
-                                            }
-                                            return p.name.includes(charFilter);
-                                        })
-                                        .map(p=>(
+                                    {products.filter(p => { if (charFilter === "전체") return true; if (charFilter === "기타") return !["티니핑", "짱구", "또봇", "산리오", "포켓몬"].some(k => p.name.includes(k)); return p.name.includes(charFilter); }).map(p=>(
                                         <tr key={p.id} className={`hover:bg-slate-50 ${p.isHidden ? "bg-slate-100 opacity-60" : ""}`}>
                                             <td className="p-4 text-2xl">{p.image.includes('data') || p.image.includes('http') ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
-                                            <td className="p-4">
-                                                <div className="font-bold">{p.name}</div>
-                                                <div className="text-xs text-slate-400">{p.category}</div>
-                                                {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">※ 일시품절 처리됨</div>}
-                                            </td>
-                                            <td className="p-4">₩{formatPrice(p.price)}</td>
-                                            <td className="p-4 font-bold text-blue-600">{p.stock}</td>
+                                            <td className="p-4"><div className="font-bold">{p.name}</div><div className="text-xs text-slate-400">{p.category}</div>{p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">※ 일시품절 처리됨</div>}</td>
+                                            <td className="p-4">₩{formatPrice(p.price)}</td><td className="p-4 font-bold text-blue-600">{p.stock}</td>
                                             <td className="p-4">{p.isHidden ? <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">판매중지</span> : <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded font-bold">판매중</span>}</td>
                                             <td className="p-4 flex gap-2"><button onClick={()=>openEditModal(p)} className="bg-slate-200 px-3 py-1 rounded text-xs font-bold">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-3 py-1 rounded text-xs font-bold">삭제</button></td>
                                         </tr>
@@ -867,6 +642,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         </div>
                     </div>
                 )}
+
+                {tab === "banners" && (
                     <div className="bg-white rounded-lg shadow-sm border p-6 max-w-3xl mx-auto">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="font-bold text-lg">쇼핑몰 배너 관리</h3>
@@ -875,158 +652,70 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         <div className="space-y-8">
                             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                 <h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="LayoutTemplate" className="w-5 h-5"/> 메인 상단 배너</h4>
-                                <ImageUploader label="상단 배너 이미지 업로드" currentImage={topBanner} onImageSelect={setTopBanner} />
+                                <ImageUploader label="상단 배너 이미지 업로드" currentImage={banners.top} onImageSelect={v=>setBanners(b=>({...b,top:v}))} />
                             </div>
-                            
                             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                                 <h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="CreditCard" className="w-5 h-5"/> 중간 띠 배너</h4>
-                                <ImageUploader label="중간 배너 이미지 업로드" currentImage={middleBanner} onImageSelect={setMiddleBanner} />
+                                <ImageUploader label="중간 배너 이미지 업로드" currentImage={banners.middle} onImageSelect={v=>setBanners(b=>({...b,middle:v}))} />
                             </div>
                         </div>
                     </div>
                 )}
             </div>
-            {/* 회원 상세 팝업 */}
+
             {selectedUser && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200 safe-area-bottom">
                     <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 relative overflow-hidden">
                         <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors"><Icon name="X"/></button>
                         <h3 className="font-bold text-xl mb-6 flex items-center gap-2"><Icon name="User" className="w-6 h-6"/> 회원 상세 정보</h3>
                         <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 text-sm">
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                <h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">기본 정보</h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><div className="text-slate-400 text-xs mb-1">이름</div><div className="font-bold">{selectedUser.name}</div></div>
-                                    <div><div className="text-slate-400 text-xs mb-1">연락처</div><div className="font-bold">{selectedUser.mobile}</div></div>
-                                    <div className="col-span-2"><div className="text-slate-400 text-xs mb-1">이메일</div><div className="font-bold">{selectedUser.email}</div></div>
-                                    <div className="col-span-2"><div className="text-slate-400 text-xs mb-1">주소</div><div className="font-bold">{selectedUser.address}</div></div>
-                                </div>
-                            </div>
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                <h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">사업자 정보</h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><div className="text-slate-400 text-xs mb-1">상호명</div><div className="font-bold">{selectedUser.storeName}</div></div>
-                                    <div><div className="text-slate-400 text-xs mb-1">대표자</div><div className="font-bold">{selectedUser.repName}</div></div>
-                                    <div><div className="text-slate-400 text-xs mb-1">사업자번호</div><div className="font-bold">{selectedUser.businessNumber}</div></div>
-                                    <div><div className="text-slate-400 text-xs mb-1">업태</div><div className="font-bold">{selectedUser.businessType}</div></div>
-                                </div>
-                            </div>
-                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                                <div className="text-indigo-800 text-xs mb-1 font-bold">추천인</div>
-                                <div className="font-bold text-indigo-600 text-lg">{selectedUser.recommender || "없음"}</div>
-                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">기본 정보</h4><div className="grid grid-cols-2 gap-4"><div><div className="text-slate-400 text-xs mb-1">이름</div><div className="font-bold">{selectedUser.name}</div></div><div><div className="text-slate-400 text-xs mb-1">연락처</div><div className="font-bold">{selectedUser.mobile}</div></div><div className="col-span-2"><div className="text-slate-400 text-xs mb-1">이메일</div><div className="font-bold">{selectedUser.email}</div></div><div className="col-span-2"><div className="text-slate-400 text-xs mb-1">주소</div><div className="font-bold">{selectedUser.address}</div></div></div></div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">사업자 정보</h4><div className="grid grid-cols-2 gap-4"><div><div className="text-slate-400 text-xs mb-1">상호명</div><div className="font-bold">{selectedUser.storeName}</div></div><div><div className="text-slate-400 text-xs mb-1">대표자</div><div className="font-bold">{selectedUser.repName}</div></div><div><div className="text-slate-400 text-xs mb-1">사업자번호</div><div className="font-bold">{selectedUser.businessNumber}</div></div><div><div className="text-slate-400 text-xs mb-1">업태</div><div className="font-bold">{selectedUser.businessType}</div></div></div></div>
+                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100"><div className="text-indigo-800 text-xs mb-1 font-bold">추천인</div><div className="font-bold text-indigo-600 text-lg">{selectedUser.recommender || "없음"}</div></div>
                             <div className="text-xs text-slate-400 text-right">가입일: {new Date(selectedUser.joinedAt).toLocaleString()}</div>
                         </div>
-                        <div className="mt-6 pt-4 border-t flex justify-end">
-                            <button onClick={()=>setSelectedUser(null)} className="bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-900 transition-colors">닫기</button>
-                        </div>
+                        <div className="mt-6 pt-4 border-t flex justify-end"><button onClick={()=>setSelectedUser(null)} className="bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-900 transition-colors">닫기</button></div>
                     </div>
                 </div>
             )}
             
             {isProductModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 safe-area-bottom">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 safe-area-bottom">
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
                         <h3 className="font-bold text-lg mb-4 border-b pb-2">{editingProduct ? "상품 수정" : "상품 등록"}</h3>
-                        
-                        {/* [★수정] AI 기능 및 가격 자동계산, 기본값 적용된 폼 */}
                         <form id="productForm" onSubmit={handleSaveProduct} className="space-y-3 text-sm">
                             <div className="flex items-center gap-2 p-3 bg-red-50 rounded border border-red-100 mb-2">
                                 <input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/>
                                 <label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label>
                             </div>
-
                             <div className="p-3 bg-yellow-50 rounded border border-yellow-100 mb-2 space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <input type="checkbox" name="pIsSoldOut" defaultChecked={editingProduct?.isSoldOut} id="soldOutCheck" className="w-4 h-4 accent-yellow-600"/>
-                                    <label htmlFor="soldOutCheck" className="text-yellow-700 font-bold cursor-pointer">일시 품절 처리 (상품은 보이나 구매 불가)</label>
-                                </div>
+                                <div className="flex items-center gap-2"><input type="checkbox" name="pIsSoldOut" defaultChecked={editingProduct?.isSoldOut} id="soldOutCheck" className="w-4 h-4 accent-yellow-600"/><label htmlFor="soldOutCheck" className="text-yellow-700 font-bold cursor-pointer">일시 품절 처리 (상품은 보이나 구매 불가)</label></div>
                                 <input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/>
                             </div>
-
-                            {/* [★AI 버튼 추가] */}
                             <div>
                                 <label className="block mb-1 font-bold">상품명 <span className="text-xs text-indigo-500 font-normal">(입력 후 우측 버튼을 눌러보세요)</span></label>
                                 <div className="flex gap-2">
                                     <input name="pName" id="pNameInput" defaultValue={editingProduct?.name} className="flex-1 border p-2 rounded" placeholder="예: 뽀로로 젓가락 세트" required />
-                                    <button 
-                                        type="button" 
-                                        onClick={() => handleAIGenerate(document.getElementById("pNameInput").value)}
-                                        className="bg-indigo-600 text-white px-3 py-2 rounded font-bold text-xs whitespace-nowrap flex items-center gap-1 hover:bg-indigo-700"
-                                        disabled={isGenerating}
-                                    >
-                                        {isGenerating ? <Icon name="Loader2" className="animate-spin"/> : "✨ AI 자동완성"}
-                                    </button>
+                                    <button type="button" onClick={() => handleAIGenerate(document.getElementById("pNameInput").value)} className="bg-indigo-600 text-white px-3 py-2 rounded font-bold text-xs whitespace-nowrap flex items-center gap-1 hover:bg-indigo-700" disabled={isGenerating}>{isGenerating ? <Icon name="Loader2" className="animate-spin"/> : "✨ AI 자동완성"}</button>
                                 </div>
                             </div>
-
                             <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="block mb-1 font-bold">카테고리</label>
-                                    <select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded bg-indigo-50">
-                                        {CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block mb-1 font-bold">재고</label>
-                                    {/* [기본값] 500개 */}
-                                    <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
-                                </div>
+                                <div><label className="block mb-1 font-bold">카테고리</label><select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded bg-indigo-50">{CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+                                <div><label className="block mb-1 font-bold">재고</label><input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required /></div>
                             </div>
-
                             <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="block mb-1 font-bold">권장가 (소비자가)</label>
-                                    {/* [자동계산] 45% 할인된 가격 (0.55 곱하기) */}
-                                    <input 
-                                        name="pOriginPrice" 
-                                        type="number" 
-                                        defaultValue={editingProduct?.originPrice} 
-                                        className="w-full border p-2 rounded bg-yellow-50 focus:bg-white transition-colors" 
-                                        placeholder="입력 시 공급가 자동완성"
-                                        required 
-                                        onChange={(e) => {
-                                            const origin = Number(e.target.value);
-                                            if(origin > 0) {
-                                                const priceInput = document.getElementsByName("pPrice")[0];
-                                                if(priceInput) {
-                                                    priceInput.value = Math.round(origin * 0.55); 
-                                                }
-                                            }
-                                        }}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block mb-1 font-bold">공급가 (도매가)</label>
-                                    <input name="pPrice" type="number" defaultValue={editingProduct?.price} className="w-full border p-2 rounded text-blue-600 font-bold" required />
-                                </div>
+                                <div><label className="block mb-1 font-bold">권장가 (소비자가)</label><input name="pOriginPrice" type="number" defaultValue={editingProduct?.originPrice} className="w-full border p-2 rounded bg-yellow-50 focus:bg-white transition-colors" placeholder="입력 시 공급가 자동완성" required onChange={(e) => { const origin = Number(e.target.value); if(origin > 0) { const priceInput = document.getElementsByName("pPrice")[0]; if(priceInput) priceInput.value = Math.round(origin * 0.55); } }} /></div>
+                                <div><label className="block mb-1 font-bold">공급가 (도매가)</label><input name="pPrice" type="number" defaultValue={editingProduct?.price} className="w-full border p-2 rounded text-blue-600 font-bold" required /></div>
                             </div>
-
                             <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="block mb-1 font-bold">최소주문(MOQ)</label>
-                                    {/* [기본값] 10개 */}
-                                    <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 10} className="w-full border p-2 rounded" />
-                                </div>
-                                <div>
-                                    <label className="block mb-1 font-bold">1카톤 수량</label>
-                                    {/* [기본값] 10개 */}
-                                    <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 10} className="w-full border p-2 rounded" />
-                                </div>
+                                <div><label className="block mb-1 font-bold">최소주문(MOQ)</label><input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 10} className="w-full border p-2 rounded" /></div>
+                                <div><label className="block mb-1 font-bold">1카톤 수량</label><input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 10} className="w-full border p-2 rounded" /></div>
                             </div>
-
                             <ImageUploader label="대표 이미지" currentImage={thumbImage} onImageSelect={setThumbImage} />
                             <ImageUploader label="상세 이미지" currentImage={detailImage} onImageSelect={setDetailImage} />
-                            
-                            <div>
-                                <label className="block mb-1 font-bold">소개 문구 (AI 작성)</label>
-                                <textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-24 bg-indigo-50 focus:bg-white transition-colors leading-relaxed"></textarea>
-                            </div>
-                            
-                            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-indigo-700">
-                                {editingProduct ? "수정 저장" : "신규 등록"}
-                            </button>
+                            <div><label className="block mb-1 font-bold">소개 문구 (AI 작성)</label><textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-24 bg-indigo-50 focus:bg-white transition-colors leading-relaxed"></textarea></div>
+                            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-indigo-700">{editingProduct ? "수정 저장" : "신규 등록"}</button>
                         </form>
                     </div>
                 </div>
