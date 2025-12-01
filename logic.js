@@ -505,8 +505,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
             price: Number(form.pPrice.value)||0, 
             originPrice: Number(form.pOriginPrice.value)||0, 
             stock: Number(form.pStock.value)||0, 
-            minQty: Number(form.pMinQty.value)||5, 
-            cartonQty: Number(form.pCartonQty.value)||5, 
+            minQty: Number(form.pMinQty.value)||10, 
+            cartonQty: Number(form.pCartonQty.value)||10, 
             image: thumbImage || "📦", 
             detailImage: detailImage || "", 
             description: form.pDescription.value, 
@@ -924,16 +924,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="block mb-1 font-bold">최소주문(MOQ)</label>
-                                    {/* 여기 10을 5로 바꾸세요 */}
-                                    <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 10} className="w-full border p-2 rounded" />
+                                    <label className="block mb-1 font-bold">카테고리</label>
+                                    <select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded bg-indigo-50">
+                                        {CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}
+                                    </select>
                                 </div>
                                 <div>
-                                    <label className="block mb-1 font-bold">1카톤 수량</label>
-                                    {/* 여기도 10을 5로 바꾸세요 */}
-                                    <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 10} className="w-full border p-2 rounded" />
-                                </div>
-                            </div>
                                     <label className="block mb-1 font-bold">재고</label>
                                     {/* [기본값] 500개 */}
                                     <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
@@ -1261,18 +1257,11 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         } catch(e) { alert("실패: " + e.message); }
     };
 
-    // [수정] 품절 상품을 맨 뒤로 보내는 정렬 로직 추가
     const filteredProducts = products.filter(p => {
         if (p.isHidden) return false;
         const matchCat = selectedCategory === "전체" || p.category === selectedCategory;
         const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
         return matchCat && matchSearch;
-    }).sort((a, b) => {
-        // 품절(true)이면 1, 판매중(false)이면 0
-        const soldA = a.isSoldOut ? 1 : 0;
-        const soldB = b.isSoldOut ? 1 : 0;
-        // 오름차순 정렬: 0(판매중)이 먼저 오고, 1(품절)이 나중에 옴
-        return soldA - soldB;
     });
 
     const openProduct = (p) => { window.history.pushState(null,"",""); setSelectedProduct(p); };
@@ -1336,18 +1325,17 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
-            {banners.top && (
-              <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 h-40 sm:h-56">
-                <img 
-                  src={banners.top} 
-                  alt="Top Banner" 
-                  className="w-full h-full object-cover"
-                  fetchPriority="high"
-                  decoding="sync"
-                />
-              </div>
-            )}
-
+                {banners.top && (
+                    <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 min-h-[160px]">
+                        <img 
+                            src={banners.top} 
+                            alt="Top Banner" 
+                            className="w-full h-auto object-cover max-h-[400px]" 
+                            fetchPriority="high"
+                            decoding="sync"
+                        />
+                    </div>
+                )}
 
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-2 scrollbar-hide sticky top-[110px] sm:static z-30">
                     {CATEGORIES.map(cat => ( <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all duration-300 ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button> ))}
@@ -1388,8 +1376,8 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                 </div>
                             </div>
                             {index === 7 && banners.middle && (
-                                <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 h-32 sm:h-40">
-                                  <img src={banners.middle} alt="Middle Banner" className="w-full h-full object-cover" />
+                                <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 min-h-[128px]">
+                                    <img src={banners.middle} alt="Middle Banner" className="w-full h-auto object-cover" />
                                 </div>
                             )}
                         </React.Fragment>
