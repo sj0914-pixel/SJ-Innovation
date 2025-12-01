@@ -1334,15 +1334,15 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
                 {/* [수정] 모바일: 높이 160px 고정 + 중앙 정렬 꽉 채우기 */}
                 {banners.top && (
-                    <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 h-40 sm:h-auto">
-                        <img 
-                            src={banners.top} 
-                            alt="Top Banner" 
-                            className="w-full h-full sm:h-auto object-cover object-center sm:max-h-[400px]" 
-                            fetchPriority="high"
-                            decoding="sync"
-                        />
-                    </div>
+                  <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 h-40 sm:h-60">
+                    <img
+                      src={banners.top}
+                      alt="Top Banner"
+                      className="w-full h-full object-cover object-center"
+                      fetchPriority="high"
+                      decoding="sync"
+                    />
+                  </div>
                 )}
 
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-2 scrollbar-hide sticky top-[110px] sm:static z-30">
