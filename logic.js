@@ -259,6 +259,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [users, setUsers] = useState([]);
     const [orders, setOrders] = useState([]);
     const [tab, setTab] = useState("orders");
+    const [charFilter, setCharFilter] = useState("전체"); // 캐릭터 필터 상태
     
     // 배너 State
     const [topBanner, setTopBanner] = useState("");
@@ -768,15 +769,45 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 )}
                 {tab === "products" && (
                     <div className="bg-white rounded-lg shadow-sm border p-4">
-                        <div className="flex justify-between mb-4 items-center">
-                            {/* [수정] 제목 옆에 (총 00개) 표시 추가 */}
-                            <h3 className="font-bold text-lg">상품 목록 <span className="text-base text-slate-500 font-normal ml-1">({products.length}개)</span></h3>
-                            <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button>
+                        <div className="flex flex-col md:flex-row justify-between mb-4 items-center gap-4">
+                            <h3 className="font-bold text-lg whitespace-nowrap">
+                                상품 목록 <span className="text-base text-slate-500 font-normal ml-1">
+                                    ({charFilter === "전체" ? products.length : products.filter(p => p.name.includes(charFilter)).length}개)
+                                </span>
+                            </h3>
+                            
+                            {/* [★추가] 캐릭터별 필터 버튼 */}
+                            <div className="flex gap-2 overflow-x-auto w-full md:w-auto scrollbar-hide pb-1">
+                                {["전체", "티니핑", "짱구", "또봇", "산리오", "포켓몬", "기타"].map(char => (
+                                    <button 
+                                        key={char} 
+                                        onClick={() => setCharFilter(char)}
+                                        className={`px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap transition-all ${
+                                            charFilter === char 
+                                            ? "bg-slate-800 text-white border-slate-800" 
+                                            : "bg-white text-slate-600 hover:bg-slate-100"
+                                        }`}
+                                    >
+                                        {char}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm whitespace-nowrap">+ 상품 등록</button>
                         </div>
                         
-                        {/* [★모바일] 상품관리 카드 리스트 뷰 */}
+                        {/* [★모바일] 상품관리 카드 리스트 뷰 (필터 적용됨) */}
                         <div className="md:hidden grid grid-cols-1 gap-3">
-                            {products.map(p => (
+                            {products
+                                .filter(p => {
+                                    if (charFilter === "전체") return true;
+                                    if (charFilter === "기타") {
+                                        // 주요 캐릭터 이름이 없는 상품들
+                                        return !["티니핑", "짱구", "또봇", "산리오", "포켓몬"].some(k => p.name.includes(k));
+                                    }
+                                    return p.name.includes(charFilter);
+                                })
+                                .map(p => (
                                 <div key={p.id} className={`bg-white p-4 rounded-xl border flex gap-3 ${p.isHidden?"opacity-60 bg-slate-100":""}`}>
                                     <div className="w-20 h-20 bg-slate-50 rounded flex items-center justify-center overflow-hidden border">
                                         {p.image.includes("data") || p.image.includes("http") ? <img src={p.image} className="w-full h-full object-cover"/> : <span className="text-2xl">📦</span>}
@@ -795,6 +826,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             ))}
                         </div>
 
+                        {/* [★PC] 테이블 뷰 (필터 적용됨) */}
                         <div className="hidden md:block">
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-slate-100 uppercase font-bold text-slate-500">
@@ -808,9 +840,17 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {products.map(p=>(
+                                    {products
+                                        .filter(p => {
+                                            if (charFilter === "전체") return true;
+                                            if (charFilter === "기타") {
+                                                return !["티니핑", "짱구", "또봇", "산리오", "포켓몬"].some(k => p.name.includes(k));
+                                            }
+                                            return p.name.includes(charFilter);
+                                        })
+                                        .map(p=>(
                                         <tr key={p.id} className={`hover:bg-slate-50 ${p.isHidden ? "bg-slate-100 opacity-60" : ""}`}>
-                                            <td className="p-4 text-2xl">{p.image && (p.image.startsWith('data:') || p.image.startsWith('http')) ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
+                                            <td className="p-4 text-2xl">{p.image.includes('data') || p.image.includes('http') ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
                                             <td className="p-4">
                                                 <div className="font-bold">{p.name}</div>
                                                 <div className="text-xs text-slate-400">{p.category}</div>
@@ -827,7 +867,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         </div>
                     </div>
                 )}
-                {tab === "banners" && (
                     <div className="bg-white rounded-lg shadow-sm border p-6 max-w-3xl mx-auto">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="font-bold text-lg">쇼핑몰 배너 관리</h3>
