@@ -5,8 +5,8 @@ const { useState, useEffect, useRef } = React;
 // [0] 전역 상수 및 유틸리티
 // ----------------------------------------------------
 
-// [★설정] Gemini API 키 (https://aistudio.google.com/app/apikey 에서 발급)
-const GEMINI_API_KEY = "AIzaSyCzfv6-BJyOU946qQuvwzbm22YqIXyJ7Qo";
+// [★설정] Gemini API 키
+const GEMINI_API_KEY = "AIzaSyDih64JJFx4R2E5lHzdWRtXLROyt62Ac6A";
 
 // 기본 배너 설정
 const DEFAULT_BANNERS = {
