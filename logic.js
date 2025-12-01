@@ -1325,17 +1325,18 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
-                {banners.top && (
-                    <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 min-h-[160px]">
-                        <img 
-                            src={banners.top} 
-                            alt="Top Banner" 
-                            className="w-full h-auto object-cover max-h-[400px]" 
-                            fetchPriority="high"
-                            decoding="sync"
-                        />
-                    </div>
-                )}
+            {banners.top && (
+              <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 h-40 sm:h-56">
+                <img 
+                  src={banners.top} 
+                  alt="Top Banner" 
+                  className="w-full h-full object-cover"
+                  fetchPriority="high"
+                  decoding="sync"
+                />
+              </div>
+            )}
+
 
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-2 scrollbar-hide sticky top-[110px] sm:static z-30">
                     {CATEGORIES.map(cat => ( <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all duration-300 ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button> ))}
@@ -1376,8 +1377,8 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                 </div>
                             </div>
                             {index === 7 && banners.middle && (
-                                <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 min-h-[128px]">
-                                    <img src={banners.middle} alt="Middle Banner" className="w-full h-auto object-cover" />
+                                <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 h-32 sm:h-40">
+                                  <img src={banners.middle} alt="Middle Banner" className="w-full h-full object-cover" />
                                 </div>
                             )}
                         </React.Fragment>
