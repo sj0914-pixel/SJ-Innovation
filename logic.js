@@ -923,13 +923,15 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="block mb-1 font-bold">카테고리</label>
-                                    <select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded bg-indigo-50">
-                                        {CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                </div>
-                                <div>
+                            <div>
+                                <label className="block mb-1 font-bold">최소주문(MOQ)</label>
+                                <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 5} className="w-full border p-2 rounded" />
+                            </div>
+                            <div>
+                                <label className="block mb-1 font-bold">1카톤 수량</label>
+                                <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 5} className="w-full border p-2 rounded" />
+                            </div>
+                        </div>
                                     <label className="block mb-1 font-bold">재고</label>
                                     {/* [기본값] 500개 */}
                                     <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
