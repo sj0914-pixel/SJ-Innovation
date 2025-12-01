@@ -1257,12 +1257,19 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         } catch(e) { alert("실패: " + e.message); }
     };
 
-    const filteredProducts = products.filter(p => {
-        if (p.isHidden) return false;
-        const matchCat = selectedCategory === "전체" || p.category === selectedCategory;
-        const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchCat && matchSearch;
-    });
+        // [수정] 품절 상품을 맨 뒤로 보내는 정렬 로직 추가
+            const filteredProducts = products.filter(p => {
+                if (p.isHidden) return false;
+                const matchCat = selectedCategory === "전체" || p.category === selectedCategory;
+                const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+                return matchCat && matchSearch;
+            }).sort((a, b) => {
+                // 품절(true)이면 1, 판매중(false)이면 0
+                const soldA = a.isSoldOut ? 1 : 0;
+                const soldB = b.isSoldOut ? 1 : 0;
+                // 오름차순 정렬: 0(판매중)이 먼저 오고, 1(품절)이 나중에 옴
+                return soldA - soldB;
+            });
 
     const openProduct = (p) => { window.history.pushState(null,"",""); setSelectedProduct(p); };
     const openCart = () => { window.history.pushState(null,"",""); setIsCartOpen(true); };
