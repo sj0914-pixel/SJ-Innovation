@@ -424,16 +424,13 @@ const AdminPage = ({ onLogout, onToShop }) => {
         reader.readAsArrayBuffer(file);
     };
 
-    // [★추가] AI 자동 생성 핸들러 (handleSaveProduct 위에 붙여넣기)
-    const [isGenerating, setIsGenerating] = useState(false);
-
+    // [★수정됨] AI 자동 생성 핸들러 (에러 처리 강화)
     const handleAIGenerate = async (productName) => {
         if (!productName) return alert("상품명을 먼저 입력해주세요.");
         if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("API_KEY")) return alert("코드 상단에 GEMINI_API_KEY를 설정해주세요.");
 
         setIsGenerating(true);
         try {
-            // Gemini에게 보낼 프롬프트
             const prompt = `
                 상품명: "${productName}"
                 
@@ -451,23 +448,36 @@ const AdminPage = ({ onLogout, onToShop }) => {
             });
 
             const data = await response.json();
+
+            // [에러 체크] 구글이 에러를 보냈는지 확인
+            if (data.error) {
+                console.error("Google AI Error:", data.error);
+                throw new Error(data.error.message || "API 호출 오류");
+            }
+
+            // [응답 체크] candidates가 비어있는지 확인
+            if (!data.candidates || data.candidates.length === 0) {
+                throw new Error("AI가 응답을 생성하지 못했습니다. (안전 필터 등)");
+            }
+
             const text = data.candidates[0].content.parts[0].text;
-            
-            // JSON 파싱 (마크다운 코드블럭 제거)
             const cleanText = text.replace(/```json|```/g, "").trim();
             const result = JSON.parse(cleanText);
 
-            // 폼에 값 자동 입력
             const form = document.getElementById("productForm");
             if (form) {
-                if (result.category) form.pCategory.value = result.category;
+                // 카테고리 매칭 (띄어쓰기 등 유연하게 처리)
+                const matchedCat = CATEGORIES.find(c => result.category.includes(c));
+                if (matchedCat) form.pCategory.value = matchedCat;
+                
                 if (result.description) form.pDescription.value = result.description;
             }
-            alert("AI가 카테고리와 소개글을 작성했습니다!");
+            alert("AI가 내용을 작성했습니다!");
 
         } catch (e) {
             console.error(e);
-            alert("AI 생성 실패: " + e.message);
+            // 에러 내용을 화면에 띄워줌
+            alert("AI 오류 발생:\n" + e.message);
         } finally {
             setIsGenerating(false);
         }
