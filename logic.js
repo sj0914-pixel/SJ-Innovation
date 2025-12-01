@@ -1,4 +1,4 @@
-/* logic.js - Mobile Optimized Full Version (No compression) */
+/* logic.js - Mobile Header Layout Fixed */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -27,13 +27,13 @@ const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기
 // 아이콘 컴포넌트 (이모지 버전)
 // ----------------------------------------------------
 const Icon = ({ name, className, ...props }) => {
-    // 이모지 매핑표
+    // 이모지 매핑표 - LogOut 아이콘 추가됨
     const iconMap = {
         Search: "🔍", X: "✕", Menu: "☰", RefreshCw: "↻", Loader2: "⌛", Settings: "⚙️",
         ShoppingBag: "🛍️", Store: "🏪", Truck: "🚚", Package: "📦", Boxes: "📚", CreditCard: "💳",
         User: "👤", ArrowLeft: "←", ChevronRight: "〉", Plus: "➕", Minus: "➖", Star: "⭐",
         Image: "🖼️", Upload: "⬆️", Download: "⬇️", LayoutTemplate: "📄", AlertCircle: "!",
-        Box: "□"
+        Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪"
     };
 
     const displayIcon = iconMap[name] || name || "?";
@@ -1140,30 +1140,40 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-800 safe-area-pb">
-            {/* [★모바일] 헤더 반응형 개선 */}
+            {/* [★모바일] 헤더 반응형 개선: UI 깨짐 방지 */}
             <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100 transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-4 py-3 sm:py-0 sm:h-16 flex flex-wrap items-center justify-between gap-2">
                     
-                    {/* 메인페이지 상단 로고 */}
-                    <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
+                    {/* 메인페이지 상단 로고: flex-shrink-0 적용으로 찌그러짐 방지 */}
+                    <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
                         <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-8 w-auto object-contain" />
                     </div>
 
-                    {/* [★모바일] 모바일에서는 아이콘 그룹이 검색창보다 위로 오거나 우측 정렬 */}
-                    <div className="flex items-center gap-3 order-2 sm:order-3 ml-auto sm:ml-0">
+                    {/* [★모바일] 아이콘 그룹: flex-nowrap으로 겹침 방지 및 텍스트 숨김 */}
+                    <div className="flex items-center gap-3 order-2 sm:order-3 ml-auto sm:ml-0 flex-nowrap flex-shrink-0">
                         {isAdmin && (
-                            <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1"><Icon name="Settings" className="w-3 h-3"/>관리자</button>
+                            <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1 whitespace-nowrap flex-shrink-0">
+                                <Icon name="Settings" className="w-3 h-3"/>
+                                <span className="hidden sm:inline">관리자</span>
+                            </button>
                         )}
-                        <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all">
+                        <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all flex-shrink-0">
                             <span className="text-2xl">🛍️</span>
                             {cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}
                         </button>
                         <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
-                        <button onClick={openMyPage} className="flex items-center gap-2 text-sm font-medium hover:bg-slate-100 p-2 rounded-full transition-all"><div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center"><Icon name="User" className="w-4 h-4" /></div><span className="hidden sm:block">{user.storeName || "내 정보"}</span></button>
-                        <button onClick={onLogout} className="bg-slate-200 hover:bg-red-500 hover:text-white px-3 py-1 rounded font-bold text-sm transition-all duration-300">로그아웃</button>
+                        <button onClick={openMyPage} className="flex items-center gap-2 text-sm font-medium hover:bg-slate-100 p-2 rounded-full transition-all flex-shrink-0">
+                            <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center flex-shrink-0"><Icon name="User" className="w-4 h-4" /></div>
+                            <span className="hidden sm:block whitespace-nowrap">{user.storeName || "내 정보"}</span>
+                        </button>
+                        {/* 로그아웃 버튼: 모바일에서는 아이콘만 표시 */}
+                        <button onClick={onLogout} className="bg-slate-200 hover:bg-red-500 hover:text-white px-3 py-1 rounded font-bold text-sm transition-all duration-300 whitespace-nowrap flex-shrink-0 flex items-center gap-1">
+                            <Icon name="LogOut" className="w-4 h-4 sm:hidden"/>
+                            <span className="hidden sm:inline">로그아웃</span>
+                        </button>
                     </div>
 
-                    {/* [★모바일] 검색창이 모바일에서는 줄바꿈되어 꽉 차게 표시 */}
+                    {/* [★모바일] 검색창: 줄바꿈하여 전체 너비 사용 */}
                     <div className="w-full sm:flex-1 sm:max-w-lg sm:mx-4 relative order-3 sm:order-2 mt-2 sm:mt-0">
                         <input type="text" placeholder="상품 검색..." className="w-full bg-slate-100 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-slate-500 focus:bg-white transition-all" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
                         <Icon name="Search" className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
