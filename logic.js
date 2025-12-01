@@ -1334,15 +1334,15 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
                 {/* [수정] 모바일: 높이 160px 고정 + 중앙 정렬 꽉 채우기 */}
                 {banners.top && (
-                  <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 h-40 sm:h-60">
-                    <img
-                      src={banners.top}
-                      alt="Top Banner"
-                      className="w-full h-full object-cover object-center"
-                      fetchPriority="high"
-                      decoding="sync"
-                    />
-                  </div>
+                    <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 h-40 sm:h-auto">
+                        <img 
+                            src={banners.top} 
+                            alt="Top Banner" 
+                            className="w-full h-full sm:h-auto object-cover object-center sm:max-h-[400px]" 
+                            fetchPriority="high"
+                            decoding="sync"
+                        />
+                    </div>
                 )}
 
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-2 scrollbar-hide sticky top-[110px] sm:static z-30">
@@ -1384,15 +1384,12 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                 </div>
                             </div>
                             {index === 7 && banners.middle && (
-                            <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 h-40 sm:h-60">
-                                <img 
-                                    src={banners.middle} 
-                                    alt="Middle Banner" 
-                                    className="w-full h-full object-cover object-center"
-                                />
-                            </div>
-                        )}
-
+                                <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 min-h-[128px]">
+                                    <img src={banners.middle} alt="Middle Banner" className="w-full h-auto object-cover" />
+                                </div>
+                            )}
+                        </React.Fragment>
+                    ))}
                 </div>
             </main>
             {isCartOpen && (
