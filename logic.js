@@ -812,39 +812,92 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
                         <h3 className="font-bold text-lg mb-4 border-b pb-2">{editingProduct ? "상품 수정" : "상품 등록"}</h3>
-                        <form onSubmit={handleSaveProduct} className="space-y-3 text-sm">
-                            <div className="flex items-center gap-2 p-3 bg-red-50 rounded border border-red-100 mb-2">
-                                <input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/>
-                                <label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label>
-                            </div>
 
-                             {/* [수정: 품절 및 입고예정일 저장] */}
-                            <div className="p-3 bg-yellow-50 rounded border border-yellow-100 mb-2 space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <input type="checkbox" name="pIsSoldOut" defaultChecked={editingProduct?.isSoldOut} id="soldOutCheck" className="w-4 h-4 accent-yellow-600"/>
-                                    <label htmlFor="soldOutCheck" className="text-yellow-700 font-bold cursor-pointer">일시 품절 처리 (상품은 보이나 구매 불가)</label>
+                                <form onSubmit={handleSaveProduct} className="space-y-3 text-sm">
+                                <div className="flex items-center gap-2 p-3 bg-red-50 rounded border border-red-100 mb-2">
+                                    <input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/>
+                                    <label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label>
                                 </div>
-                                <input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <div><label className="block mb-1 font-bold">카테고리</label><select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded">{CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-                                <div><label className="block mb-1 font-bold">재고</label><input name="pStock" type="number" defaultValue={editingProduct?.stock || 0} className="w-full border p-2 rounded" required /></div>
-                            </div>
-                            <div><label className="block mb-1 font-bold">상품명</label><input name="pName" defaultValue={editingProduct?.name} className="w-full border p-2 rounded" required /></div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div><label className="block mb-1 font-bold">공급가</label><input name="pPrice" type="number" defaultValue={editingProduct?.price} className="w-full border p-2 rounded" required /></div>
-                                <div><label className="block mb-1 font-bold">권장가</label><input name="pOriginPrice" type="number" defaultValue={editingProduct?.originPrice} className="w-full border p-2 rounded" required /></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div><label className="block mb-1 font-bold">최소주문(MOQ)</label><input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 20} className="w-full border p-2 rounded" /></div>
-                                <div><label className="block mb-1 font-bold">1카톤 수량</label><input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 20} className="w-full border p-2 rounded" /></div>
-                            </div>
-                            <ImageUploader label="썸네일 이미지" currentImage={thumbImage} onImageSelect={setThumbImage} />
-                            <ImageUploader label="상세페이지 이미지 (선택)" currentImage={detailImage} onImageSelect={setDetailImage} />
-                            <div><label className="block mb-1 font-bold">소개 문구</label><textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-20"></textarea></div>
-                            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-indigo-700">{editingProduct ? "수정 저장" : "신규 등록"}</button>
-                        </form>
+                            
+                                <div className="p-3 bg-yellow-50 rounded border border-yellow-100 mb-2 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" name="pIsSoldOut" defaultChecked={editingProduct?.isSoldOut} id="soldOutCheck" className="w-4 h-4 accent-yellow-600"/>
+                                        <label htmlFor="soldOutCheck" className="text-yellow-700 font-bold cursor-pointer">일시 품절 처리 (상품은 보이나 구매 불가)</label>
+                                    </div>
+                                    <input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/>
+                                </div>
+                            
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block mb-1 font-bold">카테고리</label>
+                                        <select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded">
+                                            {CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block mb-1 font-bold">재고</label>
+                                        {/* 재고 기본값 500 설정 */}
+                                        <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
+                                    </div>
+                                </div>
+                            
+                                <div>
+                                    <label className="block mb-1 font-bold">상품명</label>
+                                    <input name="pName" defaultValue={editingProduct?.name} className="w-full border p-2 rounded" required />
+                                </div>
+                            
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block mb-1 font-bold">권장가 (소비자가)</label>
+                                        {/* 권장가 입력 시 공급가(55% 할인) 자동 계산 */}
+                                        <input 
+                                            name="pOriginPrice" 
+                                            type="number" 
+                                            defaultValue={editingProduct?.originPrice} 
+                                            className="w-full border p-2 rounded bg-yellow-50 focus:bg-white transition-colors" 
+                                            placeholder="입력 시 공급가 자동완성"
+                                            required 
+                                            onChange={(e) => {
+                                                const origin = Number(e.target.value);
+                                                if(origin > 0) {
+                                                    const priceInput = document.getElementsByName("pPrice")[0];
+                                                    if(priceInput) {
+                                                        priceInput.value = Math.round(origin * 0.45); 
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block mb-1 font-bold">공급가 (도매가)</label>
+                                        <input name="pPrice" type="number" defaultValue={editingProduct?.price} className="w-full border p-2 rounded text-blue-600 font-bold" required />
+                                    </div>
+                                </div>
+                            
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block mb-1 font-bold">최소주문(MOQ)</label>
+                                        {/* [수정 완료] 기본값을 20에서 10으로 변경 */}
+                                        <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 10} className="w-full border p-2 rounded" />
+                                    </div>
+                                    <div>
+                                        <label className="block mb-1 font-bold">1카톤 수량</label>
+                                        <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 20} className="w-full border p-2 rounded" />
+                                    </div>
+                                </div>
+                            
+                                <ImageUploader label="썸네일 이미지" currentImage={thumbImage} onImageSelect={setThumbImage} />
+                                <ImageUploader label="상세페이지 이미지 (선택)" currentImage={detailImage} onImageSelect={setDetailImage} />
+                                
+                                <div>
+                                    <label className="block mb-1 font-bold">소개 문구</label>
+                                    <textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-20"></textarea>
+                                </div>
+                                
+                                <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-indigo-700">
+                                    {editingProduct ? "수정 저장" : "신규 등록"}
+                                </button>
+                            </form>
                     </div>
                 </div>
             )}
