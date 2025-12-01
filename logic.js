@@ -689,34 +689,68 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         </div>
                     </div>
                 )}
-                {tab === "products" && (
-                    <div className="bg-white rounded-lg shadow-sm border p-4">
-                        <div className="flex justify-between mb-4">
-                            <h3 className="font-bold text-lg">상품 목록</h3>
-                            <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button>
-                        </div>
-                        
-                        {/* [★모바일] 상품관리 카드 리스트 뷰 */}
-                        <div className="md:hidden grid grid-cols-1 gap-3">
-                            {products.map(p => (
-                                <div key={p.id} className={`bg-white p-4 rounded-xl border flex gap-3 ${p.isHidden?"opacity-60 bg-slate-100":""}`}>
-                                    <div className="w-20 h-20 bg-slate-50 rounded flex items-center justify-center overflow-hidden border">
-                                        {p.image.includes("data") || p.image.includes("http") ? <img src={p.image} className="w-full h-full object-cover"/> : <span className="text-2xl">📦</span>}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="font-bold line-clamp-1">{p.name}</div>
-                                        <div className="text-xs text-slate-500 mb-1">{p.category} | 재고 {p.stock}</div>
-                                        <div className="font-bold text-slate-800">{formatPrice(p.price)}원</div>
-                                        {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">품절 (입고: {p.restockDate})</div>}
-                                    </div>
-                                    <div className="flex flex-col gap-2 justify-center">
-                                        <button onClick={()=>openEditModal(p)} className="bg-slate-100 p-2 rounded text-slate-600"><Icon name="Edit" className="w-4 h-4" /></button>
-                                        <button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-50 p-2 rounded text-red-500"><Icon name="Trash" className="w-4 h-4" /></button>
-                                    </div>
+                            {tab === "products" && (
+                            <div className="bg-white rounded-lg shadow-sm border p-4">
+                                <div className="flex justify-between mb-4 items-center">
+                                    {/* [수정] 제목 옆에 (총 00개) 표시 추가 */}
+                                    <h3 className="font-bold text-lg">상품 목록 <span className="text-base text-slate-500 font-normal ml-1">({products.length}개)</span></h3>
+                                    <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button>
                                 </div>
-                            ))}
-                        </div>
-
+                                
+                                {/* [★모바일] 상품관리 카드 리스트 뷰 */}
+                                <div className="md:hidden grid grid-cols-1 gap-3">
+                                    {products.map(p => (
+                                        <div key={p.id} className={`bg-white p-4 rounded-xl border flex gap-3 ${p.isHidden?"opacity-60 bg-slate-100":""}`}>
+                                            <div className="w-20 h-20 bg-slate-50 rounded flex items-center justify-center overflow-hidden border">
+                                                {p.image.includes("data") || p.image.includes("http") ? <img src={p.image} className="w-full h-full object-cover"/> : <span className="text-2xl">📦</span>}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="font-bold line-clamp-1">{p.name}</div>
+                                                <div className="text-xs text-slate-500 mb-1">{p.category} | 재고 {p.stock}</div>
+                                                <div className="font-bold text-slate-800">{formatPrice(p.price)}원</div>
+                                                {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">품절 (입고: {p.restockDate})</div>}
+                                            </div>
+                                            <div className="flex flex-col gap-2 justify-center">
+                                                <button onClick={()=>openEditModal(p)} className="bg-slate-100 p-2 rounded text-slate-600"><Icon name="Edit" className="w-4 h-4" /></button>
+                                                <button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-50 p-2 rounded text-red-500"><Icon name="Trash" className="w-4 h-4" /></button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                        
+                                <div className="hidden md:block">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-100 uppercase font-bold text-slate-500">
+                                            <tr>
+                                                <th className="p-4">이미지</th>
+                                                <th className="p-4">상품명</th>
+                                                <th className="p-4">가격</th>
+                                                <th className="p-4">재고</th>
+                                                <th className="p-4">상태</th>
+                                                <th className="p-4">관리</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {products.map(p=>(
+                                                <tr key={p.id} className={`hover:bg-slate-50 ${p.isHidden ? "bg-slate-100 opacity-60" : ""}`}>
+                                                    <td className="p-4 text-2xl">{p.image && (p.image.startsWith('data:') || p.image.startsWith('http')) ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
+                                                    <td className="p-4">
+                                                        <div className="font-bold">{p.name}</div>
+                                                        <div className="text-xs text-slate-400">{p.category}</div>
+                                                        {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">※ 일시품절 처리됨</div>}
+                                                    </td>
+                                                    <td className="p-4">₩{formatPrice(p.price)}</td>
+                                                    <td className="p-4 font-bold text-blue-600">{p.stock}</td>
+                                                    <td className="p-4">{p.isHidden ? <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">판매중지</span> : <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded font-bold">판매중</span>}</td>
+                                                    <td className="p-4 flex gap-2"><button onClick={()=>openEditModal(p)} className="bg-slate-200 px-3 py-1 rounded text-xs font-bold">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-3 py-1 rounded text-xs font-bold">삭제</button></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                            
                         <div className="hidden md:block">
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-slate-100 uppercase font-bold text-slate-500">
@@ -1234,7 +1268,8 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                     </div>
                 </div>
             </header>
-            <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
+
+                <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
                 {banners.top && (
                     <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 min-h-[160px]">
                         <img 
@@ -1246,9 +1281,14 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                         />
                     </div>
                 )}
-
-                <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide sticky top-[110px] sm:static z-30">
+            
+                <div className="flex overflow-x-auto pb-4 gap-2 mb-2 scrollbar-hide sticky top-[110px] sm:static z-30">
                     {CATEGORIES.map(cat => ( <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all duration-300 ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button> ))}
+                </div>
+            
+                {/* [추가] 총 상품 수 표시 */}
+                <div className="flex justify-end mb-4 px-1">
+                    <span className="text-xs font-bold text-slate-500">총 <span className="text-slate-900">{products.length}</span>개의 상품</span>
                 </div>
                 
                 {/* [★모바일] 그리드 간격 조정 */}
@@ -1289,6 +1329,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                     ))}
                 </div>
             </main>
+
             {isCartOpen && (
                 <div className="fixed inset-0 z-50 flex justify-end transition-all duration-300">
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleClose}></div>
