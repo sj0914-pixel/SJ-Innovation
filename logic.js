@@ -1,4 +1,4 @@
-/* logic.js - Mobile Header Layout Fixed */
+/* logic.js - Final Complete Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -27,7 +27,7 @@ const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기
 // 아이콘 컴포넌트 (이모지 버전)
 // ----------------------------------------------------
 const Icon = ({ name, className, ...props }) => {
-    // 이모지 매핑표 - LogOut 아이콘 추가됨
+    // 이모지 매핑표 - LogOut 아이콘 포함
     const iconMap = {
         Search: "🔍", X: "✕", Menu: "☰", RefreshCw: "↻", Loader2: "⌛", Settings: "⚙️",
         ShoppingBag: "🛍️", Store: "🏪", Truck: "🚚", Package: "📦", Boxes: "📚", CreditCard: "💳",
@@ -689,68 +689,35 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         </div>
                     </div>
                 )}
-                            {tab === "products" && (
-                            <div className="bg-white rounded-lg shadow-sm border p-4">
-                                <div className="flex justify-between mb-4 items-center">
-                                    {/* [수정] 제목 옆에 (총 00개) 표시 추가 */}
-                                    <h3 className="font-bold text-lg">상품 목록 <span className="text-base text-slate-500 font-normal ml-1">({products.length}개)</span></h3>
-                                    <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button>
-                                </div>
-                                
-                                {/* [★모바일] 상품관리 카드 리스트 뷰 */}
-                                <div className="md:hidden grid grid-cols-1 gap-3">
-                                    {products.map(p => (
-                                        <div key={p.id} className={`bg-white p-4 rounded-xl border flex gap-3 ${p.isHidden?"opacity-60 bg-slate-100":""}`}>
-                                            <div className="w-20 h-20 bg-slate-50 rounded flex items-center justify-center overflow-hidden border">
-                                                {p.image.includes("data") || p.image.includes("http") ? <img src={p.image} className="w-full h-full object-cover"/> : <span className="text-2xl">📦</span>}
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="font-bold line-clamp-1">{p.name}</div>
-                                                <div className="text-xs text-slate-500 mb-1">{p.category} | 재고 {p.stock}</div>
-                                                <div className="font-bold text-slate-800">{formatPrice(p.price)}원</div>
-                                                {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">품절 (입고: {p.restockDate})</div>}
-                                            </div>
-                                            <div className="flex flex-col gap-2 justify-center">
-                                                <button onClick={()=>openEditModal(p)} className="bg-slate-100 p-2 rounded text-slate-600"><Icon name="Edit" className="w-4 h-4" /></button>
-                                                <button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-50 p-2 rounded text-red-500"><Icon name="Trash" className="w-4 h-4" /></button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                {tab === "products" && (
+                    <div className="bg-white rounded-lg shadow-sm border p-4">
+                        <div className="flex justify-between mb-4 items-center">
+                            {/* [수정] 제목 옆에 (총 00개) 표시 추가 */}
+                            <h3 className="font-bold text-lg">상품 목록 <span className="text-base text-slate-500 font-normal ml-1">({products.length}개)</span></h3>
+                            <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button>
+                        </div>
                         
-                                <div className="hidden md:block">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-slate-100 uppercase font-bold text-slate-500">
-                                            <tr>
-                                                <th className="p-4">이미지</th>
-                                                <th className="p-4">상품명</th>
-                                                <th className="p-4">가격</th>
-                                                <th className="p-4">재고</th>
-                                                <th className="p-4">상태</th>
-                                                <th className="p-4">관리</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {products.map(p=>(
-                                                <tr key={p.id} className={`hover:bg-slate-50 ${p.isHidden ? "bg-slate-100 opacity-60" : ""}`}>
-                                                    <td className="p-4 text-2xl">{p.image && (p.image.startsWith('data:') || p.image.startsWith('http')) ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
-                                                    <td className="p-4">
-                                                        <div className="font-bold">{p.name}</div>
-                                                        <div className="text-xs text-slate-400">{p.category}</div>
-                                                        {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">※ 일시품절 처리됨</div>}
-                                                    </td>
-                                                    <td className="p-4">₩{formatPrice(p.price)}</td>
-                                                    <td className="p-4 font-bold text-blue-600">{p.stock}</td>
-                                                    <td className="p-4">{p.isHidden ? <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">판매중지</span> : <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded font-bold">판매중</span>}</td>
-                                                    <td className="p-4 flex gap-2"><button onClick={()=>openEditModal(p)} className="bg-slate-200 px-3 py-1 rounded text-xs font-bold">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-3 py-1 rounded text-xs font-bold">삭제</button></td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                        {/* [★모바일] 상품관리 카드 리스트 뷰 */}
+                        <div className="md:hidden grid grid-cols-1 gap-3">
+                            {products.map(p => (
+                                <div key={p.id} className={`bg-white p-4 rounded-xl border flex gap-3 ${p.isHidden?"opacity-60 bg-slate-100":""}`}>
+                                    <div className="w-20 h-20 bg-slate-50 rounded flex items-center justify-center overflow-hidden border">
+                                        {p.image.includes("data") || p.image.includes("http") ? <img src={p.image} className="w-full h-full object-cover"/> : <span className="text-2xl">📦</span>}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="font-bold line-clamp-1">{p.name}</div>
+                                        <div className="text-xs text-slate-500 mb-1">{p.category} | 재고 {p.stock}</div>
+                                        <div className="font-bold text-slate-800">{formatPrice(p.price)}원</div>
+                                        {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">품절 (입고: {p.restockDate})</div>}
+                                    </div>
+                                    <div className="flex flex-col gap-2 justify-center">
+                                        <button onClick={()=>openEditModal(p)} className="bg-slate-100 p-2 rounded text-slate-600"><Icon name="Edit" className="w-4 h-4" /></button>
+                                        <button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-50 p-2 rounded text-red-500"><Icon name="Trash" className="w-4 h-4" /></button>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                            
+                            ))}
+                        </div>
+
                         <div className="hidden md:block">
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-slate-100 uppercase font-bold text-slate-500">
@@ -846,93 +813,94 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
                         <h3 className="font-bold text-lg mb-4 border-b pb-2">{editingProduct ? "상품 수정" : "상품 등록"}</h3>
+                        <form onSubmit={handleSaveProduct} className="space-y-3 text-sm">
+                            <div className="flex items-center gap-2 p-3 bg-red-50 rounded border border-red-100 mb-2">
+                                <input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/>
+                                <label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label>
+                            </div>
 
-                                <form onSubmit={handleSaveProduct} className="space-y-3 text-sm">
-                                <div className="flex items-center gap-2 p-3 bg-red-50 rounded border border-red-100 mb-2">
-                                    <input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/>
-                                    <label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label>
+                             {/* [수정: 품절 및 입고예정일 저장] */}
+                            <div className="p-3 bg-yellow-50 rounded border border-yellow-100 mb-2 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <input type="checkbox" name="pIsSoldOut" defaultChecked={editingProduct?.isSoldOut} id="soldOutCheck" className="w-4 h-4 accent-yellow-600"/>
+                                    <label htmlFor="soldOutCheck" className="text-yellow-700 font-bold cursor-pointer">일시 품절 처리 (상품은 보이나 구매 불가)</label>
                                 </div>
-                            
-                                <div className="p-3 bg-yellow-50 rounded border border-yellow-100 mb-2 space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <input type="checkbox" name="pIsSoldOut" defaultChecked={editingProduct?.isSoldOut} id="soldOutCheck" className="w-4 h-4 accent-yellow-600"/>
-                                        <label htmlFor="soldOutCheck" className="text-yellow-700 font-bold cursor-pointer">일시 품절 처리 (상품은 보이나 구매 불가)</label>
-                                    </div>
-                                    <input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/>
-                                </div>
-                            
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="block mb-1 font-bold">카테고리</label>
-                                        <select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded">
-                                            {CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block mb-1 font-bold">재고</label>
-                                        {/* 재고 기본값 500 */}
-                                        <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
-                                    </div>
-                                </div>
-                            
+                                <input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="block mb-1 font-bold">상품명</label>
-                                    <input name="pName" defaultValue={editingProduct?.name} className="w-full border p-2 rounded" required />
+                                    <label className="block mb-1 font-bold">카테고리</label>
+                                    <select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded">
+                                        {CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}
+                                    </select>
                                 </div>
-                            
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="block mb-1 font-bold">권장가 (소비자가)</label>
-                                        {/* 권장가 입력 시 공급가(55% 할인) 자동 계산 */}
-                                        <input 
-                                            name="pOriginPrice" 
-                                            type="number" 
-                                            defaultValue={editingProduct?.originPrice} 
-                                            className="w-full border p-2 rounded bg-yellow-50 focus:bg-white transition-colors" 
-                                            placeholder="입력 시 공급가 자동완성"
-                                            required 
-                                            onChange={(e) => {
-                                                const origin = Number(e.target.value);
-                                                if(origin > 0) {
-                                                    const priceInput = document.getElementsByName("pPrice")[0];
-                                                    if(priceInput) {
-                                                        priceInput.value = Math.round(origin * 0.45); 
-                                                    }
+                                <div>
+                                    <label className="block mb-1 font-bold">재고</label>
+                                    {/* 재고 기본값 500 */}
+                                    <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block mb-1 font-bold">상품명</label>
+                                <input name="pName" defaultValue={editingProduct?.name} className="w-full border p-2 rounded" required />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block mb-1 font-bold">권장가 (소비자가)</label>
+                                    {/* [수정 완료] 권장가 입력 시 공급가(80%) 자동 계산 */}
+                                    <input 
+                                        name="pOriginPrice" 
+                                        type="number" 
+                                        defaultValue={editingProduct?.originPrice} 
+                                        className="w-full border p-2 rounded bg-yellow-50 focus:bg-white transition-colors" 
+                                        placeholder="입력 시 공급가 자동완성"
+                                        required 
+                                        onChange={(e) => {
+                                            const origin = Number(e.target.value);
+                                            if(origin > 0) {
+                                                const priceInput = document.getElementsByName("pPrice")[0];
+                                                if(priceInput) {
+                                                    // 권장가의 80% 가격으로 자동 입력 (반올림)
+                                                    priceInput.value = Math.round(origin * 0.8); 
                                                 }
-                                            }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block mb-1 font-bold">공급가 (도매가)</label>
-                                        <input name="pPrice" type="number" defaultValue={editingProduct?.price} className="w-full border p-2 rounded text-blue-600 font-bold" required />
-                                    </div>
+                                            }
+                                        }}
+                                    />
                                 </div>
-                            
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="block mb-1 font-bold">최소주문(MOQ)</label>
-                                        {/* 최소주문 기본값 10 */}
-                                        <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 10} className="w-full border p-2 rounded" />
-                                    </div>
-                                    <div>
-                                        <label className="block mb-1 font-bold">1카톤 수량</label>
-                                        {/* [수정 완료] 1카톤 수량 기본값 10으로 변경 */}
-                                        <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 10} className="w-full border p-2 rounded" />
-                                    </div>
-                                </div>
-                            
-                                <ImageUploader label="썸네일 이미지" currentImage={thumbImage} onImageSelect={setThumbImage} />
-                                <ImageUploader label="상세페이지 이미지 (선택)" currentImage={detailImage} onImageSelect={setDetailImage} />
-                                
                                 <div>
-                                    <label className="block mb-1 font-bold">소개 문구</label>
-                                    <textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-20"></textarea>
+                                    <label className="block mb-1 font-bold">공급가 (도매가)</label>
+                                    <input name="pPrice" type="number" defaultValue={editingProduct?.price} className="w-full border p-2 rounded text-blue-600 font-bold" required />
                                 </div>
-                                
-                                <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-indigo-700">
-                                    {editingProduct ? "수정 저장" : "신규 등록"}
-                                </button>
-                            </form>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block mb-1 font-bold">최소주문(MOQ)</label>
+                                    {/* 최소주문 기본값 10 */}
+                                    <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 10} className="w-full border p-2 rounded" />
+                                </div>
+                                <div>
+                                    <label className="block mb-1 font-bold">1카톤 수량</label>
+                                    {/* 1카톤 수량 기본값 10 */}
+                                    <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 10} className="w-full border p-2 rounded" />
+                                </div>
+                            </div>
+
+                            <ImageUploader label="썸네일 이미지" currentImage={thumbImage} onImageSelect={setThumbImage} />
+                            <ImageUploader label="상세페이지 이미지 (선택)" currentImage={detailImage} onImageSelect={setDetailImage} />
+                            
+                            <div>
+                                <label className="block mb-1 font-bold">소개 문구</label>
+                                <textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-20"></textarea>
+                            </div>
+                            
+                            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-indigo-700">
+                                {editingProduct ? "수정 저장" : "신규 등록"}
+                            </button>
+                        </form>
                     </div>
                 </div>
             )}
@@ -1268,8 +1236,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                     </div>
                 </div>
             </header>
-
-                <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
+            <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
                 {banners.top && (
                     <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 min-h-[160px]">
                         <img 
@@ -1281,11 +1248,11 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                         />
                     </div>
                 )}
-            
+
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-2 scrollbar-hide sticky top-[110px] sm:static z-30">
                     {CATEGORIES.map(cat => ( <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all duration-300 ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button> ))}
                 </div>
-            
+
                 {/* [추가] 총 상품 수 표시 */}
                 <div className="flex justify-end mb-4 px-1">
                     <span className="text-xs font-bold text-slate-500">총 <span className="text-slate-900">{products.length}</span>개의 상품</span>
@@ -1329,7 +1296,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                     ))}
                 </div>
             </main>
-
             {isCartOpen && (
                 <div className="fixed inset-0 z-50 flex justify-end transition-all duration-300">
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleClose}></div>
