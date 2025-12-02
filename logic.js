@@ -505,8 +505,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
             price: Number(form.pPrice.value)||0, 
             originPrice: Number(form.pOriginPrice.value)||0, 
             stock: Number(form.pStock.value)||0, 
-            minQty: Number(form.pMinQty.value)||10, 
-            cartonQty: Number(form.pCartonQty.value)||10, 
+            // [수정: 기본값 5로 변경]
+            minQty: Number(form.pMinQty.value)||5, 
+            cartonQty: Number(form.pCartonQty.value)||5, 
             image: thumbImage || "📦", 
             detailImage: detailImage || "", 
             description: form.pDescription.value, 
@@ -967,13 +968,13 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="block mb-1 font-bold">최소주문(MOQ)</label>
-                                    {/* [기본값] 10개 */}
-                                    <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 10} className="w-full border p-2 rounded" />
+                                    {/* [수정: 기본값 10 -> 5로 변경] */}
+                                    <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 5} className="w-full border p-2 rounded" />
                                 </div>
                                 <div>
                                     <label className="block mb-1 font-bold">1카톤 수량</label>
-                                    {/* [기본값] 10개 */}
-                                    <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 10} className="w-full border p-2 rounded" />
+                                    {/* [수정: 기본값 10 -> 5로 변경] */}
+                                    <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 5} className="w-full border p-2 rounded" />
                                 </div>
                             </div>
 
@@ -1136,14 +1137,18 @@ const LoginPage = ({ onAdminLogin }) => {
 // [5] 상세 페이지
 // ----------------------------------------------------
 const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
-    const [qty, setQty] = useState(product.minQty || 1);
+    // [수정: 최소 수량을 5개로 강제 설정]
+    const minQty = product.minQty || 5;
+    const cartonQty = product.cartonQty || 5;
+
+    const [qty, setQty] = useState(minQty);
     
     const handleQuantityChange = (delta) => {
-        const min = product.minQty || 1;
-        const max = (product.cartonQty || 1) * 5;
+        // [수정] 1카톤 최대 5박스 제한
+        const max = cartonQty * 5;
         const newQuantity = qty + delta;
         if (delta > 0) { if (newQuantity <= max) setQty(newQuantity); else alert(`최대 발주 수량은 ${max}개(5박스)입니다.`); } 
-        else { if (newQuantity >= min) setQty(newQuantity); else alert(`최소 주문 수량은 ${min}개입니다.`); }
+        else { if (newQuantity >= minQty) setQty(newQuantity); else alert(`최소 주문 수량은 ${minQty}개입니다.`); }
     };
 
     return (
@@ -1169,7 +1174,7 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
                             <h1 className="text-2xl font-bold text-slate-900 leading-tight">{product.name}</h1>
                         </div>
                         <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100"><span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{formatPrice(product.price)}</span><span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{formatPrice(product.originPrice)}</span><span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">{Math.round((1-product.price/product.originPrice)*100)}% OFF</span></div>
-                        <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100"><Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" /><div><span className="font-bold block text-sm">최소 {product.minQty}개 발주 가능 (1카톤 = {product.cartonQty}개)</span><span className="text-xs text-indigo-700 mt-1 block">도매 전용 상품 (카톤 단위 출고)</span><span className="text-xs text-red-600 font-bold mt-1 block">최대 5박스 한정 (대량 발주는 개별 문의)</span></div></div>
+                        <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100"><Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" /><div><span className="font-bold block text-sm">최소 {minQty}개 발주 가능 (1카톤 = {cartonQty}개)</span><span className="text-xs text-indigo-700 mt-1 block">도매 전용 상품 (카톤 단위 출고)</span><span className="text-xs text-red-600 font-bold mt-1 block">최대 5박스 한정 (대량 발주는 개별 문의)</span></div></div>
                         <div className="space-y-8">
                             <div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3><p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">{product.description}</p></div>
                             {product.detailImage && <div><h3 className="text-lg font-bold text-slate-900 mb-3">상세 정보</h3><img src={product.detailImage} className="w-full rounded-xl" /></div>}
@@ -1180,7 +1185,6 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
             </div>
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 sm:p-4 shadow z-30 safe-area-bottom transition-all duration-300">
                 <div className="max-w-3xl mx-auto flex gap-3">
-                    {/* [수정] 품절 상태일 경우 구매 버튼 비활성화 */}
                     {product.isSoldOut ? (
                         <div className="w-full bg-slate-400 text-white font-bold rounded-xl flex flex-col items-center justify-center py-2 cursor-not-allowed">
                             <span className="text-lg">일시 품절</span>
@@ -1264,6 +1268,12 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         return matchCat && matchSearch;
     });
 
+    // [수정: 판매가능 상품 위로, 품절 상품 아래로 정렬]
+    const sortedProducts = [...filteredProducts].sort((a, b) => {
+        if (a.isSoldOut === b.isSoldOut) return 0;
+        return a.isSoldOut ? 1 : -1;
+    });
+
     const openProduct = (p) => { window.history.pushState(null,"",""); setSelectedProduct(p); };
     const openCart = () => { window.history.pushState(null,"",""); setIsCartOpen(true); };
     const openMyPage = () => { window.history.pushState(null,"",""); setShowMyPage(true); };
@@ -1284,16 +1294,13 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-800 safe-area-pb">
-            {/* [★모바일] 헤더 반응형 개선: UI 깨짐 방지 */}
             <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100 transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-4 py-3 sm:py-0 sm:h-16 flex flex-wrap items-center justify-between gap-2">
                     
-                    {/* 메인페이지 상단 로고: flex-shrink-0 적용으로 찌그러짐 방지 */}
                     <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
                         <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-8 w-auto object-contain" />
                     </div>
 
-                    {/* [★모바일] 아이콘 그룹: flex-nowrap으로 겹침 방지 및 텍스트 숨김 */}
                     <div className="flex items-center gap-3 order-2 sm:order-3 ml-auto sm:ml-0 flex-nowrap flex-shrink-0">
                         {isAdmin && (
                             <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1 whitespace-nowrap flex-shrink-0">
@@ -1310,14 +1317,12 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                             <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center flex-shrink-0"><Icon name="User" className="w-4 h-4" /></div>
                             <span className="hidden sm:block whitespace-nowrap">{user.storeName || "내 정보"}</span>
                         </button>
-                        {/* 로그아웃 버튼: 모바일에서는 아이콘만 표시 */}
                         <button onClick={onLogout} className="bg-slate-200 hover:bg-red-500 hover:text-white px-3 py-1 rounded font-bold text-sm transition-all duration-300 whitespace-nowrap flex-shrink-0 flex items-center gap-1">
                             <Icon name="LogOut" className="w-4 h-4 sm:hidden"/>
                             <span className="hidden sm:inline">로그아웃</span>
                         </button>
                     </div>
 
-                    {/* [★모바일] 검색창: 줄바꿈하여 전체 너비 사용 */}
                     <div className="w-full sm:flex-1 sm:max-w-lg sm:mx-4 relative order-3 sm:order-2 mt-2 sm:mt-0">
                         <input type="text" placeholder="상품 검색..." className="w-full bg-slate-100 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-slate-500 focus:bg-white transition-all" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
                         <Icon name="Search" className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
@@ -1325,12 +1330,14 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
+                
+                {/* [수정] 상단 배너 - 모바일 꽉 채우기 및 크기 자동 */}
                 {banners.top && (
-                    <div className="mb-8 rounded-2xl overflow-hidden shadow-lg bg-slate-200 min-h-[160px]">
+                    <div className="mb-6 w-full rounded-2xl overflow-hidden shadow-lg">
                         <img 
                             src={banners.top} 
                             alt="Top Banner" 
-                            className="w-full h-auto object-cover max-h-[400px]" 
+                            className="w-full h-auto block" 
                             fetchPriority="high"
                             decoding="sync"
                         />
@@ -1341,18 +1348,16 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                     {CATEGORIES.map(cat => ( <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all duration-300 ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button> ))}
                 </div>
 
-                {/* [추가] 총 상품 수 표시 */}
                 <div className="flex justify-end mb-4 px-1">
                     <span className="text-xs font-bold text-slate-500">총 <span className="text-slate-900">{products.length}</span>개의 상품</span>
                 </div>
                 
-                {/* [★모바일] 그리드 간격 조정 */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-                    {filteredProducts.map((p, index) => (
+                    {/* [수정: 정렬된 리스트 사용] */}
+                    {sortedProducts.map((p, index) => (
                         <React.Fragment key={p.id}>
                             <div onClick={() => openProduct(p)} className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group overflow-hidden flex flex-col relative active:scale-95 sm:active:scale-100">
                                 
-                                {/* [추가] 품절 오버레이 */}
                                 {p.isSoldOut && (
                                     <div className="absolute inset-0 z-10 bg-black/50 flex flex-col items-center justify-center text-white backdrop-blur-[1px]">
                                         <div className="font-bold text-xl mb-1">SOLD OUT</div>
@@ -1375,9 +1380,11 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* [수정] 중간 배너 - 상단 배너와 동일한 스타일 적용 (w-full, h-auto) */}
                             {index === 7 && banners.middle && (
-                                <div className="col-span-full my-6 rounded-2xl overflow-hidden shadow-md bg-slate-200 min-h-[128px]">
-                                    <img src={banners.middle} alt="Middle Banner" className="w-full h-auto object-cover" />
+                                <div className="col-span-full my-6 w-full rounded-2xl overflow-hidden shadow-lg">
+                                    <img src={banners.middle} alt="Middle Banner" className="w-full h-auto block" />
                                 </div>
                             )}
                         </React.Fragment>
@@ -1451,7 +1458,6 @@ const App = () => {
     const [firebaseReady, setFirebaseReady] = useState(false);
 
     useEffect(() => {
-        // 새로고침 시에도 관리자 모드 기억
         const savedAdminMode = localStorage.getItem("adminViewMode") === "true";
         if (savedAdminMode) setAdminViewMode(true);
 
@@ -1468,7 +1474,17 @@ const App = () => {
         if (!firebaseReady) return;
         const { collection, onSnapshot, getDoc, doc } = window.fb;
         const unsub = onSnapshot(collection(window.db, "products_final_v5"), (snap) => {
-            setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setProducts(snap.docs.map(d => {
+                const data = d.data();
+                // [수정] DB에 저장된 값이 있더라도, 요청사항에 따라
+                // 모든 기존 제품의 최소주문량과 1카톤 수량을 5개로 강제 설정합니다.
+                return { 
+                    id: d.id, 
+                    ...data,
+                    minQty: 5,
+                    cartonQty: 5
+                };
+            }));
         });
         const authUnsub = window.fb.onAuthStateChanged(window.auth, async (u) => {
             if (u) {
@@ -1493,7 +1509,6 @@ const App = () => {
 
     const handleForceAdmin = () => { setIsAdmin(true); setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); };
     
-    // 관리자 모드 진입/해제 시 기억하기
     const handleToAdmin = () => {
         setAdminViewMode(true);
         localStorage.setItem("adminViewMode", "true");
