@@ -1,12 +1,12 @@
-/* logic.js - Final Full Version (No Omission) */
+/* logic.js - Security Fixed Full Version */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
 // [0] 전역 상수 및 유틸리티
 // ----------------------------------------------------
 
-// [★설정] Gemini API 키
-const GEMINI_API_KEY = "AIzaSyDih64JJFx4R2E5lHzdWRtXLROyt62Ac6A";
+// [★수정] 보안 문제 해결: 코드가 아닌 화면에서 키를 입력받도록 변경함 (공란 유지)
+// const GEMINI_API_KEY = ""; 
 
 // 기본 배너 설정
 const DEFAULT_BANNERS = {
@@ -31,7 +31,6 @@ const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기
 // 아이콘 컴포넌트 (이모지 버전)
 // ----------------------------------------------------
 const Icon = ({ name, className, ...props }) => {
-    // 이모지 매핑표
     const iconMap = {
         Search: "🔍", X: "✕", Menu: "☰", RefreshCw: "↻", Loader2: "⌛", Settings: "⚙️",
         ShoppingBag: "🛍️", Store: "🏪", Truck: "🚚", Package: "📦", Boxes: "📚", CreditCard: "💳",
@@ -39,7 +38,6 @@ const Icon = ({ name, className, ...props }) => {
         Image: "🖼️", Upload: "⬆️", Download: "⬇️", LayoutTemplate: "📄", AlertCircle: "!",
         Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪", Sparkles: "✨"
     };
-
     const displayIcon = iconMap[name] || name || "?";
 
     return (
@@ -87,15 +85,18 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     let width = img.width;
                     let height = img.height;
                     const MAX_WIDTH = 1200; 
+                 
                     if (width > MAX_WIDTH) { 
                         height *= MAX_WIDTH / width; 
                         width = MAX_WIDTH; 
                     }
+                
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
                     ctx.fillStyle = "#FFFFFF";
                     ctx.fillRect(0, 0, width, height);
+    
                     ctx.drawImage(img, 0, 0, width, height);
                     const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
                     resolve(dataUrl);
@@ -255,6 +256,9 @@ const MyPage = ({ user, onClose }) => {
 // [3] 관리자 페이지
 // ----------------------------------------------------
 const AdminPage = ({ onLogout, onToShop }) => {
+    // [★추가] API 키 입력 상태
+    const [userApiKey, setUserApiKey] = useState("");
+
     const [products, setProducts] = useState([]);
     const [users, setUsers] = useState([]);
     const [orders, setOrders] = useState([]);
@@ -263,7 +267,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     // 배너 State
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
-    
+
     // 배너 불러오기
     useEffect(() => {
         if(window.fb && window.fb.getDoc) {
@@ -276,11 +280,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
             }).catch(e => console.log("배너 없음"));
         }
     }, []);
-    
+
     const getTodayStr = () => formatDate(new Date());
     const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
     const [appliedFilters, setAppliedFilters] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
-
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [selectedUser, setSelectedUser] = useState(null);
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -324,7 +327,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     }, []);
 
     const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
-
+    
     const filteredOrders = orders.filter(o => {
         if (appliedFilters.status !== "전체" && o.status !== appliedFilters.status) return false;
         if (appliedFilters.keyword) {
@@ -367,14 +370,18 @@ const AdminPage = ({ onLogout, onToShop }) => {
         const newState = { status: realStatus, dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" };
         setSearchInputs(newState); setAppliedFilters(newState); setSelectedIds(new Set());
     };
+
     const toggleSelect = (id) => {
         const newSet = new Set(selectedIds);
         if(newSet.has(id)) newSet.delete(id); else newSet.add(id);
         setSelectedIds(newSet);
     };
+
     const toggleSelectAll = (e) => {
-        if(e.target.checked) setSelectedIds(new Set(filteredOrders.map(o=>o.id))); else setSelectedIds(new Set());
+        if(e.target.checked) setSelectedIds(new Set(filteredOrders.map(o=>o.id)));
+        else setSelectedIds(new Set());
     };
+
     const handleBatchStatus = async (status) => {
         if(selectedIds.size === 0) return alert("선택된 주문이 없습니다.");
         if(!confirm(`선택한 ${selectedIds.size}건을 [${status}] 상태로 변경하시겠습니까?`)) return;
@@ -384,8 +391,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
             alert("처리되었습니다."); setSelectedIds(new Set());
         } catch(e) { alert("오류: " + e.message); }
     };
+
     const handleUpdateTracking = async (id, courier, tracking) => {
-        try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { courier, trackingNumber: tracking, status: tracking ? "배송중" : "접수대기" }); } catch(e) { console.error(e); }
+        try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { courier, trackingNumber: tracking, status: tracking ? "배송중" : "접수대기" });
+        } catch(e) { console.error(e); }
     };
 
     const handleExcelDownload = () => {
@@ -405,6 +414,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
         window.XLSX.utils.book_append_sheet(wb, ws, "주문목록");
         window.XLSX.writeFile(wb, `주문목록_${new Date().toISOString().slice(0,10)}.xlsx`);
     };
+
     const handleExcelUpload = async (e) => {
         const file = e.target.files[0];
         if(!file) return;
@@ -429,10 +439,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
         reader.readAsArrayBuffer(file);
     };
 
-    // [★추가] AI 자동 생성 핸들러 (에러 처리 강화)
+    // [★수정됨] AI 자동 생성 핸들러 (사용자가 입력한 키 사용)
     const handleAIGenerate = async (productName) => {
         if (!productName) return alert("상품명을 먼저 입력해주세요.");
-        if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("API_KEY")) return alert("코드 상단에 GEMINI_API_KEY를 설정해주세요.");
+        
+        // [변경 1] 코드의 상수가 아닌, 입력받은 변수(userApiKey)를 검사
+        if (!userApiKey) return alert("화면 상단에 API 키를 먼저 입력해주세요!");
 
         setIsGenerating(true);
         try {
@@ -442,39 +454,28 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 위 상품에 대해 다음 두 가지 작업을 수행해서 JSON 형식으로만 답해줘:
                 1. 카테고리 분류: [${CATEGORIES.filter(c=>c!=="전체").join(", ")}] 중 가장 적절한 하나를 골라줘.
                 2. 상품 소개: 이 상품을 도매 사장님들에게 어필할 수 있는 매력적이고 전문적인 소개글을 3~4줄로 작성해줘 (이모지 포함).
-                
                 응답 형식: { "category": "카테고리명", "description": "소개글내용" }
             `;
-                
+            
             const response = await fetch(
                   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
                   {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",
-                      "x-goog-api-key": GEMINI_API_KEY,   // ← API 키는 헤더로 전달
+                      "x-goog-api-key": userApiKey,   // [변경 2] userApiKey 변수 사용
                     },
                     body: JSON.stringify({
-                      contents: [
-                        {
-                          parts: [{ text: prompt }],
-                        },
-                      ],
+                      contents: [{ parts: [{ text: prompt }] }],
                     }),
                   }
                 );
-
-        
+            
             const data = await response.json();
 
             // 에러 체크
-            if (data.error) {
-                console.error("Google AI Error:", data.error);
-                throw new Error(data.error.message || "API 호출 오류");
-            }
-            if (!data.candidates || data.candidates.length === 0) {
-                throw new Error("AI가 응답을 생성하지 못했습니다.");
-            }
+            if (data.error) throw new Error(data.error.message || "API 호출 오류");
+            if (!data.candidates || data.candidates.length === 0) throw new Error("AI가 응답을 생성하지 못했습니다.");
 
             const text = data.candidates[0].content.parts[0].text;
             const cleanText = text.replace(/```json|```/g, "").trim();
@@ -488,7 +489,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 if (result.description) form.pDescription.value = result.description;
             }
             alert("AI가 카테고리와 소개글을 작성했습니다!");
-
         } catch (e) {
             console.error(e);
             alert("AI 오류 발생:\n" + e.message);
@@ -496,6 +496,199 @@ const AdminPage = ({ onLogout, onToShop }) => {
             setIsGenerating(false);
         }
     };
+
+    // [★추가] 잘려있던 UI 복원 (API 입력창 포함)
+    return (
+        <div className="flex flex-col h-screen bg-slate-50">
+            {/* 1. 상단 네비게이션 & API 키 입력창 */}
+            <div className="bg-white border-b sticky top-0 z-50 shadow-sm">
+                <div className="flex justify-between items-center p-4">
+                    <div className="flex items-center gap-4">
+                        <h1 className="font-bold text-lg">관리자 페이지</h1>
+                        <div className="flex gap-2 text-sm">
+                            <button onClick={()=>setTab("orders")} className={`px-3 py-1 rounded-full ${tab==="orders"?"bg-indigo-600 text-white":"bg-slate-100"}`}>주문관리</button>
+                            <button onClick={()=>setTab("products")} className={`px-3 py-1 rounded-full ${tab==="products"?"bg-indigo-600 text-white":"bg-slate-100"}`}>상품관리</button>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={onToShop} className="px-4 py-2 border rounded hover:bg-slate-50 text-sm">쇼핑몰 가기</button>
+                        <button onClick={onLogout} className="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-900 text-sm">로그아웃</button>
+                    </div>
+                </div>
+
+                {/* [★중요] API 키 입력창 (여기에 키를 넣으세요) */}
+                <div className="bg-slate-800 text-white px-4 py-2 flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 w-full max-w-3xl">
+                        <span className="font-bold shrink-0">🔑 Gemini API Key:</span>
+                        <input 
+                            type="password" 
+                            className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white w-full focus:outline-none focus:border-indigo-500"
+                            placeholder="새로 발급받은 API 키를 여기에 붙여넣으세요 (보안상 저장되지 않음)"
+                            value={userApiKey}
+                            onChange={(e) => setUserApiKey(e.target.value)}
+                        />
+                    </div>
+                    <div className="text-xs text-slate-400 ml-4 hidden sm:block">
+                        * 키는 서버에 저장되지 않고 현재 브라우저에서만 사용됩니다.
+                    </div>
+                </div>
+            </div>
+
+            {/* 2. 메인 컨텐츠 영역 */}
+            <div className="flex-1 overflow-auto p-6">
+                {tab === "orders" ? (
+                    <div className="space-y-6">
+                        {/* 주문 통계 카드 */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div onClick={()=>handleCardClick("접수대기")} className="bg-white p-4 rounded-xl border shadow-sm cursor-pointer hover:border-indigo-500 transition-colors">
+                                <div className="text-slate-500 text-sm mb-1">신규주문</div>
+                                <div className="text-2xl font-bold text-indigo-600">{countStatus("접수대기")}건</div>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl border shadow-sm">
+                                <div className="text-slate-500 text-sm mb-1">배송준비</div>
+                                <div className="text-2xl font-bold">{countStatus("배송준비")}건</div>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl border shadow-sm">
+                                <div className="text-slate-500 text-sm mb-1">배송중</div>
+                                <div className="text-2xl font-bold">{countStatus("배송중")}건</div>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl border shadow-sm">
+                                <div className="text-slate-500 text-sm mb-1">오늘 매출</div>
+                                <div className="text-2xl font-bold text-slate-800">
+                                    {formatPrice(orders.filter(o=>formatDate(o.date)===getTodayStr() && o.status!=="주문취소").reduce((acc,cur)=>acc+cur.totalAmount,0))}원
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 필터 및 엑셀 기능 */}
+                        <div className="bg-white p-4 rounded-xl border shadow-sm space-y-4">
+                            <div className="flex flex-wrap gap-2 items-center justify-between">
+                                <div className="flex gap-2">
+                                    <button onClick={()=>handleDateBtn("오늘")} className={`px-3 py-1 rounded text-sm ${searchInputs.dateType==="오늘"?"bg-slate-800 text-white":"bg-slate-100"}`}>오늘</button>
+                                    <button onClick={()=>handleDateBtn("7일")} className={`px-3 py-1 rounded text-sm ${searchInputs.dateType==="7일"?"bg-slate-800 text-white":"bg-slate-100"}`}>7일</button>
+                                    <button onClick={()=>handleDateBtn("전체")} className={`px-3 py-1 rounded text-sm ${searchInputs.dateType==="전체"?"bg-slate-800 text-white":"bg-slate-100"}`}>전체</button>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={handleExcelDownload} className="flex items-center gap-1 px-3 py-1 border rounded hover:bg-slate-50 text-sm text-green-700 border-green-200 bg-green-50">
+                                        <Icon name="Download" className="w-4 h-4"/> 엑셀 다운
+                                    </button>
+                                    <label className="flex items-center gap-1 px-3 py-1 border rounded hover:bg-slate-50 text-sm cursor-pointer text-blue-700 border-blue-200 bg-blue-50">
+                                        <Icon name="Upload" className="w-4 h-4"/> 송장 업로드
+                                        <input type="file" className="hidden" accept=".xlsx,.xls" onChange={handleExcelUpload} />
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <select className="border rounded px-2 py-2 text-sm" value={searchInputs.status} onChange={e=>setSearchInputs({...searchInputs, status:e.target.value})}>
+                                    <option value="전체">전체 상태</option>
+                                    <option value="접수대기">접수대기</option>
+                                    <option value="배송준비">배송준비</option>
+                                    <option value="배송중">배송중</option>
+                                    <option value="배송완료">배송완료</option>
+                                    <option value="주문취소">주문취소</option>
+                                </select>
+                                <select className="border rounded px-2 py-2 text-sm" value={searchInputs.searchType} onChange={e=>setSearchInputs({...searchInputs, searchType:e.target.value})}>
+                                    <option value="주문자명">주문자명</option>
+                                    <option value="주문번호">주문번호</option>
+                                </select>
+                                <input 
+                                    type="text" 
+                                    className="border rounded px-3 py-2 text-sm flex-1" 
+                                    placeholder="검색어 입력..."
+                                    value={searchInputs.keyword}
+                                    onChange={e=>setSearchInputs({...searchInputs, keyword:e.target.value})}
+                                    onKeyDown={e=>e.key==='Enter'&&handleSearch()}
+                                />
+                                <button onClick={handleSearch} className="bg-slate-800 text-white px-4 rounded text-sm">검색</button>
+                                <button onClick={handleReset} className="border px-4 rounded text-sm hover:bg-slate-50">초기화</button>
+                            </div>
+                        </div>
+
+                        {/* 주문 목록 테이블 */}
+                        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                            <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
+                                <div className="font-bold">주문 목록 <span className="text-indigo-600">{filteredOrders.length}</span>건</div>
+                                {selectedIds.size > 0 && (
+                                    <div className="flex gap-2 animate-in fade-in slide-in-from-right-4 duration-200">
+                                        <select className="text-sm border rounded px-2 py-1" onChange={(e)=>{if(e.target.value) handleBatchStatus(e.target.value); e.target.value="";}}>
+                                            <option value="">상태 변경...</option>
+                                            <option value="배송준비">배송준비로 변경</option>
+                                            <option value="배송완료">배송완료로 변경</option>
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-slate-50 text-slate-500">
+                                        <tr>
+                                            <th className="p-4 w-10"><input type="checkbox" onChange={toggleSelectAll} checked={selectedIds.size===filteredOrders.length && filteredOrders.length>0}/></th>
+                                            <th className="p-4">주문번호/일시</th>
+                                            <th className="p-4">주문자 정보</th>
+                                            <th className="p-4">상품 정보</th>
+                                            <th className="p-4">결제금액</th>
+                                            <th className="p-4">상태/송장</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {filteredOrders.length === 0 ? (
+                                            <tr><td colSpan="6" className="p-10 text-center text-slate-400">검색 결과가 없습니다.</td></tr>
+                                        ) : (
+                                            filteredOrders.map(order => (
+                                                <tr key={order.id} className={`hover:bg-slate-50 ${selectedIds.has(order.id)?"bg-indigo-50":""}`}>
+                                                    <td className="p-4"><input type="checkbox" checked={selectedIds.has(order.id)} onChange={()=>toggleSelect(order.id)}/></td>
+                                                    <td className="p-4">
+                                                        <div className="font-bold">{order.orderNo}</div>
+                                                        <div className="text-xs text-slate-400">{new Date(order.date).toLocaleString()}</div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="font-bold cursor-pointer hover:text-indigo-600" onClick={()=>{/* 유저상세보기 기능은 생략 */}}>{getUserInfo(order.userId).storeName} ({order.userName})</div>
+                                                        <div className="text-xs text-slate-500">{getUserInfo(order.userId).mobile}</div>
+                                                    </td>
+                                                    <td className="p-4 max-w-xs">
+                                                        <div className="truncate text-slate-700">{(order.items||[]).map(i=>i.name).join(", ")}</div>
+                                                        <div className="text-xs text-slate-400">외 {(order.items||[]).length-1}건</div>
+                                                    </td>
+                                                    <td className="p-4 font-bold">{formatPrice(order.totalAmount)}원</td>
+                                                    <td className="p-4">
+                                                        <select 
+                                                            className={`mb-1 text-xs px-2 py-1 rounded font-bold border-0 ${order.status==='접수대기'?'bg-blue-100 text-blue-700':order.status==='주문취소'?'bg-red-100 text-red-700':'bg-green-100 text-green-700'}`}
+                                                            value={order.status}
+                                                            onChange={(e)=>window.fb.updateDoc(window.fb.doc(window.db,"orders",order.id),{status:e.target.value})}
+                                                        >
+                                                            <option value="접수대기">접수대기</option>
+                                                            <option value="배송준비">배송준비</option>
+                                                            <option value="배송중">배송중</option>
+                                                            <option value="배송완료">배송완료</option>
+                                                            <option value="주문취소">주문취소</option>
+                                                        </select>
+                                                        {order.status !== "주문취소" && (
+                                                            <div className="flex gap-1">
+                                                                <input type="text" placeholder="송장번호" className="border rounded px-1 py-1 text-xs w-24" defaultValue={order.trackingNumber||""} 
+                                                                    onBlur={(e)=>handleUpdateTracking(order.id, order.courier||"CJ대한통운", e.target.value)}/>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    // 상품 관리 탭 (간단 뷰)
+                    <div className="text-center py-20 bg-white rounded-xl border border-dashed">
+                        <Icon name="Box" className="w-12 h-12 text-slate-300 mx-auto mb-4"/>
+                        <p className="text-slate-500">상품 관리 페이지입니다.</p>
+                        <p className="text-sm text-slate-400">여기에 상품 등록/수정 기능을 추가하세요.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
 
     const handleSaveProduct = async (e) => {
         e.preventDefault(); const form = e.target;
