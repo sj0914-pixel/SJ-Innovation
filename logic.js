@@ -1,4 +1,4 @@
-/* logic.js - Final Full Version (No Omission) */
+/* logic.js - Final Complete Version (Shipping Fee Added) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -31,7 +31,6 @@ const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기
 // 아이콘 컴포넌트 (이모지 버전)
 // ----------------------------------------------------
 const Icon = ({ name, className, ...props }) => {
-    // 이모지 매핑표
     const iconMap = {
         Search: "🔍", X: "✕", Menu: "☰", RefreshCw: "↻", Loader2: "⌛", Settings: "⚙️",
         ShoppingBag: "🛍️", Store: "🏪", Truck: "🚚", Package: "📦", Boxes: "📚", CreditCard: "💳",
@@ -1178,7 +1177,19 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
                         <div className="space-y-8">
                             <div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3><p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">{product.description}</p></div>
                             {product.detailImage && <div><h3 className="text-lg font-bold text-slate-900 mb-3">상세 정보</h3><img src={product.detailImage} className="w-full rounded-xl" /></div>}
-                            <div><h3 className="text-lg font-bold text-slate-900 mb-3">배송 정보</h3><div className="bg-slate-50 p-5 rounded-xl space-y-3 text-sm text-slate-600 border border-slate-100"><div className="flex gap-3 items-center"><Icon name="Truck" className="w-5 h-5 text-slate-400" /><span>평일 14시 이전 주문 시 당일 출고</span></div><div className="flex gap-3 items-center"><Icon name="Boxes" className="w-5 h-5 text-slate-400" /><span>박스 단위 발주 가능</span></div></div></div>
+                            
+                            {/* [수정] 배송 정보에 5만원 이상 무료배송 문구 추가 */}
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900 mb-3">배송 정보</h3>
+                                <div className="bg-slate-50 p-5 rounded-xl space-y-3 text-sm text-slate-600 border border-slate-100">
+                                    <div className="flex gap-3 items-center">
+                                        <Icon name="Truck" className="w-5 h-5 text-indigo-600" />
+                                        <span className="font-bold text-indigo-900">50,000원 이상 구매 시 무료배송 (미만 3,000원)</span>
+                                    </div>
+                                    <div className="flex gap-3 items-center"><Icon name="Truck" className="w-5 h-5 text-slate-400" /><span>평일 14시 이전 주문 시 당일 출고</span></div>
+                                    <div className="flex gap-3 items-center"><Icon name="Boxes" className="w-5 h-5 text-slate-400" /><span>박스 단위 발주 가능</span></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1243,18 +1254,27 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         setIsOrderModalOpen(true);
     };
 
+    // [수정] 최종 주문 시 배송비 계산 및 저장
     const handleFinalOrder = async (e) => {
         if (!depositor.trim()) return alert("입금자명을 입력해주세요.");
         if(!confirm("주문을 완료하시겠습니까?")) return;
+        
+        // 배송비 계산
+        const productTotal = cart.reduce((a,c)=>a+c.price*c.quantity,0);
+        const shippingFee = productTotal >= 50000 ? 0 : 3000;
+        const finalTotalAmount = productTotal + shippingFee;
+
         try {
             const uid = window.auth.currentUser ? window.auth.currentUser.uid : "admin_manual";
             await window.fb.addDoc(window.fb.collection(window.db, "orders"), {
                 userId: uid, userEmail: user.email, userName: user.storeName || "미등록상점",
-                items: cart, totalAmount: cart.reduce((a,c)=>a+c.price*c.quantity,0), 
+                items: cart, 
+                // [수정] 최종금액(배송비포함) 저장
+                totalAmount: finalTotalAmount, 
                 date: new Date().toISOString(), status: "접수대기",
                 paymentMethod: "무통장입금", depositor: depositor, bankInfo: BANK_INFO
             });
-            alert(`[주문 완료]\n\n${BANK_INFO.bankName} ${BANK_INFO.accountNumber}\n예금주: ${BANK_INFO.holder}\n\n위 계좌로 입금 부탁드립니다.`);
+            alert(`[주문 완료]\n총 결제금액: ${formatPrice(finalTotalAmount)}원 (배송비 포함)\n\n${BANK_INFO.bankName} ${BANK_INFO.accountNumber}\n예금주: ${BANK_INFO.holder}\n\n위 계좌로 입금 부탁드립니다.`);
             setCart([]); 
             setIsCartOpen(false);
             setIsOrderModalOpen(false);
@@ -1410,7 +1430,32 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                 </div>
                             ))}
                         </div>
-                        {cart.length>0 && <div className="border-t pt-4"><div className="flex justify-between mb-4"><span className="text-slate-600">총 공급가액</span><span className="font-bold text-xl">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span></div><button onClick={openOrderModal} className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg flex justify-center items-center gap-2 transition-all hover:bg-slate-900"><Icon name="Truck" className="w-5 h-5" />발주 신청하기</button></div>}
+                        
+                        {/* [수정] 장바구니 하단: 배송비 포함 합계 표시 */}
+                        {cart.length > 0 && (
+                            <div className="border-t pt-4 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-600">상품 금액</span>
+                                    <span className="font-bold">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-600">배송비</span>
+                                    <span className="font-bold text-slate-800">
+                                        {cart.reduce((a,c)=>a+c.price*c.quantity,0) >= 50000 ? "무료" : "+ ₩3,000"}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between pt-2 border-t border-dashed items-center mb-4">
+                                    <span className="text-slate-900 font-bold">총 결제금액</span>
+                                    <span className="font-bold text-xl text-indigo-600">
+                                        ₩{formatPrice(
+                                            cart.reduce((a,c)=>a+c.price*c.quantity,0) + 
+                                            (cart.reduce((a,c)=>a+c.price*c.quantity,0) >= 50000 ? 0 : 3000)
+                                        )}
+                                    </span>
+                                </div>
+                                <button onClick={openOrderModal} className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg flex justify-center items-center gap-2 transition-all hover:bg-slate-900"><Icon name="Truck" className="w-5 h-5" />발주 신청하기</button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -1433,10 +1478,30 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                             <input type="text" className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="예: 김철수 (SJ문구)" value={depositor} onChange={(e)=>setDepositor(e.target.value)} />
                             <p className="text-xs text-slate-400 mt-1">* 실제 입금하시는 분의 성함을 입력해주세요.</p>
                         </div>
-                        <div className="flex justify-between items-center mb-4 pt-4 border-t">
-                            <span className="text-slate-600 font-bold">총 결제금액</span>
-                            <span className="text-xl font-bold text-blue-600">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span>
+                        
+                        {/* [수정] 주문 모달: 배송비 포함 합계 표시 */}
+                        <div className="border-t pt-4 mb-4 space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">상품합계</span>
+                                <span>₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0))}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">배송비</span>
+                                <span>
+                                    {cart.reduce((a,c)=>a+c.price*c.quantity,0) >= 50000 ? "0원 (무료)" : "3,000원"}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center pt-2 border-t border-dashed mt-2">
+                                <span className="text-slate-800 font-bold">최종 결제금액</span>
+                                <span className="text-xl font-bold text-blue-600">
+                                     ₩{formatPrice(
+                                        cart.reduce((a,c)=>a+c.price*c.quantity,0) + 
+                                        (cart.reduce((a,c)=>a+c.price*c.quantity,0) >= 50000 ? 0 : 3000)
+                                    )}
+                                </span>
+                            </div>
                         </div>
+
                         <button onClick={handleFinalOrder} className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 shadow-lg">입금 확인 요청 (주문 완료)</button>
                     </div>
                 </div>
