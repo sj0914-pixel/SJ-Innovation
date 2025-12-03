@@ -1,4 +1,4 @@
-/* logic.js - Final Complete Version (Shipping Fee Added) */
+/* logic.js - Final Fixed Version (No Errors) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -514,6 +514,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
             isHidden: form.pIsHidden.checked,
             // [수정: 품절 및 입고예정일 저장]
             isSoldOut: form.pIsSoldOut.checked,
+            
+            // [★수정] 상단 고정 저장 로직 추가
+            isPinned: form.pIsPinned.checked,
+
             restockDate: form.pRestockDate.value
         };
         try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨"); } catch (err) { alert(err.message); }
@@ -891,11 +895,16 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
                         <h3 className="font-bold text-lg mb-4 border-b pb-2">{editingProduct ? "상품 수정" : "상품 등록"}</h3>
                         
-                        {/* [★수정] AI 기능 및 가격 자동계산, 기본값 적용된 폼 */}
                         <form id="productForm" onSubmit={handleSaveProduct} className="space-y-3 text-sm">
                             <div className="flex items-center gap-2 p-3 bg-red-50 rounded border border-red-100 mb-2">
                                 <input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/>
                                 <label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label>
+                            </div>
+
+                            {/* [★수정] 상단 고정 체크박스 UI 추가 */}
+                            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded border border-blue-100 mb-2">
+                                <input type="checkbox" name="pIsPinned" defaultChecked={editingProduct?.isPinned} id="pinnedCheck" className="w-4 h-4 accent-blue-600"/>
+                                <label htmlFor="pinnedCheck" className="text-blue-700 font-bold cursor-pointer">📌 상품 목록 최상단 고정</label>
                             </div>
 
                             <div className="p-3 bg-yellow-50 rounded border border-yellow-100 mb-2 space-y-2">
@@ -906,7 +915,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 <input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/>
                             </div>
 
-                            {/* [★AI 버튼 추가] */}
                             <div>
                                 <label className="block mb-1 font-bold">상품명 <span className="text-xs text-indigo-500 font-normal">(입력 후 우측 버튼을 눌러보세요)</span></label>
                                 <div className="flex gap-2">
@@ -931,7 +939,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 </div>
                                 <div>
                                     <label className="block mb-1 font-bold">재고</label>
-                                    {/* [기본값] 500개 */}
                                     <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
                                 </div>
                             </div>
@@ -939,7 +946,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="block mb-1 font-bold">권장가 (소비자가)</label>
-                                    {/* [자동계산] 45% 할인된 가격 (0.55 곱하기) */}
                                     <input 
                                         name="pOriginPrice" 
                                         type="number" 
@@ -967,12 +973,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="block mb-1 font-bold">최소주문(MOQ)</label>
-                                    {/* [수정: 기본값 10 -> 5로 변경] */}
+                                    {/* [수정: 기본값 5로 변경] */}
                                     <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 5} className="w-full border p-2 rounded" />
                                 </div>
                                 <div>
                                     <label className="block mb-1 font-bold">1카톤 수량</label>
-                                    {/* [수정: 기본값 10 -> 5로 변경] */}
+                                    {/* [수정: 기본값 5로 변경] */}
                                     <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 5} className="w-full border p-2 rounded" />
                                 </div>
                             </div>
@@ -1000,6 +1006,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 // [4] 로그인 페이지
 // ----------------------------------------------------
 const LoginPage = ({ onAdminLogin }) => {
+    // ... (기존과 동일)
     const [isLoginMode, setIsLoginMode] = useState(true);
     const [isAddrOpen, setIsAddrOpen] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
@@ -1288,9 +1295,16 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         return matchCat && matchSearch;
     });
 
-    // [수정: 판매가능 상품 위로, 품절 상품 아래로 정렬]
+    // [★수정: 상단고정 > 판매가능 > 품절 순으로 정렬 (중복 제거됨)]
     const sortedProducts = [...filteredProducts].sort((a, b) => {
-        if (a.isSoldOut === b.isSoldOut) return 0;
+        // 1. 품절 상태가 같다면 (둘 다 판매중이거나, 둘 다 품절이거나)
+        if (a.isSoldOut === b.isSoldOut) {
+            // 고정(Pinned)된 상품을 위로 올림
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            return 0;
+        }
+        // 2. 품절 여부가 다르면 품절인 상품을 아래로
         return a.isSoldOut ? 1 : -1;
     });
 
