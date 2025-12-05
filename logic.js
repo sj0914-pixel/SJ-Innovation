@@ -1,4 +1,4 @@
-/* logic.js - Final Version (Notice Box Removed) */
+/* logic.js - Final Version (Shipping Info Moved, Admin Inputs Removed) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -736,6 +736,40 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         </div>
                     </div>
                 )}
+                {tab === "users" && (
+                    <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                        <div className="p-4 border-b flex justify-between items-center bg-slate-50">
+                            <span className="font-bold text-slate-600">총 회원수: {users.length}명</span>
+                            <button onClick={handleRefreshUsers} className="bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-900 flex gap-1 items-center"><Icon name="RefreshCw" className="w-3 h-3"/>목록 새로고침</button>
+                        </div>
+                        
+                        {/* [★모바일] 회원관리 모바일 뷰 */}
+                        <div className="md:hidden">
+                            {users.map(u => (
+                                <div key={u.id} className="p-4 border-b last:border-0 flex justify-between items-center">
+                                    <div onClick={()=>setSelectedUser(u)}>
+                                        <div className="font-bold">{u.storeName} <span className="text-sm font-normal text-slate-500">{u.repName}</span></div>
+                                        <div className="text-xs text-slate-400">{u.mobile}</div>
+                                        <div className="text-xs text-slate-500">{u.email}</div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={()=>setSelectedUser(u)} className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-bold">상세</button>
+                                        <button onClick={()=>handleDeleteUser(u.id)} className="bg-red-50 text-red-500 px-2 py-1 rounded text-xs font-bold">삭제</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="hidden md:block">
+                            <table className="w-full text-left text-sm whitespace-nowrap">
+                                <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">추천인</th><th className="p-4">관리</th></tr></thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {users.map(u=>(<tr key={u.id} className="hover:bg-slate-50"><td className="p-4 font-bold">{u.storeName}</td><td className="p-4">{u.repName}</td><td className="p-4">{u.email}</td><td className="p-4 text-indigo-600 font-medium">{u.recommender || "-"}</td><td className="p-4 flex gap-2"><button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs">삭제</button></td></tr>))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
                 {tab === "products" && (
                     <div className="bg-white rounded-lg shadow-sm border p-4">
                         <div className="flex justify-between mb-4 items-center">
@@ -907,7 +941,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 </div>
                                 <div>
                                     <label className="block mb-1 font-bold">재고</label>
-                                    {/* [기본값] 500개 */}
                                     <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
                                 </div>
                             </div>
@@ -915,7 +948,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="block mb-1 font-bold">권장가 (소비자가)</label>
-                                    {/* [자동계산] 45% 할인된 가격 (0.55 곱하기) */}
                                     <input 
                                         name="pOriginPrice" 
                                         type="number" 
