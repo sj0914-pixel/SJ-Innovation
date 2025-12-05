@@ -1,4 +1,4 @@
-/* logic.js - Modified Version (Free Shipping > 50k, No MOQ) */
+/* logic.js - Final Version (Shipping Info Moved, Admin Inputs Removed) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -504,9 +504,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
             price: Number(form.pPrice.value)||0, 
             originPrice: Number(form.pOriginPrice.value)||0, 
             stock: Number(form.pStock.value)||0, 
-            // [수정: 기본값 1로 변경 (제한 해제)]
-            minQty: Number(form.pMinQty.value)||1, 
-            cartonQty: Number(form.pCartonQty.value)||1, 
+            // [수정: 입력창 삭제됨 -> 기본값 1로 자동 저장]
+            minQty: 1,
+            cartonQty: 1, 
             image: thumbImage || "📦", 
             detailImage: detailImage || "", 
             description: form.pDescription.value, 
@@ -941,7 +941,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 </div>
                                 <div>
                                     <label className="block mb-1 font-bold">재고</label>
-                                    {/* [기본값] 500개 */}
                                     <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
                                 </div>
                             </div>
@@ -949,7 +948,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="block mb-1 font-bold">권장가 (소비자가)</label>
-                                    {/* [자동계산] 45% 할인된 가격 (0.55 곱하기) */}
                                     <input 
                                         name="pOriginPrice" 
                                         type="number" 
@@ -974,18 +972,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="block mb-1 font-bold">최소주문(MOQ)</label>
-                                    {/* [수정: 기본값 1로 변경 (제한 해제)] */}
-                                    <input name="pMinQty" type="number" defaultValue={editingProduct?.minQty || 1} className="w-full border p-2 rounded" />
-                                </div>
-                                <div>
-                                    <label className="block mb-1 font-bold">1카톤 수량</label>
-                                    {/* [수정: 기본값 1로 변경 (제한 해제)] */}
-                                    <input name="pCartonQty" type="number" defaultValue={editingProduct?.cartonQty || 1} className="w-full border p-2 rounded" />
-                                </div>
-                            </div>
+                            {/* [수정] 최소주문/카톤수량 입력칸 삭제됨 (내부적으로 1로 고정) */}
 
                             <ImageUploader label="대표 이미지" currentImage={thumbImage} onImageSelect={setThumbImage} />
                             <ImageUploader label="상세 이미지" currentImage={detailImage} onImageSelect={setDetailImage} />
@@ -1147,17 +1134,18 @@ const LoginPage = ({ onAdminLogin }) => {
 // [5] 상세 페이지
 // ----------------------------------------------------
 const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
-    // [수정: 최소 수량 및 카톤 수량 제한 해제 (기본값 1)]
-    const minQty = 1; 
-    const cartonQty = 1; 
+    // [수정: 최소 수량을 5개로 강제 설정]
+    const minQty = product.minQty || 1;
+    const cartonQty = product.cartonQty || 1;
 
     const [qty, setQty] = useState(minQty);
     
     const handleQuantityChange = (delta) => {
-        // [수정] 1개 단위로 자유롭게 조절
+        // [수정] 1카톤 최대 5박스 제한
+        const max = cartonQty * 5;
         const newQuantity = qty + delta;
-        if (newQuantity >= minQty) setQty(newQuantity); 
-        else alert(`최소 주문 수량은 ${minQty}개입니다.`); 
+        if (delta > 0) { if (newQuantity <= max) setQty(newQuantity); else alert(`최대 발주 수량은 ${max}개(5박스)입니다.`); } 
+        else { if (newQuantity >= minQty) setQty(newQuantity); else alert(`최소 주문 수량은 ${minQty}개입니다.`); }
     };
 
     return (
@@ -1183,14 +1171,11 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
                             <h1 className="text-2xl font-bold text-slate-900 leading-tight">{product.name}</h1>
                         </div>
                         <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100"><span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{formatPrice(product.price)}</span><span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{formatPrice(product.originPrice)}</span><span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">{Math.round((1-product.price/product.originPrice)*100)}% OFF</span></div>
-                        
-                        {/* [수정] 최소 수량/카톤 안내 박스 삭제됨 */}
-                        
+                        <div className="bg-indigo-50 text-indigo-900 px-4 py-3 rounded-lg mb-8 flex items-start gap-3 border border-indigo-100"><Icon name="AlertCircle" className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" /><div><span className="font-bold block text-sm">최소 {minQty}개 발주 가능 (1카톤 = {cartonQty}개)</span><span className="text-xs text-indigo-700 mt-1 block">도매 전용 상품 (카톤 단위 출고)</span><span className="text-xs text-red-600 font-bold mt-1 block">최대 5박스 한정 (대량 발주는 개별 문의)</span></div></div>
                         <div className="space-y-8">
                             <div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3><p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">{product.description}</p></div>
-                            {product.detailImage && <div><h3 className="text-lg font-bold text-slate-900 mb-3">상세 정보</h3><img src={product.detailImage} className="w-full rounded-xl" /></div>}
                             
-                            {/* [수정] 배송 정보에 5만원 이상 무료배송 문구 추가 */}
+                            {/* [수정] 배송 정보 위치 변경 (설명 바로 아래로 이동) */}
                             <div>
                                 <h3 className="text-lg font-bold text-slate-900 mb-3">배송 정보</h3>
                                 <div className="bg-slate-50 p-5 rounded-xl space-y-3 text-sm text-slate-600 border border-slate-100">
@@ -1199,9 +1184,12 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
                                         <span className="font-bold text-indigo-900">50,000원 이상 구매 시 무료배송 (미만 3,000원)</span>
                                     </div>
                                     <div className="flex gap-3 items-center"><Icon name="Truck" className="w-5 h-5 text-slate-400" /><span>평일 14시 이전 주문 시 당일 출고</span></div>
-                                    {/* 박스 단위 발주 안내 삭제 */}
+                                    <div className="flex gap-3 items-center"><Icon name="Boxes" className="w-5 h-5 text-slate-400" /><span>박스 단위 발주 가능</span></div>
                                 </div>
                             </div>
+
+                            {/* 상세 정보(이미지)는 배송정보 아래로 이동 */}
+                            {product.detailImage && <div><h3 className="text-lg font-bold text-slate-900 mb-3">상세 정보</h3><img src={product.detailImage} className="w-full rounded-xl" /></div>}
                         </div>
                     </div>
                 </div>
@@ -1271,7 +1259,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         if (!depositor.trim()) return alert("입금자명을 입력해주세요.");
         if(!confirm("주문을 완료하시겠습니까?")) return;
         
-        // 배송비 계산 (5만원 이상 무료, 미만 3000원)
+        // 배송비 계산
         const productTotal = cart.reduce((a,c)=>a+c.price*c.quantity,0);
         const shippingFee = productTotal >= 50000 ? 0 : 3000;
         const finalTotalAmount = productTotal + shippingFee;
