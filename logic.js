@@ -1,4 +1,4 @@
-/* logic.js - Final Version (Shipping Info Moved, Admin Inputs Removed) */
+/* logic.js - Final Version (Visitor Stats Added) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -259,6 +259,9 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [orders, setOrders] = useState([]);
     const [tab, setTab] = useState("orders");
     
+    // [★추가] 방문자 통계 State
+    const [visitorStats, setVisitorStats] = useState({ today: 0, total: 0 });
+    
     // 배너 State
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
@@ -299,6 +302,20 @@ const AdminPage = ({ onLogout, onToShop }) => {
         // 회원 목록 실시간
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         
+        // [★추가] 방문자 통계 실시간 구독
+        const unsubStats = onSnapshot(collection(window.db, "stats"), (snap) => {
+            let total = 0;
+            let today = 0;
+            const todayStr = formatDate(new Date()); // YYYY-MM-DD
+            
+            snap.forEach(d => {
+                const cnt = d.data().count || 0;
+                total += cnt;
+                if(d.id === todayStr) today = cnt;
+            });
+            setVisitorStats({ today, total });
+        });
+        
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             const orderGroups = {};
@@ -319,7 +336,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
             setOrders(list);
         });
 
-        return () => { unsubProd(); unsubUser(); unsubOrder(); };
+        return () => { unsubProd(); unsubUser(); unsubOrder(); unsubStats(); };
     }, []);
 
     const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
@@ -605,7 +622,16 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
                         {/* 대시보드 - 모바일에서는 가로스크롤 대신 그리드로 보기 좋게 조정 */}
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                            {/* [★추가] 방문자 현황 카드 */}
+                            <div className="p-5 rounded-lg border shadow-sm flex flex-col justify-between h-28 bg-purple-50 ring-2 ring-transparent hover:ring-slate-200 transition-all">
+                                <div className="text-sm font-bold text-slate-500 flex items-center gap-1">오늘 방문자</div>
+                                <div>
+                                    <div className="text-3xl font-bold text-purple-600">{visitorStats.today} <span className="text-base text-slate-400 font-normal">명</span></div>
+                                    <div className="text-xs text-slate-400 mt-1">누적: {visitorStats.total}명</div>
+                                </div>
+                            </div>
+                            
                             {[
                                 { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" },
                                 { label: "배송준비", count: countStatus("배송준비"), color: "text-indigo-600", bg: "bg-indigo-50" },
@@ -1541,22 +1567,57 @@ const App = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // [★추가] 방문자 수 집계 로직
+    useEffect(() => {
+        if (!firebaseReady) return;
+
+        const trackVisitor = async () => {
+            try {
+                // formatDate 함수 재사용 (YYYY-MM-DD)
+                const offset = new Date().getTimezoneOffset() * 60000;
+                const today = new Date(Date.now() - offset).toISOString().slice(0, 10);
+                
+                const sessKey = `visited_${today}`;
+                
+                // 세션 스토리지에 기록이 없으면 (오늘 첫 방문)
+                if (!sessionStorage.getItem(sessKey)) {
+                    const docRef = window.fb.doc(window.db, "stats", today);
+                    const docSnap = await window.fb.getDoc(docRef);
+                    
+                    if (docSnap.exists()) {
+                        await window.fb.updateDoc(docRef, { count: docSnap.data().count + 1 });
+                    } else {
+                        await window.fb.setDoc(docRef, { count: 1, date: today });
+                    }
+                    // 방문 처리 완료 (새로고침 시 중복 카운트 방지)
+                    sessionStorage.setItem(sessKey, "true");
+                }
+            } catch (e) {
+                console.error("방문자 집계 오류:", e);
+            }
+        };
+
+        trackVisitor();
+    }, [firebaseReady]);
+
     useEffect(() => {
         if (!firebaseReady) return;
         const { collection, onSnapshot, getDoc, doc } = window.fb;
+        
+        // 상품 불러오기
         const unsub = onSnapshot(collection(window.db, "products_final_v5"), (snap) => {
             setProducts(snap.docs.map(d => {
                 const data = d.data();
-                // [수정] DB에 저장된 값이 있더라도, 요청사항에 따라
-                // 모든 기존 제품의 최소주문량과 1카톤 수량을 1개로 강제 설정합니다.
                 return { 
                     id: d.id, 
                     ...data,
-                    minQty: 1, // 최소 수량 1개로 제한 해제
-                    cartonQty: 1 // 카톤 수량 1개로 제한 해제
+                    minQty: 1, 
+                    cartonQty: 1 
                 };
             }));
         });
+
+        // 사용자 인증 상태 확인
         const authUnsub = window.fb.onAuthStateChanged(window.auth, async (u) => {
             if (u) {
                 try {
