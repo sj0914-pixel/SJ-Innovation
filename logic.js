@@ -1,4 +1,4 @@
-/* logic.js - Final Version (Visitor Stats Added) */
+/* logic.js - Final Version (Full Code with Stats Graph) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -36,7 +36,7 @@ const Icon = ({ name, className, ...props }) => {
         ShoppingBag: "🛍️", Store: "🏪", Truck: "🚚", Package: "📦", Boxes: "📚", CreditCard: "💳",
         User: "👤", ArrowLeft: "←", ChevronRight: "〉", Plus: "➕", Minus: "➖", Star: "⭐",
         Image: "🖼️", Upload: "⬆️", Download: "⬇️", LayoutTemplate: "📄", AlertCircle: "!",
-        Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪", Sparkles: "✨"
+        Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪", Sparkles: "✨", BarChart: "📊"
     };
 
     const displayIcon = iconMap[name] || name || "?";
@@ -251,7 +251,7 @@ const MyPage = ({ user, onClose }) => {
 };
 
 // ----------------------------------------------------
-// [3] 관리자 페이지
+// [3] 관리자 페이지 (통계 및 그래프 기능 포함)
 // ----------------------------------------------------
 const AdminPage = ({ onLogout, onToShop }) => {
     const [products, setProducts] = useState([]);
@@ -261,10 +261,15 @@ const AdminPage = ({ onLogout, onToShop }) => {
     
     // [★추가] 방문자 통계 State
     const [visitorStats, setVisitorStats] = useState({ today: 0, total: 0 });
+    const [chartData, setChartData] = useState([]); // 차트 데이터
     
     // 배너 State
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
+    
+    // 차트 캔버스 참조
+    const chartRef = useRef(null);
+    const chartInstance = useRef(null);
     
     // 배너 불러오기
     useEffect(() => {
@@ -278,6 +283,83 @@ const AdminPage = ({ onLogout, onToShop }) => {
             }).catch(e => console.log("배너 없음"));
         }
     }, []);
+    
+    // [★추가] 차트 그리기 (stats 탭일 때만)
+    useEffect(() => {
+        if (tab === "stats" && chartRef.current && chartData.length > 0) {
+            // 기존 차트 인스턴스가 있으면 파괴하여 중복 방지
+            if (chartInstance.current) {
+                chartInstance.current.destroy();
+            }
+
+            const ctx = chartRef.current.getContext('2d');
+            chartInstance.current = new Chart(ctx, {
+                type: 'line', 
+                data: {
+                    labels: chartData.map(d => d.date.slice(5)), // 월-일 만 표시
+                    datasets: [{
+                        label: '일별 방문자 수',
+                        data: chartData.map(d => d.count),
+                        borderColor: 'rgb(79, 70, 229)', // Indigo 600
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: 'rgb(79, 70, 229)',
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { 
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            padding: 10,
+                            bodyFont: { size: 14 }
+                        }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            ticks: { stepSize: 1 } 
+                        },
+                        x: { 
+                            grid: { display: false } 
+                        }
+                    }
+                }
+            });
+        }
+    }, [tab, chartData]);
+
+    // [★추가] 최근 7일 데이터 가져오기
+    const fetchChartData = async () => {
+        try {
+            const days = [];
+            const today = new Date();
+            // 최근 7일 날짜 생성
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(today.getDate() - i);
+                days.push(formatDate(d));
+            }
+
+            // Firebase에서 각 날짜별 문서 조회
+            const promises = days.map(dateStr => window.fb.getDoc(window.fb.doc(window.db, "stats", dateStr)));
+            const snapshots = await Promise.all(promises);
+            
+            const result = snapshots.map((snap, index) => ({
+                date: days[index],
+                count: snap.exists() ? snap.data().count : 0
+            }));
+            setChartData(result);
+        } catch(e) { 
+            console.error("차트 데이터 로드 실패", e); 
+        }
+    };
     
     const getTodayStr = () => formatDate(new Date());
     const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
@@ -316,6 +398,11 @@ const AdminPage = ({ onLogout, onToShop }) => {
             setVisitorStats({ today, total });
         });
         
+        // stats 탭으로 변경 시 차트 데이터 로드
+        if (tab === 'stats') {
+            fetchChartData();
+        }
+
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             const orderGroups = {};
@@ -337,7 +424,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
         });
 
         return () => { unsubProd(); unsubUser(); unsubOrder(); unsubStats(); };
-    }, []);
+    }, [tab]); // tab 변경 시에도 트리거
 
     const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
 
@@ -612,9 +699,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
             <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6">
                 {/* [★모바일] 탭 버튼 스크롤 가능하도록 개선 */}
                 <div className="flex gap-2 border-b border-slate-300 pb-1 overflow-x-auto whitespace-nowrap">
-                    {["orders", "users", "products", "banners"].map(t => (
+                    {/* [★수정] 메뉴 탭에 'stats' 추가 */}
+                    {["orders", "users", "products", "banners", "stats"].map(t => (
                         <button key={t} onClick={()=>setTab(t)} className={`px-6 py-3 rounded-t-lg font-bold text-sm uppercase transition-colors whitespace-nowrap ${tab===t ? "bg-white text-slate-900 border border-b-0 border-slate-300 shadow-sm" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}>
-                            {t === 'orders' ? '주문 통합 관리' : t === 'users' ? '회원 관리' : t === 'products' ? '상품 관리' : '배너 관리'}
+                            {t === 'orders' ? '주문 통합 관리' : t === 'users' ? '회원 관리' : t === 'products' ? '상품 관리' : t === 'banners' ? '배너 관리' : '통계 분석'}
                         </button>
                     ))}
                 </div>
@@ -762,6 +850,37 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         </div>
                     </div>
                 )}
+                
+                {/* [★추가] 통계 분석 탭 내용 */}
+                {tab === "stats" && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        <div className="bg-white rounded-lg border shadow-sm p-6">
+                            <h3 className="font-bold text-xl mb-4 flex items-center gap-2">
+                                <Icon name="BarChart" className="text-indigo-600 w-6 h-6"/> 
+                                최근 7일간 방문자 추이
+                            </h3>
+                            <div className="w-full h-[400px] bg-slate-50 rounded-xl p-4 relative">
+                                {/* 차트가 그려질 캔버스 */}
+                                <canvas ref={chartRef}></canvas>
+                            </div>
+                            <div className="mt-4 text-center text-sm text-slate-500">
+                                * 오늘 데이터는 실시간으로 집계되며, 자정을 기준으로 다음 날로 넘어갑니다.
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="bg-white p-6 rounded-lg border shadow-sm">
+                                <h4 className="font-bold text-slate-700 mb-2">총 누적 방문자</h4>
+                                <div className="text-4xl font-bold text-slate-900">{formatPrice(visitorStats.total)} <span className="text-lg text-slate-400">명</span></div>
+                             </div>
+                             <div className="bg-white p-6 rounded-lg border shadow-sm">
+                                <h4 className="font-bold text-slate-700 mb-2">오늘 방문자</h4>
+                                <div className="text-4xl font-bold text-indigo-600">{formatPrice(visitorStats.today)} <span className="text-lg text-slate-400">명</span></div>
+                             </div>
+                        </div>
+                    </div>
+                )}
+                
                 {tab === "users" && (
                     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                         <div className="p-4 border-b flex justify-between items-center bg-slate-50">
