@@ -32,7 +32,7 @@ const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기
 // ----------------------------------------------------
 const Icon = ({ name, className, ...props }) => {
     const iconMap = {
-        Search: "🔍", X: "✕", Menu: "☰", RefreshCw: "↻", Loader2: "🔄", Settings: "⚙️",
+        Search: "🔍", X: "✕", Menu: "☰", RefreshCw: "↻", Loader2: "⌛", Settings: "⚙️",
         ShoppingBag: "🛍️", Store: "🏪", Truck: "🚚", Package: "📦", Boxes: "📚", CreditCard: "💳",
         User: "👤", ArrowLeft: "←", ChevronRight: "〉", Plus: "➕", Minus: "➖", Star: "⭐",
         Image: "🖼️", Upload: "⬆️", Download: "⬇️", LayoutTemplate: "📄", AlertCircle: "!",
@@ -851,16 +851,16 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     </div>
                 )}
                 
-                {/* [★수정] 통계 분석 탭 내용 (방문자 그래프 + 회원별 월간 주문 내역) */}
+                {/* [★추가] 통계 분석 탭 내용 */}
                 {tab === "stats" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* 1. 방문자 그래프 영역 */}
                         <div className="bg-white rounded-lg border shadow-sm p-6">
                             <h3 className="font-bold text-xl mb-4 flex items-center gap-2">
                                 <Icon name="BarChart" className="text-indigo-600 w-6 h-6"/> 
                                 최근 7일간 방문자 추이
                             </h3>
                             <div className="w-full h-[400px] bg-slate-50 rounded-xl p-4 relative">
+                                {/* 차트가 그려질 캔버스 */}
                                 <canvas ref={chartRef}></canvas>
                             </div>
                             <div className="mt-4 text-center text-sm text-slate-500">
@@ -868,7 +868,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
                         </div>
                         
-                        {/* 2. 방문자 요약 카드 */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                              <div className="bg-white p-6 rounded-lg border shadow-sm">
                                 <h4 className="font-bold text-slate-700 mb-2">총 누적 방문자</h4>
@@ -878,89 +877,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 <h4 className="font-bold text-slate-700 mb-2">오늘 방문자</h4>
                                 <div className="text-4xl font-bold text-indigo-600">{formatPrice(visitorStats.today)} <span className="text-lg text-slate-400">명</span></div>
                              </div>
-                        </div>
-
-                        {/* [★새로 추가된 부분] 3. 회원별 월간 주문 통계 테이블 */}
-                        <div className="bg-white rounded-lg border shadow-sm p-6 overflow-hidden">
-                            <h3 className="font-bold text-xl mb-4 flex items-center gap-2">
-                                <Icon name="Boxes" className="text-blue-600 w-6 h-6"/> 
-                                회원별 월간 주문 현황 (최근 6개월)
-                            </h3>
-                            
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left border-collapse">
-                                    <thead className="bg-slate-100 text-slate-600 uppercase font-bold text-xs">
-                                        <tr>
-                                            <th className="p-3 border-b">순위</th>
-                                            <th className="p-3 border-b">상호명 (대표자)</th>
-                                            {/* 최근 6개월 헤더 생성 로직 */}
-                                            {Array.from({length: 6}, (_, i) => {
-                                                const d = new Date();
-                                                d.setMonth(d.getMonth() - i);
-                                                return <th key={i} className="p-3 border-b text-center">{d.getMonth()+1}월</th>
-                                            })}
-                                            <th className="p-3 border-b text-center text-indigo-600">총 누적</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {(() => {
-                                            // 1. 최근 6개월 키 생성 (예: "2023-12", "2023-11"...)
-                                            const monthKeys = Array.from({length: 6}, (_, i) => {
-                                                const d = new Date();
-                                                d.setMonth(d.getMonth() - i);
-                                                return d.toISOString().slice(0, 7); // YYYY-MM
-                                            });
-
-                                           // 2. 회원별 통계 계산 (총괄관리자, 영업팀 제외)
-                                            const statsData = users
-                                                .filter(u => u.storeName !== "총괄관리자" && u.storeName !== "영업팀")
-                                                .map(u => {
-                                                const userOrders = orders.filter(o => o.userId === u.id && o.status !== "주문취소");
-                                                const counts = {};
-                                                
-                                                // 월별 초기화
-                                                monthKeys.forEach(key => counts[key] = 0);
-
-                                                // 주문 카운팅
-                                                userOrders.forEach(o => {
-                                                    const m = o.date.slice(0, 7); // YYYY-MM
-                                                    if (counts[m] !== undefined) counts[m]++;
-                                                });
-
-                                                return {
-                                                    id: u.id,
-                                                    name: u.storeName,
-                                                    rep: u.repName,
-                                                    counts: counts,
-                                                    total: userOrders.length
-                                                };
-                                            });
-
-                                            // 3. 주문 많은 순으로 정렬 (주문 0건인 회원은 제외하고 싶으면 filter 추가 가능)
-                                            // 현재는 주문 0건도 보여주되 아래로 정렬
-                                            statsData.sort((a, b) => b.total - a.total);
-
-                                            return statsData.map((stat, idx) => (
-                                                <tr key={stat.id} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="p-3 font-bold text-slate-400">{idx + 1}</td>
-                                                    <td className="p-3">
-                                                        <div className="font-bold text-slate-800">{stat.name}</div>
-                                                        <div className="text-xs text-slate-400">{stat.rep}</div>
-                                                    </td>
-                                                    {monthKeys.map(key => (
-                                                        <td key={key} className={`p-3 text-center font-bold ${stat.counts[key] > 0 ? "text-slate-800" : "text-slate-200"}`}>
-                                                            {stat.counts[key] > 0 ? stat.counts[key] + "건" : "-"}
-                                                        </td>
-                                                    ))}
-                                                    <td className="p-3 text-center font-bold text-indigo-600 bg-indigo-50">
-                                                        {formatPrice(stat.total)}건
-                                                    </td>
-                                                </tr>
-                                            ));
-                                        })()}
-                                    </tbody>
-                                </table>
-                            </div>
                         </div>
                     </div>
                 )}
@@ -974,7 +890,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         
                         {/* [★모바일] 회원관리 모바일 뷰 */}
                         <div className="md:hidden">
-                           {users.filter(u => u.storeName !== "총괄관리자" && u.storeName !== "영업팀").map(u => (
+                            {users.map(u => (
                                 <div key={u.id} className="p-4 border-b last:border-0 flex justify-between items-center">
                                     <div onClick={()=>setSelectedUser(u)}>
                                         <div className="font-bold">{u.storeName} <span className="text-sm font-normal text-slate-500">{u.repName}</span></div>
