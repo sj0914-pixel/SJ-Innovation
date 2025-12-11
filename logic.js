@@ -1023,24 +1023,24 @@ const LoginPage = ({ onAdminLogin }) => {
         e.preventDefault();
         setLoading(true);
 
-        // [수정된 관리자 로그인 로직]
+        // [수정된 관리자 로그인 로직] - 로그인 성공 시 권한 자동 복구 기능 추가
         if(isLoginMode && formData.username === 'sj' && formData.password === '0914') {
              try {
-                // 1. 일단 로그인 시도
+                // 1. 일단 로그인 시도 (Authentication 확인)
                 const cred = await window.fb.signInUser(window.auth, "admin@sj.com", "sjmaster0914");
                 
-                // [★핵심] 로그인 성공 시, DB에도 관리자 권한을 강제로 다시 덮어씌웁니다.
+                // [★핵심] 로그인 성공 시, DB(Firestore)에도 관리자 명부를 강제로 다시 만듭니다.
                 await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), {
                     email: "admin@sj.com", 
                     storeName: "총괄관리자", 
                     repName: "SJ",
-                    isAdmin: true,   // 관리자 권한 강제 부여
+                    isAdmin: true,   // 관리자 권한 부여
                     role: "master", 
                     joinedAt: new Date().toISOString()
-                }, { merge: true }); // 덮어쓰기 모드
+                }, { merge: true }); // 기존 정보가 있어도 덮어쓰기
 
             } catch(e) {
-                // 2. 계정이 없어서 로그인 실패 시, 새로 생성
+                // 2. 계정 자체가 없으면 새로 생성 (Authentication + Firestore 둘 다 생성)
                 try {
                     const cred = await window.fb.createUser(window.auth, "admin@sj.com", "sjmaster0914");
                     await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), {
@@ -1052,7 +1052,7 @@ const LoginPage = ({ onAdminLogin }) => {
                     alert("관리자 접속 오류: " + createErr.message);
                 }
             }
-            // 3. 페이지 새로고침 (즉시 반영을 위해)
+            // 3. 변경 사항 반영을 위해 페이지 새로고침
             window.location.reload();
             return;
         }
