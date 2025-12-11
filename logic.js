@@ -911,8 +911,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                                 return d.toISOString().slice(0, 7); // YYYY-MM
                                             });
 
-                                            // 2. 회원별 통계 계산
-                                            const statsData = users.map(u => {
+                                           // 2. 회원별 통계 계산 (총괄관리자, 영업팀 제외)
+                                            const statsData = users
+                                                .filter(u => u.storeName !== "총괄관리자" && u.storeName !== "영업팀")
+                                                .map(u => {
                                                 const userOrders = orders.filter(o => o.userId === u.id && o.status !== "주문취소");
                                                 const counts = {};
                                                 
@@ -972,7 +974,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         
                         {/* [★모바일] 회원관리 모바일 뷰 */}
                         <div className="md:hidden">
-                            {users.map(u => (
+                           {users.filter(u => u.storeName !== "총괄관리자" && u.storeName !== "영업팀").map(u => (
                                 <div key={u.id} className="p-4 border-b last:border-0 flex justify-between items-center">
                                     <div onClick={()=>setSelectedUser(u)}>
                                         <div className="font-bold">{u.storeName} <span className="text-sm font-normal text-slate-500">{u.repName}</span></div>
