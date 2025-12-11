@@ -604,10 +604,11 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* 대시보드 - 모바일에서는 가로스크롤 대신 그리드로 보기 좋게 조정 */}
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        {/* 대시보드 수정: '입금대기' 추가 및 '결제완료' 분리 */}
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                             {[
-                                { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" },
+                                { label: "입금대기", count: countStatus("입금대기"), color: "text-red-600", bg: "bg-red-50" },
+                                { label: "결제완료", count: countStatus("결제완료"), color: "text-blue-600", bg: "bg-blue-50" },
                                 { label: "배송준비", count: countStatus("배송준비"), color: "text-indigo-600", bg: "bg-indigo-50" },
                                 { label: "배송지시", count: countStatus("배송지시"), color: "text-orange-600", bg: "bg-orange-50" },
                                 { label: "배송중", count: countStatus("배송중"), color: "text-green-600", bg: "bg-green-50" },
@@ -1284,11 +1285,14 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             await window.fb.addDoc(window.fb.collection(window.db, "orders"), {
                 userId: uid, userEmail: user.email, userName: user.storeName || "미등록상점",
                 items: cart, 
-                // [수정] 최종금액(배송비포함) 저장
                 totalAmount: finalTotalAmount, 
-                date: new Date().toISOString(), status: "접수대기",
+                date: new Date().toISOString(), 
+                
+                status: "입금대기", // ★ 여기를 "접수대기"에서 "입금대기"로 수정하세요!
+                
                 paymentMethod: "무통장입금", depositor: depositor, bankInfo: BANK_INFO
             });
+            
             alert(`[주문 완료]\n총 결제금액: ${formatPrice(finalTotalAmount)}원 (배송비 포함)\n\n${BANK_INFO.bankName} ${BANK_INFO.accountNumber}\n예금주: ${BANK_INFO.holder}\n\n위 계좌로 입금 부탁드립니다.`);
             setCart([]); 
             setIsCartOpen(false);
