@@ -604,7 +604,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* 대시보드 수정: '입금대기' 추가 및 '결제완료' 분리 */}
+                        {/* 대시보드 수정: '입금대기'와 '결제완료' 분리 */}
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                             {[
                                 { label: "입금대기", count: countStatus("입금대기"), color: "text-red-600", bg: "bg-red-50" },
@@ -620,7 +620,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 </div>
                             ))}
                         </div>
-
                         {/* 필터 */}
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center">
@@ -638,10 +637,11 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">배송상태</span>
                                 <div className="flex gap-4 flex-wrap">
-                                    {["전체", "접수대기", "배송준비", "배송중", "배송완료", "주문취소"].map(s => (
+                                    {/* 필터 목록 수정: '입금대기' 추가 */}
+                                    {["전체", "입금대기", "결제완료", "배송준비", "배송중", "배송완료", "주문취소"].map(s => (
                                         <label key={s} className="flex items-center gap-2 cursor-pointer text-sm">
                                             <input type="radio" name="status" checked={searchInputs.status === s} onChange={()=>setSearchInputs({...searchInputs, status: s})} className="accent-blue-600" /> 
-                                            {s === "접수대기" ? "결제완료(신규)" : s}
+                                            {s}
                                         </label>
                                     ))}
                                 </div>
