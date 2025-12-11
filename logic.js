@@ -709,16 +709,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* 대시보드 - 모바일에서는 가로스크롤 대신 그리드로 보기 좋게 조정 */}
-                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                            {/* [★추가] 방문자 현황 카드 */}
-                            <div className="p-5 rounded-lg border shadow-sm flex flex-col justify-between h-28 bg-purple-50 ring-2 ring-transparent hover:ring-slate-200 transition-all">
-                                <div className="text-sm font-bold text-slate-500 flex items-center gap-1">오늘 방문자</div>
-                                <div>
-                                    <div className="text-3xl font-bold text-purple-600">{visitorStats.today} <span className="text-base text-slate-400 font-normal">명</span></div>
-                                    <div className="text-xs text-slate-400 mt-1">누적: {visitorStats.total}명</div>
-                                </div>
-                            </div>
+                    
                             
                             {[
                                 { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" },
