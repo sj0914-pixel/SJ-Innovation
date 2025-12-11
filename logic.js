@@ -32,7 +32,7 @@ const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기
 // ----------------------------------------------------
 const Icon = ({ name, className, ...props }) => {
     const iconMap = {
-        Search: "🔍", X: "✕", Menu: "☰", RefreshCw: "↻", Loader2: "⌛", Settings: "⚙️",
+        Search: "🔍", X: "✕", Menu: "☰", RefreshCw: "↻", Loader2: "🔄", Settings: "⚙️",
         ShoppingBag: "🛍️", Store: "🏪", Truck: "🚚", Package: "📦", Boxes: "📚", CreditCard: "💳",
         User: "👤", ArrowLeft: "←", ChevronRight: "〉", Plus: "➕", Minus: "➖", Star: "⭐",
         Image: "🖼️", Upload: "⬆️", Download: "⬇️", LayoutTemplate: "📄", AlertCircle: "!",
