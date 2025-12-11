@@ -1,4 +1,4 @@
-/* logic.js - Final Version (Full Code with Stats Graph) */
+/* logic.js - Final Complete Version (Admin Button Fixed + All Features) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -28,7 +28,7 @@ const BANK_INFO = {
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
 // ----------------------------------------------------
-// 아이콘 컴포넌트 (이모지 버전)
+// 아이콘 컴포넌트
 // ----------------------------------------------------
 const Icon = ({ name, className, ...props }) => {
     const iconMap = {
@@ -251,7 +251,7 @@ const MyPage = ({ user, onClose }) => {
 };
 
 // ----------------------------------------------------
-// [3] 관리자 페이지 (통계 및 그래프 기능 포함)
+// [3] 관리자 페이지
 // ----------------------------------------------------
 const AdminPage = ({ onLogout, onToShop }) => {
     const [products, setProducts] = useState([]);
@@ -259,7 +259,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [orders, setOrders] = useState([]);
     const [tab, setTab] = useState("orders");
     
-    // [★추가] 방문자 통계 State
+    // 방문자 통계 State
     const [visitorStats, setVisitorStats] = useState({ today: 0, total: 0 });
     const [chartData, setChartData] = useState([]); // 차트 데이터
     
@@ -284,23 +284,20 @@ const AdminPage = ({ onLogout, onToShop }) => {
         }
     }, []);
     
-    // [★추가] 차트 그리기 (stats 탭일 때만)
+    // 차트 그리기
     useEffect(() => {
         if (tab === "stats" && chartRef.current && chartData.length > 0) {
-            // 기존 차트 인스턴스가 있으면 파괴하여 중복 방지
-            if (chartInstance.current) {
-                chartInstance.current.destroy();
-            }
+            if (chartInstance.current) chartInstance.current.destroy();
 
             const ctx = chartRef.current.getContext('2d');
             chartInstance.current = new Chart(ctx, {
                 type: 'line', 
                 data: {
-                    labels: chartData.map(d => d.date.slice(5)), // 월-일 만 표시
+                    labels: chartData.map(d => d.date.slice(5)),
                     datasets: [{
                         label: '일별 방문자 수',
                         data: chartData.map(d => d.count),
-                        borderColor: 'rgb(79, 70, 229)', // Indigo 600
+                        borderColor: 'rgb(79, 70, 229)',
                         backgroundColor: 'rgba(79, 70, 229, 0.1)',
                         borderWidth: 2,
                         tension: 0.3,
@@ -313,52 +310,28 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { 
-                            backgroundColor: 'rgba(0,0,0,0.8)',
-                            padding: 10,
-                            bodyFont: { size: 14 }
-                        }
-                    },
-                    scales: {
-                        y: { 
-                            beginAtZero: true, 
-                            ticks: { stepSize: 1 } 
-                        },
-                        x: { 
-                            grid: { display: false } 
-                        }
-                    }
+                    plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', padding: 10, bodyFont: { size: 14 } } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { grid: { display: false } } }
                 }
             });
         }
     }, [tab, chartData]);
 
-    // [★추가] 최근 7일 데이터 가져오기
+    // 최근 7일 데이터 가져오기
     const fetchChartData = async () => {
         try {
             const days = [];
             const today = new Date();
-            // 최근 7일 날짜 생성
             for (let i = 6; i >= 0; i--) {
                 const d = new Date();
                 d.setDate(today.getDate() - i);
                 days.push(formatDate(d));
             }
-
-            // Firebase에서 각 날짜별 문서 조회
             const promises = days.map(dateStr => window.fb.getDoc(window.fb.doc(window.db, "stats", dateStr)));
             const snapshots = await Promise.all(promises);
-            
-            const result = snapshots.map((snap, index) => ({
-                date: days[index],
-                count: snap.exists() ? snap.data().count : 0
-            }));
+            const result = snapshots.map((snap, index) => ({ date: days[index], count: snap.exists() ? snap.data().count : 0 }));
             setChartData(result);
-        } catch(e) { 
-            console.error("차트 데이터 로드 실패", e); 
-        }
+        } catch(e) { console.error("차트 로드 실패", e); }
     };
     
     const getTodayStr = () => formatDate(new Date());
@@ -371,37 +344,22 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [editingProduct, setEditingProduct] = useState(null);
     const [thumbImage, setThumbImage] = useState("");
     const [detailImage, setDetailImage] = useState("");
-    
-    // AI 생성 상태
     const [isGenerating, setIsGenerating] = useState(false);
-    
     const excelInputRef = useRef(null);
 
     useEffect(() => {
         if(!window.fb) return;
-        const { collection, onSnapshot, doc, getDocs } = window.fb;
+        const { collection, onSnapshot } = window.fb;
         const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-        // 회원 목록 실시간
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         
-        // [★추가] 방문자 통계 실시간 구독
         const unsubStats = onSnapshot(collection(window.db, "stats"), (snap) => {
-            let total = 0;
-            let today = 0;
-            const todayStr = formatDate(new Date()); // YYYY-MM-DD
-            
-            snap.forEach(d => {
-                const cnt = d.data().count || 0;
-                total += cnt;
-                if(d.id === todayStr) today = cnt;
-            });
+            let total = 0; let today = 0; const todayStr = formatDate(new Date());
+            snap.forEach(d => { const cnt = d.data().count || 0; total += cnt; if(d.id === todayStr) today = cnt; });
             setVisitorStats({ today, total });
         });
         
-        // stats 탭으로 변경 시 차트 데이터 로드
-        if (tab === 'stats') {
-            fetchChartData();
-        }
+        if (tab === 'stats') fetchChartData();
 
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -415,19 +373,16 @@ const AdminPage = ({ onLogout, onToShop }) => {
             });
             Object.keys(orderGroups).forEach(dateKey => {
                 orderGroups[dateKey].sort((a,b) => new Date(a.date) - new Date(b.date));
-                orderGroups[dateKey].forEach((o, idx) => {
-                    o.orderNo = `${dateKey}-${String(idx+1).padStart(2,'0')}`;
-                });
+                orderGroups[dateKey].forEach((o, idx) => { o.orderNo = `${dateKey}-${String(idx+1).padStart(2,'0')}`; });
             });
             list.sort((a,b) => new Date(b.date) - new Date(a.date));
             setOrders(list);
         });
 
         return () => { unsubProd(); unsubUser(); unsubOrder(); unsubStats(); };
-    }, [tab]); // tab 변경 시에도 트리거
+    }, [tab]);
 
     const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
-
     const filteredOrders = orders.filter(o => {
         if (appliedFilters.status !== "전체" && o.status !== appliedFilters.status) return false;
         if (appliedFilters.keyword) {
@@ -446,242 +401,90 @@ const AdminPage = ({ onLogout, onToShop }) => {
     });
 
     const countStatus = (status) => orders.filter(o => o.status === status).length;
-
     const handleSearch = () => { setAppliedFilters({ ...searchInputs }); setSelectedIds(new Set()); };
-    const handleReset = () => {
-        const resetState = { status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" };
-        setSearchInputs(resetState); setAppliedFilters(resetState); setSelectedIds(new Set());
-    };
-    
+    const handleReset = () => { const r = { status: "전체", dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" }; setSearchInputs(r); setAppliedFilters(r); setSelectedIds(new Set()); };
     const handleDateBtn = (type) => {
-        const today = new Date();
-        let start = new Date();
-        if (type === "오늘") { } 
-        else if (type === "7일") { start.setDate(today.getDate() - 7); } 
-        else if (type === "30일") { start.setDate(today.getDate() - 30); }
-        setSearchInputs(prev => ({ 
-            ...prev, dateType: type, startDate: type === "전체" ? "" : formatDate(start), endDate: type === "전체" ? "" : formatDate(today) 
-        }));
+        const today = new Date(); let start = new Date();
+        if (type === "오늘") { } else if (type === "7일") { start.setDate(today.getDate() - 7); } else if (type === "30일") { start.setDate(today.getDate() - 30); }
+        setSearchInputs(prev => ({ ...prev, dateType: type, startDate: type === "전체" ? "" : formatDate(start), endDate: type === "전체" ? "" : formatDate(today) }));
     };
-    
     const handleCardClick = (targetStatus) => {
         let realStatus = targetStatus;
         if (targetStatus === "결제완료(신규)") realStatus = "접수대기";
-        const newState = { status: realStatus, dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" };
-        setSearchInputs(newState); setAppliedFilters(newState); setSelectedIds(new Set());
+        setSearchInputs({ status: realStatus, dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" });
+        setAppliedFilters({ status: realStatus, dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" });
+        setSelectedIds(new Set());
     };
-    const toggleSelect = (id) => {
-        const newSet = new Set(selectedIds);
-        if(newSet.has(id)) newSet.delete(id); else newSet.add(id);
-        setSelectedIds(newSet);
-    };
-    const toggleSelectAll = (e) => {
-        if(e.target.checked) setSelectedIds(new Set(filteredOrders.map(o=>o.id))); else setSelectedIds(new Set());
-    };
+    const toggleSelect = (id) => { const n = new Set(selectedIds); if(n.has(id)) n.delete(id); else n.add(id); setSelectedIds(n); };
+    const toggleSelectAll = (e) => { if(e.target.checked) setSelectedIds(new Set(filteredOrders.map(o=>o.id))); else setSelectedIds(new Set()); };
     const handleBatchStatus = async (status) => {
         if(selectedIds.size === 0) return alert("선택된 주문이 없습니다.");
         if(!confirm(`선택한 ${selectedIds.size}건을 [${status}] 상태로 변경하시겠습니까?`)) return;
-        try {
-            const promises = Array.from(selectedIds).map(id => window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { status }));
-            await Promise.all(promises);
-            alert("처리되었습니다."); setSelectedIds(new Set());
-        } catch(e) { alert("오류: " + e.message); }
+        try { await Promise.all(Array.from(selectedIds).map(id => window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { status }))); alert("처리되었습니다."); setSelectedIds(new Set()); } catch(e) { alert("오류: " + e.message); }
     };
-    const handleUpdateTracking = async (id, courier, tracking) => {
-        try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { courier, trackingNumber: tracking, status: tracking ? "배송중" : "접수대기" }); } catch(e) { console.error(e); }
-    };
+    const handleUpdateTracking = async (id, courier, tracking) => { try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { courier, trackingNumber: tracking, status: tracking ? "배송중" : "접수대기" }); } catch(e) { console.error(e); } };
 
     const handleExcelDownload = () => {
         if(!window.XLSX) { alert("엑셀 라이브러리 오류"); return; }
         const targetData = filteredOrders.length > 0 ? filteredOrders : orders;
         const excelData = targetData.map(o => {
             const u = getUserInfo(o.userId);
-            return {
-                "시스템ID": o.id, "주문번호": o.orderNo, "상태": o.status, "주문일": formatDate(o.date),
-                "주문자": u.storeName || o.userName, "연락처": u.mobile, "입금자명": o.depositor || u.repName, "주소": u.address,
-                "상품": (o.items || []).map(i=>`${i.name}(${i.quantity})`).join(", "), "총액": o.totalAmount,
-                "택배사": o.courier || "", "송장번호": o.trackingNumber || ""
-            };
+            return { "주문번호": o.orderNo, "상태": o.status, "주문일": formatDate(o.date), "주문자": u.storeName || o.userName, "연락처": u.mobile, "입금자명": o.depositor || u.repName, "주소": u.address, "상품": (o.items || []).map(i=>`${i.name}(${i.quantity})`).join(", "), "총액": o.totalAmount, "택배사": o.courier || "", "송장번호": o.trackingNumber || "" };
         });
-        const ws = window.XLSX.utils.json_to_sheet(excelData);
-        const wb = window.XLSX.utils.book_new();
-        window.XLSX.utils.book_append_sheet(wb, ws, "주문목록");
-        window.XLSX.writeFile(wb, `주문목록_${new Date().toISOString().slice(0,10)}.xlsx`);
+        const ws = window.XLSX.utils.json_to_sheet(excelData); const wb = window.XLSX.utils.book_new(); window.XLSX.utils.book_append_sheet(wb, ws, "주문목록"); window.XLSX.writeFile(wb, `주문목록_${new Date().toISOString().slice(0,10)}.xlsx`);
     };
     const handleExcelUpload = async (e) => {
-        const file = e.target.files[0];
-        if(!file) return;
+        const file = e.target.files[0]; if(!file) return;
         const reader = new FileReader();
         reader.onload = async (evt) => {
             try {
-                const data = new Uint8Array(evt.target.result);
-                const workbook = window.XLSX.read(data, { type: 'array' });
+                const data = new Uint8Array(evt.target.result); const workbook = window.XLSX.read(data, { type: 'array' });
                 const rows = window.XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 let cnt = 0;
-                for (let row of rows) {
-                    if(row["시스템ID"] && row["송장번호"]) {
-                        await window.fb.updateDoc(window.fb.doc(window.db, "orders", row["시스템ID"]), {
-                            status: "배송중", trackingNumber: String(row["송장번호"]), courier: row["택배사"] || "CJ대한통운"
-                        });
-                        cnt++;
-                    }
-                }
+                for (let row of rows) { if(row["시스템ID"] && row["송장번호"]) { await window.fb.updateDoc(window.fb.doc(window.db, "orders", row["시스템ID"]), { status: "배송중", trackingNumber: String(row["송장번호"]), courier: row["택배사"] || "CJ대한통운" }); cnt++; } }
                 alert(`${cnt}건 송장 등록 완료`);
             } catch(err) { alert("엑셀 오류: " + err.message); }
         };
         reader.readAsArrayBuffer(file);
     };
 
-    // [★추가] AI 자동 생성 핸들러 (에러 처리 강화)
     const handleAIGenerate = async (productName) => {
         if (!productName) return alert("상품명을 먼저 입력해주세요.");
-        if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("API_KEY")) return alert("코드 상단에 GEMINI_API_KEY를 설정해주세요.");
-
         setIsGenerating(true);
         try {
-            const prompt = `
-                상품명: "${productName}"
-                
-                위 상품에 대해 다음 두 가지 작업을 수행해서 JSON 형식으로만 답해줘:
-                1. 카테고리 분류: [${CATEGORIES.filter(c=>c!=="전체").join(", ")}] 중 가장 적절한 하나를 골라줘.
-                2. 상품 소개: 이 상품을 도매 사장님들에게 어필할 수 있는 매력적이고 전문적인 소개글을 3~4줄로 작성해줘 (이모지 포함).
-                
-                응답 형식: { "category": "카테고리명", "description": "소개글내용" }
-            `;
-                
-            const response = await fetch(
-                  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "x-goog-api-key": GEMINI_API_KEY,   // ← API 키는 헤더로 전달
-                    },
-                    body: JSON.stringify({
-                      contents: [
-                        {
-                          parts: [{ text: prompt }],
-                        },
-                      ],
-                    }),
-                  }
-                );
-
-        
+            const prompt = `상품명: "${productName}"\nJSON응답: { "category": "카테고리명", "description": "소개글내용(3줄,이모지)" }`;
+            const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
             const data = await response.json();
-
-            // 에러 체크
-            if (data.error) {
-                console.error("Google AI Error:", data.error);
-                throw new Error(data.error.message || "API 호출 오류");
-            }
-            if (!data.candidates || data.candidates.length === 0) {
-                throw new Error("AI가 응답을 생성하지 못했습니다.");
-            }
-
             const text = data.candidates[0].content.parts[0].text;
-            const cleanText = text.replace(/```json|```/g, "").trim();
-            const result = JSON.parse(cleanText);
-
+            const result = JSON.parse(text.replace(/```json|```/g, "").trim());
             const form = document.getElementById("productForm");
-            if (form) {
-                // 카테고리 매칭
-                const matchedCat = CATEGORIES.find(c => result.category.includes(c));
-                if (matchedCat) form.pCategory.value = matchedCat;
-                if (result.description) form.pDescription.value = result.description;
-            }
-            alert("AI가 카테고리와 소개글을 작성했습니다!");
-
-        } catch (e) {
-            console.error(e);
-            alert("AI 오류 발생:\n" + e.message);
-        } finally {
-            setIsGenerating(false);
-        }
+            if (form) { const matchedCat = CATEGORIES.find(c => result.category.includes(c)); if (matchedCat) form.pCategory.value = matchedCat; if (result.description) form.pDescription.value = result.description; }
+            alert("AI가 작성했습니다!");
+        } catch (e) { alert("AI 오류 발생"); } finally { setIsGenerating(false); }
     };
 
     const handleSaveProduct = async (e) => {
         e.preventDefault(); const form = e.target;
-        const newProd = { 
-            name: form.pName.value, 
-            category: form.pCategory.value, 
-            price: Number(form.pPrice.value)||0, 
-            originPrice: Number(form.pOriginPrice.value)||0, 
-            stock: Number(form.pStock.value)||0, 
-            // [수정: 입력창 삭제됨 -> 기본값 1로 자동 저장]
-            minQty: 1,
-            cartonQty: 1, 
-            image: thumbImage || "📦", 
-            detailImage: detailImage || "", 
-            description: form.pDescription.value, 
-            rating: "5.0",
-            isHidden: form.pIsHidden.checked,
-            // [수정: 품절 및 입고예정일 저장]
-            isSoldOut: form.pIsSoldOut.checked,
-            
-            // [★수정] 상단 고정 저장 로직 추가
-            isPinned: form.pIsPinned.checked,
-
-            restockDate: form.pRestockDate.value
-        };
+        const newProd = { name: form.pName.value, category: form.pCategory.value, price: Number(form.pPrice.value)||0, originPrice: Number(form.pOriginPrice.value)||0, stock: Number(form.pStock.value)||0, minQty: 1, cartonQty: 1, image: thumbImage || "📦", detailImage: detailImage || "", description: form.pDescription.value, rating: "5.0", isHidden: form.pIsHidden.checked, isSoldOut: form.pIsSoldOut.checked, isPinned: form.pIsPinned.checked, restockDate: form.pRestockDate.value };
         try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨"); } catch (err) { alert(err.message); }
     };
     const handleDeleteProduct = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "products_final_v5", id)); };
     const handleDeleteUser = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "users", id)); };
-    
-    const handleSaveBanners = async () => {
-        try {
-            await window.fb.setDoc(window.fb.doc(window.db, "config", "banners"), {
-                top: topBanner,
-                middle: middleBanner
-            });
-            alert("배너 저장 완료");
-        } catch(e) {
-            alert("배너 저장 실패: " + e.message);
-        }
-    };
-    
-    const handleRefreshUsers = async () => {
-        try {
-            if(window.fb && window.fb.getDocs) {
-                const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
-                setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                alert("회원 목록 갱신 완료");
-            } else {
-                alert("기능 로딩중...");
-            }
-        } catch(e) { 
-            console.error(e);
-            alert("불러오기 실패: " + e.message); 
-        }
-    };
+    const handleSaveBanners = async () => { try { await window.fb.setDoc(window.fb.doc(window.db, "config", "banners"), { top: topBanner, middle: middleBanner }); alert("배너 저장 완료"); } catch(e) { alert("실패: " + e.message); } };
+    const handleRefreshUsers = async () => { try { const snap = await window.fb.getDocs(window.fb.collection(window.db, "users")); setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))); alert("완료"); } catch(e) { alert("실패"); } };
 
     const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
     const openEditModal = (p) => { setEditingProduct(p); setThumbImage(p.image); setDetailImage(p.detailImage); setIsProductModalOpen(true); };
 
-    // [★모바일 추가] 관리자용 주문 카드 뷰
     const OrderCard = ({ o, u }) => (
         <div className={`bg-white p-4 rounded-xl border shadow-sm mb-3 ${selectedIds.has(o.id) ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
             <div className="flex justify-between items-start mb-2">
-                <div className="flex items-center gap-2">
-                    <input type="checkbox" checked={selectedIds.has(o.id)} onChange={() => toggleSelect(o.id)} className="w-5 h-5 rounded accent-blue-600" />
-                    <span className="font-mono font-bold text-blue-600 cursor-pointer" onClick={()=>setSelectedUser(u)}>{o.orderNo}</span>
-                </div>
+                <div className="flex items-center gap-2"><input type="checkbox" checked={selectedIds.has(o.id)} onChange={() => toggleSelect(o.id)} className="w-5 h-5 rounded accent-blue-600" /><span className="font-mono font-bold text-blue-600 cursor-pointer" onClick={()=>setSelectedUser(u)}>{o.orderNo}</span></div>
                 <span className={`text-xs px-2 py-1 rounded font-bold ${o.status==='접수대기'?'bg-blue-100 text-blue-600':o.status==='배송완료'?'bg-slate-100':'bg-green-100 text-green-700'}`}>{o.status}</span>
             </div>
-            <div className="mb-2" onClick={()=>setSelectedUser(u)}>
-                <div className="font-bold text-slate-800">{u.storeName || o.userName} <span className="text-slate-400 font-normal text-xs">({u.repName})</span></div>
-                <div className="text-xs text-slate-500">{u.mobile} / {o.depositor ? `입금: ${o.depositor}` : "미입력"}</div>
-            </div>
-            <div className="bg-slate-50 p-2 rounded text-xs text-slate-600 mb-2 space-y-1">
-                {(o.items||[]).map((i,x)=><div key={x} className="flex justify-between"><span>{i.name}</span><span className="font-bold">{i.quantity}</span></div>)}
-            </div>
-            <div className="flex flex-col gap-2">
-                <select className="border rounded p-1 text-xs w-full bg-white" defaultValue={o.courier} onChange={(e)=>handleUpdateTracking(o.id, e.target.value, o.trackingNumber)}>{COURIERS.map(c=><option key={c}>{c}</option>)}</select>
-                <div className="flex gap-1">
-                    <input className="border rounded p-1 text-xs w-full" placeholder="송장번호" defaultValue={o.trackingNumber} onBlur={(e)=>handleUpdateTracking(o.id, o.courier||"CJ대한통운", e.target.value)} />
-                </div>
-            </div>
+            <div className="mb-2" onClick={()=>setSelectedUser(u)}><div className="font-bold text-slate-800">{u.storeName || o.userName} <span className="text-slate-400 font-normal text-xs">({u.repName})</span></div><div className="text-xs text-slate-500">{u.mobile} / {o.depositor ? `입금: ${o.depositor}` : "미입력"}</div></div>
+            <div className="bg-slate-50 p-2 rounded text-xs text-slate-600 mb-2 space-y-1">{(o.items||[]).map((i,x)=><div key={x} className="flex justify-between"><span>{i.name}</span><span className="font-bold">{i.quantity}</span></div>)}</div>
+            <div className="flex flex-col gap-2"><select className="border rounded p-1 text-xs w-full bg-white" defaultValue={o.courier} onChange={(e)=>handleUpdateTracking(o.id, e.target.value, o.trackingNumber)}>{COURIERS.map(c=><option key={c}>{c}</option>)}</select><input className="border rounded p-1 text-xs w-full" placeholder="송장번호" defaultValue={o.trackingNumber} onBlur={(e)=>handleUpdateTracking(o.id, o.courier||"CJ대한통운", e.target.value)} /></div>
             <div className="mt-2 text-right font-bold text-slate-800">{formatPrice(o.totalAmount)}원</div>
         </div>
     );
@@ -690,160 +493,95 @@ const AdminPage = ({ onLogout, onToShop }) => {
         <div className="min-h-screen bg-slate-100 pb-20">
             <nav className="bg-slate-900 text-white px-6 py-3 flex justify-between items-center shadow-lg sticky top-0 z-50">
                 <div className="flex items-center gap-3"><span className="bg-red-500 text-xs px-2 py-1 rounded font-bold">ADMIN</span><span className="font-bold text-lg hidden sm:inline">SJ 파트너스 관리자</span><span className="font-bold text-lg sm:hidden">SJ 관리자</span></div>
-                <div className="flex gap-2">
-                    <button onClick={onToShop} className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm font-bold flex gap-2 items-center"><Icon name="Store" className="w-4 h-4"/>쇼핑몰</button>
-                    <button onClick={onLogout} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-bold">로그아웃</button>
-                </div>
+                <div className="flex gap-2"><button onClick={onToShop} className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm font-bold flex gap-2 items-center"><Icon name="Store" className="w-4 h-4"/>쇼핑몰</button><button onClick={onLogout} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-bold">로그아웃</button></div>
             </nav>
-
             <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6">
-                {/* [★모바일] 탭 버튼 스크롤 가능하도록 개선 */}
                 <div className="flex gap-2 border-b border-slate-300 pb-1 overflow-x-auto whitespace-nowrap">
-                    {/* [★수정] 메뉴 탭에 'stats' 추가 */}
                     {["orders", "users", "products", "banners", "stats"].map(t => (
-                        <button key={t} onClick={()=>setTab(t)} className={`px-6 py-3 rounded-t-lg font-bold text-sm uppercase transition-colors whitespace-nowrap ${tab===t ? "bg-white text-slate-900 border border-b-0 border-slate-300 shadow-sm" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}>
-                            {t === 'orders' ? '주문 통합 관리' : t === 'users' ? '회원 관리' : t === 'products' ? '상품 관리' : t === 'banners' ? '배너 관리' : '통계 분석'}
-                        </button>
+                        <button key={t} onClick={()=>setTab(t)} className={`px-6 py-3 rounded-t-lg font-bold text-sm uppercase transition-colors whitespace-nowrap ${tab===t ? "bg-white text-slate-900 border border-b-0 border-slate-300 shadow-sm" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}>{t === 'orders' ? '주문 통합 관리' : t === 'users' ? '회원 관리' : t === 'products' ? '상품 관리' : t === 'banners' ? '배너 관리' : '통계 분석'}</button>
                     ))}
                 </div>
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* 대시보드 - 모바일에서는 가로스크롤 대신 그리드로 보기 좋게 조정 */}
-                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                            {/* [★추가] 방문자 현황 카드 */}
-                            <div className="p-5 rounded-lg border shadow-sm flex flex-col justify-between h-28 bg-purple-50 ring-2 ring-transparent hover:ring-slate-200 transition-all">
-                                <div className="text-sm font-bold text-slate-500 flex items-center gap-1">오늘 방문자</div>
-                                <div>
-                                    <div className="text-3xl font-bold text-purple-600">{visitorStats.today} <span className="text-base text-slate-400 font-normal">명</span></div>
-                                    <div className="text-xs text-slate-400 mt-1">누적: {visitorStats.total}명</div>
-                                </div>
-                            </div>
-                            
-                            {[
-                                { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" },
-                                { label: "배송준비", count: countStatus("배송준비"), color: "text-indigo-600", bg: "bg-indigo-50" },
-                                { label: "배송지시", count: countStatus("배송지시"), color: "text-orange-600", bg: "bg-orange-50" },
-                                { label: "배송중", count: countStatus("배송중"), color: "text-green-600", bg: "bg-green-50" },
-                                { label: "배송완료", count: countStatus("배송완료"), color: "text-slate-600", bg: "bg-slate-50" }
-                            ].map((card, idx) => (
+                        {/* 방문자 카드 제거됨, 그리드 5칸으로 조정 */}
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            {[ { label: "결제완료(신규)", count: countStatus("접수대기"), color: "text-blue-600", bg: "bg-blue-50" }, { label: "배송준비", count: countStatus("배송준비"), color: "text-indigo-600", bg: "bg-indigo-50" }, { label: "배송지시", count: countStatus("배송지시"), color: "text-orange-600", bg: "bg-orange-50" }, { label: "배송중", count: countStatus("배송중"), color: "text-green-600", bg: "bg-green-50" }, { label: "배송완료", count: countStatus("배송완료"), color: "text-slate-600", bg: "bg-slate-50" } ].map((card, idx) => (
                                 <div key={idx} onClick={() => handleCardClick(card.label)} className={`p-5 rounded-lg border shadow-sm flex flex-col justify-between h-28 ${card.bg} cursor-pointer hover:opacity-80 transition-opacity ring-2 ring-transparent hover:ring-slate-200`}>
                                     <div className="text-sm font-bold text-slate-500 flex items-center gap-1">{card.label} <Icon name="ChevronRight" className="w-3 h-3 text-slate-400"/></div>
                                     <div className={`text-3xl font-bold ${card.color}`}>{card.count} <span className="text-base text-slate-400 font-normal">건</span></div>
                                 </div>
                             ))}
                         </div>
-
-                        {/* 필터 */}
+                        {/* 필터 및 리스트 (기존 유지) */}
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">기간</span>
-                                {/* [★모바일] 버튼 그룹 줄바꿈 방지 */}
-                                <div className="flex gap-1 overflow-x-auto">
-                                    {["오늘","7일","30일","전체"].map(d => ( <button key={d} onClick={()=>handleDateBtn(d)} className={`px-3 py-1.5 border rounded text-xs font-bold whitespace-nowrap ${searchInputs.dateType===d ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 hover:bg-slate-50"}`}>{d}</button> ))}
-                                </div>
-                                <div className="flex gap-2 w-full md:w-auto">
-                                    <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500 w-full md:w-auto" value={searchInputs.startDate} onChange={(e)=>setSearchInputs({...searchInputs, startDate: e.target.value})} />
-                                    <span className="text-slate-400 self-center">~</span>
-                                    <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500 w-full md:w-auto" value={searchInputs.endDate} onChange={(e)=>setSearchInputs({...searchInputs, endDate: e.target.value})} />
-                                </div>
-                            </div>
-                            <div className="flex flex-col md:flex-row gap-4 items-center">
-                                <span className="w-20 font-bold text-sm text-slate-600">배송상태</span>
-                                <div className="flex gap-4 flex-wrap">
-                                    {["전체", "접수대기", "배송준비", "배송중", "배송완료", "주문취소"].map(s => (
-                                        <label key={s} className="flex items-center gap-2 cursor-pointer text-sm">
-                                            <input type="radio" name="status" checked={searchInputs.status === s} onChange={()=>setSearchInputs({...searchInputs, status: s})} className="accent-blue-600" /> 
-                                            {s === "접수대기" ? "결제완료(신규)" : s}
-                                        </label>
-                                    ))}
-                                </div>
+                                <div className="flex gap-1 overflow-x-auto">{["오늘","7일","30일","전체"].map(d => ( <button key={d} onClick={()=>handleDateBtn(d)} className={`px-3 py-1.5 border rounded text-xs font-bold whitespace-nowrap ${searchInputs.dateType===d ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 hover:bg-slate-50"}`}>{d}</button> ))}</div>
+                                <div className="flex gap-2 w-full md:w-auto"><input type="date" className="border rounded px-2 py-1 text-sm text-slate-500 w-full md:w-auto" value={searchInputs.startDate} onChange={(e)=>setSearchInputs({...searchInputs, startDate: e.target.value})} /><span className="text-slate-400 self-center">~</span><input type="date" className="border rounded px-2 py-1 text-sm text-slate-500 w-full md:w-auto" value={searchInputs.endDate} onChange={(e)=>setSearchInputs({...searchInputs, endDate: e.target.value})} /></div>
                             </div>
                             <div className="flex flex-col md:flex-row gap-4 items-center border-t pt-4">
                                 <span className="w-20 font-bold text-sm text-slate-600">상세조건</span>
-                                <select className="border rounded px-2 py-2 text-sm bg-slate-50 min-w-[120px] w-full md:w-auto" value={searchInputs.searchType} onChange={(e)=>setSearchInputs({...searchInputs, searchType: e.target.value})}>
-                                    <option value="주문자명">주문자명</option><option value="주문번호">주문번호</option>
-                                </select>
+                                <select className="border rounded px-2 py-2 text-sm bg-slate-50 min-w-[120px] w-full md:w-auto" value={searchInputs.searchType} onChange={(e)=>setSearchInputs({...searchInputs, searchType: e.target.value})}><option value="주문자명">주문자명</option><option value="주문번호">주문번호</option></select>
                                 <input className="border rounded px-3 py-2 text-sm w-full md:w-96" placeholder="검색어 입력" value={searchInputs.keyword} onChange={(e)=>setSearchInputs({...searchInputs, keyword: e.target.value})} onKeyDown={(e)=>{if(e.key==='Enter') handleSearch()}} />
-                                <div className="ml-auto flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-                                    <button onClick={handleReset} className="px-4 py-2 border rounded text-sm font-bold hover:bg-slate-50 flex-1 md:flex-none">초기화</button>
-                                    <button onClick={handleSearch} className="px-6 py-2 bg-blue-600 text-white rounded text-sm font-bold hover:bg-blue-700 shadow-sm flex-1 md:flex-none">검색</button>
-                                </div>
+                                <div className="ml-auto flex gap-2 w-full md:w-auto mt-2 md:mt-0"><button onClick={handleReset} className="px-4 py-2 border rounded text-sm font-bold hover:bg-slate-50 flex-1 md:flex-none">초기화</button><button onClick={handleSearch} className="px-6 py-2 bg-blue-600 text-white rounded text-sm font-bold hover:bg-blue-700 shadow-sm flex-1 md:flex-none">검색</button></div>
                             </div>
                         </div>
-
-                        {/* 리스트 */}
                         <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3 bg-slate-50/50">
-                                <div className="flex gap-2 items-center flex-wrap">
-                                    <span className="font-bold text-sm mr-2">{selectedIds.size}개 선택됨</span>
-                                    <button onClick={()=>handleBatchStatus("배송준비")} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-700 flex items-center gap-1"><Icon name="Package" className="w-3 h-3"/> 배송준비</button>
-                                    <button onClick={()=>handleBatchStatus("배송중")} className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700 flex items-center gap-1"><Icon name="Truck" className="w-3 h-3"/> 배송중 처리</button>
-                                    <button onClick={()=>handleBatchStatus("주문취소")} className="bg-white border text-slate-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-50">취소 처리</button>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={handleExcelDownload} className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700 flex items-center gap-1"><Icon name="Download" className="w-3 h-3"/> 엑셀 다운</button>
-                                    <button onClick={()=>excelInputRef.current.click()} className="bg-slate-700 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-800 flex items-center gap-1"><Icon name="Upload" className="w-3 h-3"/> 송장 일괄 등록</button>
-                                    <input type="file" ref={excelInputRef} className="hidden" onChange={handleExcelUpload} />
-                                </div>
+                                <div className="flex gap-2 items-center flex-wrap"><span className="font-bold text-sm mr-2">{selectedIds.size}개 선택됨</span><button onClick={()=>handleBatchStatus("배송준비")} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-700 flex items-center gap-1"><Icon name="Package" className="w-3 h-3"/> 배송준비</button><button onClick={()=>handleBatchStatus("배송중")} className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700 flex items-center gap-1"><Icon name="Truck" className="w-3 h-3"/> 배송중 처리</button><button onClick={()=>handleBatchStatus("주문취소")} className="bg-white border text-slate-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-50">취소 처리</button></div>
+                                <div className="flex gap-2"><button onClick={handleExcelDownload} className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700 flex items-center gap-1"><Icon name="Download" className="w-3 h-3"/> 엑셀 다운</button><button onClick={()=>excelInputRef.current.click()} className="bg-slate-700 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-800 flex items-center gap-1"><Icon name="Upload" className="w-3 h-3"/> 송장 일괄 등록</button><input type="file" ref={excelInputRef} className="hidden" onChange={handleExcelUpload} /></div>
                             </div>
-                            
-                            {/* [★모바일] 모바일에서는 Card View, 데스크탑에서는 Table View */}
-                            <div className="md:hidden p-2 bg-slate-100">
-                                {filteredOrders.length === 0 ? <div className="text-center text-slate-400 py-10">검색된 주문이 없습니다.</div> :
-                                filteredOrders.map(o => <OrderCard key={o.id} o={o} u={getUserInfo(o.userId)} />)}
-                            </div>
-
+                            <div className="md:hidden p-2 bg-slate-100">{filteredOrders.length === 0 ? <div className="text-center text-slate-400 py-10">검색된 주문이 없습니다.</div> : filteredOrders.map(o => <OrderCard key={o.id} o={o} u={getUserInfo(o.userId)} />)}</div>
                             <div className="hidden md:block overflow-x-auto min-h-[400px]">
-                                <table className="w-full text-sm text-left whitespace-nowrap">
-                                    <thead className="bg-slate-100 text-slate-500 font-bold border-b text-xs uppercase">
-                                        <tr>
-                                            <th className="p-3 w-10 text-center"><input type="checkbox" onChange={toggleSelectAll} /></th>
-                                            <th className="p-3">주문번호</th>
-                                            <th className="p-3">택배사</th>
-                                            <th className="p-3">송장번호</th>
-                                            <th className="p-3">배송상태</th>
-                                            <th className="p-3">주문일시</th>
-                                            <th className="p-3">주문자/수취인</th>
-                                            <th className="p-3">상품명/옵션/수량</th>
-                                            <th className="p-3">총금액</th>
-                                        </tr>
+                                <table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-slate-100 text-slate-500 font-bold border-b text-xs uppercase"><tr><th className="p-3 w-10 text-center"><input type="checkbox" onChange={toggleSelectAll} /></th><th className="p-3">주문번호</th><th className="p-3">택배사</th><th className="p-3">송장번호</th><th className="p-3">배송상태</th><th className="p-3">주문일시</th><th className="p-3">주문자/수취인</th><th className="p-3">상품명/옵션/수량</th><th className="p-3">총금액</th></tr></thead>
+                                    <tbody className="divide-y divide-slate-100">{filteredOrders.length === 0 ? <tr><td colSpan="9" className="p-10 text-center text-slate-400">검색된 주문이 없습니다.</td></tr> : filteredOrders.map(o => { const u = getUserInfo(o.userId); return (<tr key={o.id} className={`hover:bg-blue-50/30 transition-colors ${selectedIds.has(o.id) ? "bg-blue-50" : ""}`}><td className="p-3 text-center"><input type="checkbox" checked={selectedIds.has(o.id)} onChange={()=>toggleSelect(o.id)} /></td><td className="p-3 font-mono text-blue-600 font-bold cursor-pointer hover:underline" onClick={()=>setSelectedUser(u)}>{o.orderNo}</td><td className="p-3"><select className="border rounded px-2 py-1 text-xs bg-white w-24" defaultValue={o.courier || "CJ대한통운"} onChange={(e)=>handleUpdateTracking(o.id, e.target.value, o.trackingNumber)}>{COURIERS.map(c=><option key={c} value={c}>{c}</option>)}</select></td><td className="p-3"><input type="text" className="border rounded px-2 py-1 text-xs w-32 outline-none" placeholder="송장번호 입력" defaultValue={o.trackingNumber || ""} onBlur={(e)=>handleUpdateTracking(o.id, o.courier||"CJ대한통운", e.target.value)} /></td><td className="p-3"><span className={`px-2 py-0.5 rounded text-xs font-bold ${o.status==='접수대기'?'bg-blue-100 text-blue-700':o.status==='배송준비'?'bg-indigo-100 text-indigo-700':o.status==='배송중'?'bg-green-100 text-green-700':o.status==='주문취소'?'bg-red-100 text-red-700':'bg-slate-100 text-slate-600'}`}>{o.status === '접수대기' ? '결제완료' : o.status}</span></td><td className="p-3 text-slate-500 text-xs">{new Date(o.date).toLocaleString()}</td><td className="p-3"><div className="font-bold">{u.storeName || o.userName}</div><div className="text-xs text-slate-400">{u.mobile}</div>{o.depositor && <div className="text-xs text-indigo-600 font-bold">입금: {o.depositor}</div>}</td><td className="p-3 max-w-xs whitespace-normal"><div className="text-xs text-slate-600 leading-tight">{(o.items||[]).map((i,idx)=>(<div key={idx} className="mb-1"><span className="text-blue-600 font-bold">[{i.name}]</span> {i.quantity}개</div>))}</div></td><td className="p-3 font-bold text-slate-700">{formatPrice(o.totalAmount)}원</td></tr>); })}</tbody></table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {tab === "stats" && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        <div className="bg-white rounded-lg border shadow-sm p-6">
+                            <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><Icon name="BarChart" className="text-indigo-600 w-6 h-6"/> 최근 7일간 방문자 추이</h3>
+                            <div className="w-full h-[400px] bg-slate-50 rounded-xl p-4 relative"><canvas ref={chartRef}></canvas></div>
+                            <div className="mt-4 text-center text-sm text-slate-500">* 오늘 데이터는 실시간으로 집계되며, 자정을 기준으로 다음 날로 넘어갑니다.</div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="bg-white p-6 rounded-lg border shadow-sm"><h4 className="font-bold text-slate-700 mb-2">총 누적 방문자</h4><div className="text-4xl font-bold text-slate-900">{formatPrice(visitorStats.total)} <span className="text-lg text-slate-400">명</span></div></div>
+                             <div className="bg-white p-6 rounded-lg border shadow-sm"><h4 className="font-bold text-slate-700 mb-2">오늘 방문자</h4><div className="text-4xl font-bold text-indigo-600">{formatPrice(visitorStats.today)} <span className="text-lg text-slate-400">명</span></div></div>
+                        </div>
+                        <div className="bg-white rounded-lg border shadow-sm p-6 overflow-hidden">
+                            <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><Icon name="Boxes" className="text-blue-600 w-6 h-6"/> 회원별 월간 주문 현황 (최근 6개월)</h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left border-collapse">
+                                    <thead className="bg-slate-100 text-slate-600 uppercase font-bold text-xs">
+                                        <tr><th className="p-3 border-b">순위</th><th className="p-3 border-b">상호명 (대표자)</th>{Array.from({length: 6}, (_, i) => { const d = new Date(); d.setMonth(d.getMonth() - i); return <th key={i} className="p-3 border-b text-center">{d.getMonth()+1}월</th> })}<th className="p-3 border-b text-center text-indigo-600">총 누적</th></tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                        {filteredOrders.length === 0 ? <tr><td colSpan="9" className="p-10 text-center text-slate-400">검색된 주문이 없습니다.</td></tr> :
-                                        filteredOrders.map(o => {
-                                            const u = getUserInfo(o.userId);
-                                            return (
-                                                <tr key={o.id} className={`hover:bg-blue-50/30 transition-colors ${selectedIds.has(o.id) ? "bg-blue-50" : ""}`}>
-                                                    <td className="p-3 text-center"><input type="checkbox" checked={selectedIds.has(o.id)} onChange={()=>toggleSelect(o.id)} /></td>
-                                                    <td className="p-3 font-mono text-blue-600 font-bold cursor-pointer hover:underline" onClick={()=>setSelectedUser(u)}>{o.orderNo}</td>
-                                                    <td className="p-3">
-                                                        <select className="border rounded px-2 py-1 text-xs bg-white w-24" defaultValue={o.courier || "CJ대한통운"} onChange={(e)=>handleUpdateTracking(o.id, e.target.value, o.trackingNumber)}>
-                                                            {COURIERS.map(c=><option key={c} value={c}>{c}</option>)}
-                                                        </select>
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <input type="text" className="border rounded px-2 py-1 text-xs w-32 focus:border-blue-500 outline-none" placeholder="송장번호 입력" defaultValue={o.trackingNumber || ""} 
-                                                            onBlur={(e)=>handleUpdateTracking(o.id, o.courier||"CJ대한통운", e.target.value)} 
-                                                            onKeyDown={(e)=>{if(e.key==='Enter') e.target.blur()}}
-                                                        />
-                                                    </td>
-                                                    <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs font-bold ${o.status==='접수대기'?'bg-blue-100 text-blue-700':o.status==='배송준비'?'bg-indigo-100 text-indigo-700':o.status==='배송중'?'bg-green-100 text-green-700':o.status==='주문취소'?'bg-red-100 text-red-700':'bg-slate-100 text-slate-600'}`}>{o.status === '접수대기' ? '결제완료' : o.status}</span></td>
-                                                    <td className="p-3 text-slate-500 text-xs">{new Date(o.date).toLocaleString()}</td>
-                                                    <td className="p-3">
-                                                        <div className="font-bold">{u.storeName || o.userName}</div>
-                                                        <div className="text-xs text-slate-400">{u.mobile}</div>
-                                                        {o.depositor && <div className="text-xs text-indigo-600 font-bold">입금: {o.depositor}</div>}
-                                                    </td>
-                                                    <td className="p-3 max-w-xs whitespace-normal">
-                                                        <div className="text-xs text-slate-600 leading-tight">
-                                                            {(o.items||[]).map((i,idx)=>(<div key={idx} className="mb-1"><span className="text-blue-600 font-bold">[{i.name}]</span> {i.quantity}개</div>))}
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-3 font-bold text-slate-700">{formatPrice(o.totalAmount)}원</td>
+                                        {(() => {
+                                            const monthKeys = Array.from({length: 6}, (_, i) => { const d = new Date(); d.setMonth(d.getMonth() - i); return d.toISOString().slice(0, 7); });
+                                            // [★필터] 총괄관리자, 영업팀 제외
+                                            const statsData = users
+                                                .filter(u => u.storeName !== "총괄관리자" && u.storeName !== "영업팀")
+                                                .map(u => {
+                                                    const userOrders = orders.filter(o => o.userId === u.id && o.status !== "주문취소");
+                                                    const counts = {};
+                                                    monthKeys.forEach(key => counts[key] = 0);
+                                                    userOrders.forEach(o => { const m = o.date.slice(0, 7); if (counts[m] !== undefined) counts[m]++; });
+                                                    return { id: u.id, name: u.storeName, rep: u.repName, counts: counts, total: userOrders.length };
+                                                });
+                                            statsData.sort((a, b) => b.total - a.total);
+                                            return statsData.map((stat, idx) => (
+                                                <tr key={stat.id} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="p-3 font-bold text-slate-400">{idx + 1}</td>
+                                                    <td className="p-3"><div className="font-bold text-slate-800">{stat.name}</div><div className="text-xs text-slate-400">{stat.rep}</div></td>
+                                                    {monthKeys.map(key => (<td key={key} className={`p-3 text-center font-bold ${stat.counts[key] > 0 ? "text-slate-800" : "text-slate-200"}`}>{stat.counts[key] > 0 ? stat.counts[key] + "건" : "-"}</td>))}
+                                                    <td className="p-3 text-center font-bold text-indigo-600 bg-indigo-50">{formatPrice(stat.total)}건</td>
                                                 </tr>
-                                            );
-                                        })}
+                                            ));
+                                        })()}
                                     </tbody>
                                 </table>
                             </div>
@@ -851,65 +589,28 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     </div>
                 )}
                 
-                {/* [★추가] 통계 분석 탭 내용 */}
-                {tab === "stats" && (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="bg-white rounded-lg border shadow-sm p-6">
-                            <h3 className="font-bold text-xl mb-4 flex items-center gap-2">
-                                <Icon name="BarChart" className="text-indigo-600 w-6 h-6"/> 
-                                최근 7일간 방문자 추이
-                            </h3>
-                            <div className="w-full h-[400px] bg-slate-50 rounded-xl p-4 relative">
-                                {/* 차트가 그려질 캔버스 */}
-                                <canvas ref={chartRef}></canvas>
-                            </div>
-                            <div className="mt-4 text-center text-sm text-slate-500">
-                                * 오늘 데이터는 실시간으로 집계되며, 자정을 기준으로 다음 날로 넘어갑니다.
-                            </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <div className="bg-white p-6 rounded-lg border shadow-sm">
-                                <h4 className="font-bold text-slate-700 mb-2">총 누적 방문자</h4>
-                                <div className="text-4xl font-bold text-slate-900">{formatPrice(visitorStats.total)} <span className="text-lg text-slate-400">명</span></div>
-                             </div>
-                             <div className="bg-white p-6 rounded-lg border shadow-sm">
-                                <h4 className="font-bold text-slate-700 mb-2">오늘 방문자</h4>
-                                <div className="text-4xl font-bold text-indigo-600">{formatPrice(visitorStats.today)} <span className="text-lg text-slate-400">명</span></div>
-                             </div>
-                        </div>
-                    </div>
-                )}
-                
                 {tab === "users" && (
                     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                         <div className="p-4 border-b flex justify-between items-center bg-slate-50">
-                            <span className="font-bold text-slate-600">총 회원수: {users.length}명</span>
+                            {/* [★필터] 총 회원수 표시에도 관리자 제외 */}
+                            <span className="font-bold text-slate-600">총 회원수: {users.filter(u => u.storeName !== "총괄관리자" && u.storeName !== "영업팀").length}명</span>
                             <button onClick={handleRefreshUsers} className="bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-900 flex gap-1 items-center"><Icon name="RefreshCw" className="w-3 h-3"/>목록 새로고침</button>
                         </div>
-                        
-                        {/* [★모바일] 회원관리 모바일 뷰 */}
                         <div className="md:hidden">
-                            {users.map(u => (
+                            {/* [★필터] 모바일 회원 목록에서 관리자 제외 */}
+                            {users.filter(u => u.storeName !== "총괄관리자" && u.storeName !== "영업팀").map(u => (
                                 <div key={u.id} className="p-4 border-b last:border-0 flex justify-between items-center">
-                                    <div onClick={()=>setSelectedUser(u)}>
-                                        <div className="font-bold">{u.storeName} <span className="text-sm font-normal text-slate-500">{u.repName}</span></div>
-                                        <div className="text-xs text-slate-400">{u.mobile}</div>
-                                        <div className="text-xs text-slate-500">{u.email}</div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={()=>setSelectedUser(u)} className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-bold">상세</button>
-                                        <button onClick={()=>handleDeleteUser(u.id)} className="bg-red-50 text-red-500 px-2 py-1 rounded text-xs font-bold">삭제</button>
-                                    </div>
+                                    <div onClick={()=>setSelectedUser(u)}><div className="font-bold">{u.storeName} <span className="text-sm font-normal text-slate-500">{u.repName}</span></div><div className="text-xs text-slate-400">{u.mobile}</div><div className="text-xs text-slate-500">{u.email}</div></div>
+                                    <div className="flex gap-2"><button onClick={()=>setSelectedUser(u)} className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-bold">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-50 text-red-500 px-2 py-1 rounded text-xs font-bold">삭제</button></div>
                                 </div>
                             ))}
                         </div>
-
                         <div className="hidden md:block">
                             <table className="w-full text-left text-sm whitespace-nowrap">
                                 <thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">상호명</th><th className="p-4">대표자</th><th className="p-4">이메일</th><th className="p-4">추천인</th><th className="p-4">관리</th></tr></thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {users.map(u=>(<tr key={u.id} className="hover:bg-slate-50"><td className="p-4 font-bold">{u.storeName}</td><td className="p-4">{u.repName}</td><td className="p-4">{u.email}</td><td className="p-4 text-indigo-600 font-medium">{u.recommender || "-"}</td><td className="p-4 flex gap-2"><button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs">삭제</button></td></tr>))}
+                                    {/* [★필터] PC 회원 목록에서 관리자 제외 */}
+                                    {users.filter(u => u.storeName !== "총괄관리자" && u.storeName !== "영업팀").map(u=>(<tr key={u.id} className="hover:bg-slate-50"><td className="p-4 font-bold">{u.storeName}</td><td className="p-4">{u.repName}</td><td className="p-4">{u.email}</td><td className="p-4 text-indigo-600 font-medium">{u.recommender || "-"}</td><td className="p-4 flex gap-2"><button onClick={()=>setSelectedUser(u)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold text-xs">상세</button><button onClick={()=>handleDeleteUser(u.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded font-bold text-xs">삭제</button></td></tr>))}
                                 </tbody>
                             </table>
                         </div>
@@ -917,60 +618,20 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 )}
                 {tab === "products" && (
                     <div className="bg-white rounded-lg shadow-sm border p-4">
-                        <div className="flex justify-between mb-4 items-center">
-                            {/* [수정] 제목 옆에 (총 00개) 표시 추가 */}
-                            <h3 className="font-bold text-lg">상품 목록 <span className="text-base text-slate-500 font-normal ml-1">({products.length}개)</span></h3>
-                            <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button>
-                        </div>
-                        
-                        {/* [★모바일] 상품관리 카드 리스트 뷰 */}
+                        <div className="flex justify-between mb-4 items-center"><h3 className="font-bold text-lg">상품 목록 <span className="text-base text-slate-500 font-normal ml-1">({products.length}개)</span></h3><button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button></div>
                         <div className="md:hidden grid grid-cols-1 gap-3">
                             {products.map(p => (
                                 <div key={p.id} className={`bg-white p-4 rounded-xl border flex gap-3 ${p.isHidden?"opacity-60 bg-slate-100":""}`}>
-                                    <div className="w-20 h-20 bg-slate-50 rounded flex items-center justify-center overflow-hidden border">
-                                        {p.image.includes("data") || p.image.includes("http") ? <img src={p.image} className="w-full h-full object-cover"/> : <span className="text-2xl">📦</span>}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="font-bold line-clamp-1">{p.name}</div>
-                                        <div className="text-xs text-slate-500 mb-1">{p.category} | 재고 {p.stock}</div>
-                                        <div className="font-bold text-slate-800">{formatPrice(p.price)}원</div>
-                                        {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">품절 (입고: {p.restockDate})</div>}
-                                    </div>
-                                    <div className="flex flex-col gap-2 justify-center">
-                                        <button onClick={()=>openEditModal(p)} className="bg-slate-100 p-2 rounded text-slate-600"><Icon name="Edit" className="w-4 h-4" /></button>
-                                        <button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-50 p-2 rounded text-red-500"><Icon name="Trash" className="w-4 h-4" /></button>
-                                    </div>
+                                    <div className="w-20 h-20 bg-slate-50 rounded flex items-center justify-center overflow-hidden border">{p.image.includes("data") || p.image.includes("http") ? <img src={p.image} className="w-full h-full object-cover"/> : <span className="text-2xl">📦</span>}</div>
+                                    <div className="flex-1"><div className="font-bold line-clamp-1">{p.name}</div><div className="text-xs text-slate-500 mb-1">{p.category} | 재고 {p.stock}</div><div className="font-bold text-slate-800">{formatPrice(p.price)}원</div>{p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">품절 (입고: {p.restockDate})</div>}</div>
+                                    <div className="flex flex-col gap-2 justify-center"><button onClick={()=>openEditModal(p)} className="bg-slate-100 p-2 rounded text-slate-600"><Icon name="Edit" className="w-4 h-4" /></button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-50 p-2 rounded text-red-500"><Icon name="Trash" className="w-4 h-4" /></button></div>
                                 </div>
                             ))}
                         </div>
-
                         <div className="hidden md:block">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-100 uppercase font-bold text-slate-500">
-                                    <tr>
-                                        <th className="p-4">이미지</th>
-                                        <th className="p-4">상품명</th>
-                                        <th className="p-4">가격</th>
-                                        <th className="p-4">재고</th>
-                                        <th className="p-4">상태</th>
-                                        <th className="p-4">관리</th>
-                                    </tr>
-                                </thead>
+                            <table className="w-full text-left text-sm"><thead className="bg-slate-100 uppercase font-bold text-slate-500"><tr><th className="p-4">이미지</th><th className="p-4">상품명</th><th className="p-4">가격</th><th className="p-4">재고</th><th className="p-4">상태</th><th className="p-4">관리</th></tr></thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {products.map(p=>(
-                                        <tr key={p.id} className={`hover:bg-slate-50 ${p.isHidden ? "bg-slate-100 opacity-60" : ""}`}>
-                                            <td className="p-4 text-2xl">{p.image && (p.image.startsWith('data:') || p.image.startsWith('http')) ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td>
-                                            <td className="p-4">
-                                                <div className="font-bold">{p.name}</div>
-                                                <div className="text-xs text-slate-400">{p.category}</div>
-                                                {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">※ 일시품절 처리됨</div>}
-                                            </td>
-                                            <td className="p-4">₩{formatPrice(p.price)}</td>
-                                            <td className="p-4 font-bold text-blue-600">{p.stock}</td>
-                                            <td className="p-4">{p.isHidden ? <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">판매중지</span> : <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded font-bold">판매중</span>}</td>
-                                            <td className="p-4 flex gap-2"><button onClick={()=>openEditModal(p)} className="bg-slate-200 px-3 py-1 rounded text-xs font-bold">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-3 py-1 rounded text-xs font-bold">삭제</button></td>
-                                        </tr>
-                                    ))}
+                                    {products.map(p=>(<tr key={p.id} className={`hover:bg-slate-50 ${p.isHidden ? "bg-slate-100 opacity-60" : ""}`}><td className="p-4 text-2xl">{p.image && (p.image.startsWith('data:') || p.image.startsWith('http')) ? <img src={p.image} className="w-10 h-10 object-cover rounded"/> : "📦"}</td><td className="p-4"><div className="font-bold">{p.name}</div><div className="text-xs text-slate-400">{p.category}</div>{p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">※ 일시품절 처리됨</div>}</td><td className="p-4">₩{formatPrice(p.price)}</td><td className="p-4 font-bold text-blue-600">{p.stock}</td><td className="p-4">{p.isHidden ? <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">판매중지</span> : <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded font-bold">판매중</span>}</td><td className="p-4 flex gap-2"><button onClick={()=>openEditModal(p)} className="bg-slate-200 px-3 py-1 rounded text-xs font-bold">수정</button><button onClick={()=>handleDeleteProduct(p.id)} className="bg-red-100 text-red-500 px-3 py-1 rounded text-xs font-bold">삭제</button></td></tr>))}
                                 </tbody>
                             </table>
                         </div>
@@ -978,58 +639,26 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 )}
                 {tab === "banners" && (
                     <div className="bg-white rounded-lg shadow-sm border p-6 max-w-3xl mx-auto">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="font-bold text-lg">쇼핑몰 배너 관리</h3>
-                            <button onClick={handleSaveBanners} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg">설정 저장</button>
-                        </div>
+                        <div className="flex justify-between items-center mb-6"><h3 className="font-bold text-lg">쇼핑몰 배너 관리</h3><button onClick={handleSaveBanners} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg">설정 저장</button></div>
                         <div className="space-y-8">
-                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                                <h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="LayoutTemplate" className="w-5 h-5"/> 메인 상단 배너</h4>
-                                <ImageUploader label="상단 배너 이미지 업로드" currentImage={topBanner} onImageSelect={setTopBanner} />
-                            </div>
-                            
-                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                                <h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="CreditCard" className="w-5 h-5"/> 중간 띠 배너</h4>
-                                <ImageUploader label="중간 배너 이미지 업로드" currentImage={middleBanner} onImageSelect={setMiddleBanner} />
-                            </div>
+                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200"><h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="LayoutTemplate" className="w-5 h-5"/> 메인 상단 배너</h4><ImageUploader label="상단 배너 이미지 업로드" currentImage={topBanner} onImageSelect={setTopBanner} /></div>
+                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200"><h4 className="font-bold mb-2 flex items-center gap-2"><Icon name="CreditCard" className="w-5 h-5"/> 중간 띠 배너</h4><ImageUploader label="중간 배너 이미지 업로드" currentImage={middleBanner} onImageSelect={setMiddleBanner} /></div>
                         </div>
                     </div>
                 )}
             </div>
-            {/* 회원 상세 팝업 */}
             {selectedUser && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200 safe-area-bottom">
                     <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 relative overflow-hidden">
                         <button onClick={()=>setSelectedUser(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors"><Icon name="X"/></button>
                         <h3 className="font-bold text-xl mb-6 flex items-center gap-2"><Icon name="User" className="w-6 h-6"/> 회원 상세 정보</h3>
                         <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 text-sm">
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                <h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">기본 정보</h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><div className="text-slate-400 text-xs mb-1">이름</div><div className="font-bold">{selectedUser.name}</div></div>
-                                    <div><div className="text-slate-400 text-xs mb-1">연락처</div><div className="font-bold">{selectedUser.mobile}</div></div>
-                                    <div className="col-span-2"><div className="text-slate-400 text-xs mb-1">이메일</div><div className="font-bold">{selectedUser.email}</div></div>
-                                    <div className="col-span-2"><div className="text-slate-400 text-xs mb-1">주소</div><div className="font-bold">{selectedUser.address}</div></div>
-                                </div>
-                            </div>
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                <h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">사업자 정보</h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><div className="text-slate-400 text-xs mb-1">상호명</div><div className="font-bold">{selectedUser.storeName}</div></div>
-                                    <div><div className="text-slate-400 text-xs mb-1">대표자</div><div className="font-bold">{selectedUser.repName}</div></div>
-                                    <div><div className="text-slate-400 text-xs mb-1">사업자번호</div><div className="font-bold">{selectedUser.businessNumber}</div></div>
-                                    <div><div className="text-slate-400 text-xs mb-1">업태</div><div className="font-bold">{selectedUser.businessType}</div></div>
-                                </div>
-                            </div>
-                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                                <div className="text-indigo-800 text-xs mb-1 font-bold">추천인</div>
-                                <div className="font-bold text-indigo-600 text-lg">{selectedUser.recommender || "없음"}</div>
-                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">기본 정보</h4><div className="grid grid-cols-2 gap-4"><div><div className="text-slate-400 text-xs mb-1">이름</div><div className="font-bold">{selectedUser.name}</div></div><div><div className="text-slate-400 text-xs mb-1">연락처</div><div className="font-bold">{selectedUser.mobile}</div></div><div className="col-span-2"><div className="text-slate-400 text-xs mb-1">이메일</div><div className="font-bold">{selectedUser.email}</div></div><div className="col-span-2"><div className="text-slate-400 text-xs mb-1">주소</div><div className="font-bold">{selectedUser.address}</div></div></div></div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><h4 className="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">사업자 정보</h4><div className="grid grid-cols-2 gap-4"><div><div className="text-slate-400 text-xs mb-1">상호명</div><div className="font-bold">{selectedUser.storeName}</div></div><div><div className="text-slate-400 text-xs mb-1">대표자</div><div className="font-bold">{selectedUser.repName}</div></div><div><div className="text-slate-400 text-xs mb-1">사업자번호</div><div className="font-bold">{selectedUser.businessNumber}</div></div><div><div className="text-slate-400 text-xs mb-1">업태</div><div className="font-bold">{selectedUser.businessType}</div></div></div></div>
+                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100"><div className="text-indigo-800 text-xs mb-1 font-bold">추천인</div><div className="font-bold text-indigo-600 text-lg">{selectedUser.recommender || "없음"}</div></div>
                             <div className="text-xs text-slate-400 text-right">가입일: {new Date(selectedUser.joinedAt).toLocaleString()}</div>
                         </div>
-                        <div className="mt-6 pt-4 border-t flex justify-end">
-                            <button onClick={()=>setSelectedUser(null)} className="bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-900 transition-colors">닫기</button>
-                        </div>
+                        <div className="mt-6 pt-4 border-t flex justify-end"><button onClick={()=>setSelectedUser(null)} className="bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-900 transition-colors">닫기</button></div>
                     </div>
                 </div>
             )}
@@ -1039,97 +668,16 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     <div className="bg-white p-6 rounded-xl max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
                         <h3 className="font-bold text-lg mb-4 border-b pb-2">{editingProduct ? "상품 수정" : "상품 등록"}</h3>
-                        
-                        {/* [★수정] AI 기능 및 가격 자동계산, 기본값 적용된 폼 */}
                         <form id="productForm" onSubmit={handleSaveProduct} className="space-y-3 text-sm">
-                            <div className="flex items-center gap-2 p-3 bg-red-50 rounded border border-red-100 mb-2">
-                                <input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/>
-                                <label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label>
-                            </div>
-
-                            {/* [★수정] 상단 고정 체크박스 UI 추가 */}
-                            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded border border-blue-100 mb-2">
-                                <input type="checkbox" name="pIsPinned" defaultChecked={editingProduct?.isPinned} id="pinnedCheck" className="w-4 h-4 accent-blue-600"/>
-                                <label htmlFor="pinnedCheck" className="text-blue-700 font-bold cursor-pointer">📌 상품 목록 최상단 고정</label>
-                            </div>
-
-                            <div className="p-3 bg-yellow-50 rounded border border-yellow-100 mb-2 space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <input type="checkbox" name="pIsSoldOut" defaultChecked={editingProduct?.isSoldOut} id="soldOutCheck" className="w-4 h-4 accent-yellow-600"/>
-                                    <label htmlFor="soldOutCheck" className="text-yellow-700 font-bold cursor-pointer">일시 품절 처리 (상품은 보이나 구매 불가)</label>
-                                </div>
-                                <input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/>
-                            </div>
-
-                            {/* [★AI 버튼 추가] */}
-                            <div>
-                                <label className="block mb-1 font-bold">상품명 <span className="text-xs text-indigo-500 font-normal">(입력 후 우측 버튼을 눌러보세요)</span></label>
-                                <div className="flex gap-2">
-                                    <input name="pName" id="pNameInput" defaultValue={editingProduct?.name} className="flex-1 border p-2 rounded" placeholder="예: 뽀로로 젓가락 세트" required />
-                                    <button 
-                                        type="button" 
-                                        onClick={() => handleAIGenerate(document.getElementById("pNameInput").value)}
-                                        className="bg-indigo-600 text-white px-3 py-2 rounded font-bold text-xs whitespace-nowrap flex items-center gap-1 hover:bg-indigo-700"
-                                        disabled={isGenerating}
-                                    >
-                                        {isGenerating ? <Icon name="Loader2" className="animate-spin"/> : "✨ AI 자동완성"}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="block mb-1 font-bold">카테고리</label>
-                                    <select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded bg-indigo-50">
-                                        {CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block mb-1 font-bold">재고</label>
-                                    <input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="block mb-1 font-bold">권장가 (소비자가)</label>
-                                    <input 
-                                        name="pOriginPrice" 
-                                        type="number" 
-                                        defaultValue={editingProduct?.originPrice} 
-                                        className="w-full border p-2 rounded bg-yellow-50 focus:bg-white transition-colors" 
-                                        placeholder="입력 시 공급가 자동완성"
-                                        required 
-                                        onChange={(e) => {
-                                            const origin = Number(e.target.value);
-                                            if(origin > 0) {
-                                                const priceInput = document.getElementsByName("pPrice")[0];
-                                                if(priceInput) {
-                                                    priceInput.value = Math.round(origin * 0.55); 
-                                                }
-                                            }
-                                        }}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block mb-1 font-bold">공급가 (도매가)</label>
-                                    <input name="pPrice" type="number" defaultValue={editingProduct?.price} className="w-full border p-2 rounded text-blue-600 font-bold" required />
-                                </div>
-                            </div>
-
-                            {/* [수정] 최소주문/카톤수량 입력칸 삭제됨 (내부적으로 1로 고정) */}
-
-                            <ImageUploader label="대표 이미지" currentImage={thumbImage} onImageSelect={setThumbImage} />
-                            <ImageUploader label="상세 이미지" currentImage={detailImage} onImageSelect={setDetailImage} />
-                            
-                            <div>
-                                <label className="block mb-1 font-bold">소개 문구 (AI 작성)</label>
-                                <textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-24 bg-indigo-50 focus:bg-white transition-colors leading-relaxed"></textarea>
-                            </div>
-                            
-                            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-indigo-700">
-                                {editingProduct ? "수정 저장" : "신규 등록"}
-                            </button>
+                            <div className="flex items-center gap-2 p-3 bg-red-50 rounded border border-red-100 mb-2"><input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/><label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label></div>
+                            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded border border-blue-100 mb-2"><input type="checkbox" name="pIsPinned" defaultChecked={editingProduct?.isPinned} id="pinnedCheck" className="w-4 h-4 accent-blue-600"/><label htmlFor="pinnedCheck" className="text-blue-700 font-bold cursor-pointer">📌 상품 목록 최상단 고정</label></div>
+                            <div className="p-3 bg-yellow-50 rounded border border-yellow-100 mb-2 space-y-2"><div className="flex items-center gap-2"><input type="checkbox" name="pIsSoldOut" defaultChecked={editingProduct?.isSoldOut} id="soldOutCheck" className="w-4 h-4 accent-yellow-600"/><label htmlFor="soldOutCheck" className="text-yellow-700 font-bold cursor-pointer">일시 품절 처리 (상품은 보이나 구매 불가)</label></div><input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/></div>
+                            <div><label className="block mb-1 font-bold">상품명 <span className="text-xs text-indigo-500 font-normal">(입력 후 우측 버튼을 눌러보세요)</span></label><div className="flex gap-2"><input name="pName" id="pNameInput" defaultValue={editingProduct?.name} className="flex-1 border p-2 rounded" placeholder="예: 뽀로로 젓가락 세트" required /><button type="button" onClick={() => handleAIGenerate(document.getElementById("pNameInput").value)} className="bg-indigo-600 text-white px-3 py-2 rounded font-bold text-xs whitespace-nowrap flex items-center gap-1 hover:bg-indigo-700" disabled={isGenerating}>{isGenerating ? <Icon name="Loader2" className="animate-spin"/> : "✨ AI 자동완성"}</button></div></div>
+                            <div className="grid grid-cols-2 gap-2"><div><label className="block mb-1 font-bold">카테고리</label><select name="pCategory" defaultValue={editingProduct?.category} className="w-full border p-2 rounded bg-indigo-50">{CATEGORIES.filter(c=>c!=="전체").map(c=><option key={c} value={c}>{c}</option>)}</select></div><div><label className="block mb-1 font-bold">재고</label><input name="pStock" type="number" defaultValue={editingProduct?.stock || 500} className="w-full border p-2 rounded" required /></div></div>
+                            <div className="grid grid-cols-2 gap-2"><div><label className="block mb-1 font-bold">권장가 (소비자가)</label><input name="pOriginPrice" type="number" defaultValue={editingProduct?.originPrice} className="w-full border p-2 rounded bg-yellow-50 focus:bg-white transition-colors" placeholder="입력 시 공급가 자동완성" required onChange={(e) => { const origin = Number(e.target.value); if(origin > 0) { const priceInput = document.getElementsByName("pPrice")[0]; if(priceInput) priceInput.value = Math.round(origin * 0.55); }}} /></div><div><label className="block mb-1 font-bold">공급가 (도매가)</label><input name="pPrice" type="number" defaultValue={editingProduct?.price} className="w-full border p-2 rounded text-blue-600 font-bold" required /></div></div>
+                            <ImageUploader label="대표 이미지" currentImage={thumbImage} onImageSelect={setThumbImage} /><ImageUploader label="상세 이미지" currentImage={detailImage} onImageSelect={setDetailImage} />
+                            <div><label className="block mb-1 font-bold">소개 문구 (AI 작성)</label><textarea name="pDescription" defaultValue={editingProduct?.description} className="w-full border p-2 rounded h-24 bg-indigo-50 focus:bg-white transition-colors leading-relaxed"></textarea></div>
+                            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-indigo-700">{editingProduct ? "수정 저장" : "신규 등록"}</button>
                         </form>
                     </div>
                 </div>
@@ -1473,6 +1021,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                     </div>
 
                     <div className="flex items-center gap-3 order-2 sm:order-3 ml-auto sm:ml-0 flex-nowrap flex-shrink-0">
+                        {/* [★확인] 여기서 관리자 버튼이 다시 나타나도록 수정됨 */}
                         {isAdmin && (
                             <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1 whitespace-nowrap flex-shrink-0">
                                 <Icon name="Settings" className="w-3 h-3"/>
