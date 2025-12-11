@@ -1023,10 +1023,24 @@ const LoginPage = ({ onAdminLogin }) => {
         e.preventDefault();
         setLoading(true);
 
+        // [수정된 관리자 로그인 로직]
         if(isLoginMode && formData.username === 'sj' && formData.password === '0914') {
              try {
-                await window.fb.signInUser(window.auth, "admin@sj.com", "sjmaster0914");
+                // 1. 일단 로그인 시도
+                const cred = await window.fb.signInUser(window.auth, "admin@sj.com", "sjmaster0914");
+                
+                // [★핵심] 로그인 성공 시, DB에도 관리자 권한을 강제로 다시 덮어씌웁니다.
+                await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), {
+                    email: "admin@sj.com", 
+                    storeName: "총괄관리자", 
+                    repName: "SJ",
+                    isAdmin: true,   // 관리자 권한 강제 부여
+                    role: "master", 
+                    joinedAt: new Date().toISOString()
+                }, { merge: true }); // 덮어쓰기 모드
+
             } catch(e) {
+                // 2. 계정이 없어서 로그인 실패 시, 새로 생성
                 try {
                     const cred = await window.fb.createUser(window.auth, "admin@sj.com", "sjmaster0914");
                     await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), {
@@ -1038,6 +1052,8 @@ const LoginPage = ({ onAdminLogin }) => {
                     alert("관리자 접속 오류: " + createErr.message);
                 }
             }
+            // 3. 페이지 새로고침 (즉시 반영을 위해)
+            window.location.reload();
             return;
         }
 
