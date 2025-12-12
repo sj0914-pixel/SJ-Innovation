@@ -36,7 +36,7 @@ const Icon = ({ name, className, ...props }) => {
         ShoppingBag: "🛍️", Store: "🏪", Truck: "🚚", Package: "📦", Boxes: "📚", CreditCard: "💳",
         User: "👤", ArrowLeft: "←", ChevronRight: "〉", Plus: "➕", Minus: "➖", Star: "⭐",
         Image: "🖼️", Upload: "⬆️", Download: "⬇️", LayoutTemplate: "📄", AlertCircle: "!",
-        Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪", Sparkles: "✨"
+        Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪", Sparkles: "✨", Check: "✅"
     };
 
     const displayIcon = iconMap[name] || name || "?";
