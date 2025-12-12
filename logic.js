@@ -1,4 +1,4 @@
-/* logic.js - Final Version (Shipping Info Moved, Admin Inputs Removed) */
+/* logic.js - Full Version (Chart.js, Deposit Logic, Admin Auto-Restore Included) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -28,7 +28,7 @@ const BANK_INFO = {
 const CATEGORIES = ["전체", "유아동의류", "완구/교구", "주방/식기", "생활/건강"];
 
 // ----------------------------------------------------
-// 아이콘 컴포넌트 (이모지 버전)
+// 아이콘 컴포넌트 (이모지 버전 - 체크, 차트 아이콘 추가됨)
 // ----------------------------------------------------
 const Icon = ({ name, className, ...props }) => {
     const iconMap = {
@@ -36,7 +36,10 @@ const Icon = ({ name, className, ...props }) => {
         ShoppingBag: "🛍️", Store: "🏪", Truck: "🚚", Package: "📦", Boxes: "📚", CreditCard: "💳",
         User: "👤", ArrowLeft: "←", ChevronRight: "〉", Plus: "➕", Minus: "➖", Star: "⭐",
         Image: "🖼️", Upload: "⬆️", Download: "⬇️", LayoutTemplate: "📄", AlertCircle: "!",
-        Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪", Sparkles: "✨", Check: "✅"
+        Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪", Sparkles: "✨", 
+        
+        // [★추가된 아이콘]
+        BarChart: "📊", Check: "✅"
     };
 
     const displayIcon = iconMap[name] || name || "?";
@@ -223,7 +226,8 @@ const MyPage = ({ user, onClose }) => {
                                 <div key={order.id} className="border rounded-xl p-4 shadow-sm">
                                     <div className="flex justify-between items-center mb-2 border-b pb-2">
                                         <span className="text-xs text-slate-500">{new Date(order.date).toLocaleString()}</span>
-                                        <span className={`text-xs font-bold px-2 py-1 rounded ${order.status==='접수대기'?'bg-blue-100 text-blue-600':order.status==='주문취소'?'bg-red-100 text-red-600':'bg-green-100 text-green-600'}`}>{order.status}</span>
+                                        {/* [상태값 표시] 입금대기 / 결제완료 구분 */}
+                                        <span className={`text-xs font-bold px-2 py-1 rounded ${order.status==='입금대기'?'bg-red-100 text-red-600':order.status==='결제완료'?'bg-blue-100 text-blue-600':'bg-slate-100 text-slate-600'}`}>{order.status}</span>
                                     </div>
                                     {order.trackingNumber && (
                                         <div className="bg-indigo-50 p-2 mb-3 rounded flex items-center gap-2 text-sm text-indigo-800">
@@ -238,7 +242,8 @@ const MyPage = ({ user, onClose }) => {
                                     </div>
                                     <div className="flex justify-between items-center pt-2 border-t">
                                         <span className="font-bold">총 {formatPrice(order.totalAmount)}원</span>
-                                        {order.status === "접수대기" && <button onClick={()=>handleCancelOrder(order.id)} className="text-xs bg-slate-200 px-3 py-1 rounded hover:bg-slate-300">주문취소</button>}
+                                        {/* 입금대기 상태에서만 주문취소 가능 */}
+                                        {order.status === "입금대기" && <button onClick={()=>handleCancelOrder(order.id)} className="text-xs bg-slate-200 px-3 py-1 rounded hover:bg-slate-300">주문취소</button>}
                                     </div>
                                 </div>
                             ))}
@@ -259,6 +264,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [orders, setOrders] = useState([]);
     const [tab, setTab] = useState("orders");
     
+    // [통계 및 차트 관련 State]
+    const [visitorStats, setVisitorStats] = useState({ today: 0, total: 0 });
+    const [chartData, setChartData] = useState([]);
+    const chartRef = useRef(null);
+    const chartInstance = useRef(null);
+
     // 배너 State
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
@@ -275,6 +286,75 @@ const AdminPage = ({ onLogout, onToShop }) => {
             }).catch(e => console.log("배너 없음"));
         }
     }, []);
+
+    // [차트 그리기 로직] - stats 탭일 때만 작동
+    useEffect(() => {
+        if (tab === "stats" && chartRef.current && chartData.length > 0) {
+            // 기존 차트가 있으면 삭제 (중복 생성 방지)
+            if (chartInstance.current) chartInstance.current.destroy();
+
+            const ctx = chartRef.current.getContext('2d');
+            // Chart.js 인스턴스 생성
+            chartInstance.current = new Chart(ctx, {
+                type: 'line', 
+                data: {
+                    labels: chartData.map(d => d.date.slice(5)), // 날짜(월-일)만 표시
+                    datasets: [{
+                        label: '일별 방문자 수',
+                        data: chartData.map(d => d.count),
+                        borderColor: 'rgb(79, 70, 229)', // Indigo 600
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: 'rgb(79, 70, 229)',
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { 
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            padding: 10,
+                            bodyFont: { size: 14 }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+    }, [tab, chartData]);
+
+    // 최근 7일 차트 데이터 가져오기
+    const fetchChartData = async () => {
+        try {
+            const days = [];
+            const today = new Date();
+            // 오늘 포함 최근 7일 날짜 생성
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(today.getDate() - i);
+                days.push(formatDate(d));
+            }
+
+            // DB에서 날짜별 문서 조회
+            const promises = days.map(dateStr => window.fb.getDoc(window.fb.doc(window.db, "stats", dateStr)));
+            const snapshots = await Promise.all(promises);
+            
+            const result = snapshots.map((snap, index) => ({
+                date: days[index],
+                count: snap.exists() ? snap.data().count : 0
+            }));
+            setChartData(result);
+        } catch(e) { console.error("차트 데이터 로드 실패", e); }
+    };
     
     const getTodayStr = () => formatDate(new Date());
     const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
@@ -296,9 +376,24 @@ const AdminPage = ({ onLogout, onToShop }) => {
         if(!window.fb) return;
         const { collection, onSnapshot, doc, getDocs } = window.fb;
         const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-        // 회원 목록 실시간
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         
+        // [방문자 통계 실시간 구독 - 대시보드 카드용]
+        const unsubStats = onSnapshot(collection(window.db, "stats"), (snap) => {
+            let total = 0;
+            let today = 0;
+            const todayStr = formatDate(new Date());
+            snap.forEach(d => {
+                const cnt = d.data().count || 0;
+                total += cnt;
+                if(d.id === todayStr) today = cnt;
+            });
+            setVisitorStats({ today, total });
+        });
+        
+        // 탭이 'stats'로 바뀔 때 차트 데이터 갱신
+        if (tab === 'stats') fetchChartData();
+
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             const orderGroups = {};
@@ -319,8 +414,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
             setOrders(list);
         });
 
-        return () => { unsubProd(); unsubUser(); unsubOrder(); };
-    }, []);
+        return () => { unsubProd(); unsubUser(); unsubOrder(); unsubStats(); };
+    }, [tab]); // tab이 바뀔 때 effect 재실행
 
     const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
 
@@ -361,9 +456,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     };
     
     const handleCardClick = (targetStatus) => {
-        let realStatus = targetStatus;
-        if (targetStatus === "결제완료(신규)") realStatus = "접수대기";
-        const newState = { status: realStatus, dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" };
+        const newState = { status: targetStatus, dateType: "전체", startDate: "", endDate: "", searchType: "주문자명", keyword: "" };
         setSearchInputs(newState); setAppliedFilters(newState); setSelectedIds(new Set());
     };
     const toggleSelect = (id) => {
@@ -374,6 +467,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const toggleSelectAll = (e) => {
         if(e.target.checked) setSelectedIds(new Set(filteredOrders.map(o=>o.id))); else setSelectedIds(new Set());
     };
+    
+    // [일괄 상태 변경] 입금확인 버튼 로직 포함
     const handleBatchStatus = async (status) => {
         if(selectedIds.size === 0) return alert("선택된 주문이 없습니다.");
         if(!confirm(`선택한 ${selectedIds.size}건을 [${status}] 상태로 변경하시겠습니까?`)) return;
@@ -428,7 +523,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         reader.readAsArrayBuffer(file);
     };
 
-    // [★추가] AI 자동 생성 핸들러 (에러 처리 강화)
     const handleAIGenerate = async (productName) => {
         if (!productName) return alert("상품명을 먼저 입력해주세요.");
         if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("API_KEY")) return alert("코드 상단에 GEMINI_API_KEY를 설정해주세요.");
@@ -437,57 +531,37 @@ const AdminPage = ({ onLogout, onToShop }) => {
         try {
             const prompt = `
                 상품명: "${productName}"
-                
                 위 상품에 대해 다음 두 가지 작업을 수행해서 JSON 형식으로만 답해줘:
-                1. 카테고리 분류: [${CATEGORIES.filter(c=>c!=="전체").join(", ")}] 중 가장 적절한 하나를 골라줘.
+                1. 카테고리 분류: [${CATEGORIES.filter(c=>c!=="전체").join(", ")}] 중 가장 적절한 하나.
                 2. 상품 소개: 이 상품을 도매 사장님들에게 어필할 수 있는 매력적이고 전문적인 소개글을 3~4줄로 작성해줘 (이모지 포함).
-                
                 응답 형식: { "category": "카테고리명", "description": "소개글내용" }
             `;
-                
             const response = await fetch(
                   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
                   {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",
-                      "x-goog-api-key": GEMINI_API_KEY,   // ← API 키는 헤더로 전달
+                      "x-goog-api-key": GEMINI_API_KEY, 
                     },
                     body: JSON.stringify({
-                      contents: [
-                        {
-                          parts: [{ text: prompt }],
-                        },
-                      ],
+                      contents: [{ parts: [{ text: prompt }] }],
                     }),
                   }
                 );
-
-        
             const data = await response.json();
-
-            // 에러 체크
-            if (data.error) {
-                console.error("Google AI Error:", data.error);
-                throw new Error(data.error.message || "API 호출 오류");
-            }
-            if (!data.candidates || data.candidates.length === 0) {
-                throw new Error("AI가 응답을 생성하지 못했습니다.");
-            }
-
+            if (data.error) throw new Error(data.error.message || "API 호출 오류");
+            
             const text = data.candidates[0].content.parts[0].text;
-            const cleanText = text.replace(/```json|```/g, "").trim();
-            const result = JSON.parse(cleanText);
+            const result = JSON.parse(text.replace(/```json|```/g, "").trim());
 
             const form = document.getElementById("productForm");
             if (form) {
-                // 카테고리 매칭
                 const matchedCat = CATEGORIES.find(c => result.category.includes(c));
                 if (matchedCat) form.pCategory.value = matchedCat;
                 if (result.description) form.pDescription.value = result.description;
             }
-            alert("AI가 카테고리와 소개글을 작성했습니다!");
-
+            alert("AI가 내용을 작성했습니다!");
         } catch (e) {
             console.error(e);
             alert("AI 오류 발생:\n" + e.message);
@@ -504,7 +578,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
             price: Number(form.pPrice.value)||0, 
             originPrice: Number(form.pOriginPrice.value)||0, 
             stock: Number(form.pStock.value)||0, 
-            // [수정: 입력창 삭제됨 -> 기본값 1로 자동 저장]
             minQty: 1,
             cartonQty: 1, 
             image: thumbImage || "📦", 
@@ -512,12 +585,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
             description: form.pDescription.value, 
             rating: "5.0",
             isHidden: form.pIsHidden.checked,
-            // [수정: 품절 및 입고예정일 저장]
             isSoldOut: form.pIsSoldOut.checked,
-            
-            // [★수정] 상단 고정 저장 로직 추가
             isPinned: form.pIsPinned.checked,
-
             restockDate: form.pRestockDate.value
         };
         try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨"); } catch (err) { alert(err.message); }
@@ -539,23 +608,16 @@ const AdminPage = ({ onLogout, onToShop }) => {
     
     const handleRefreshUsers = async () => {
         try {
-            if(window.fb && window.fb.getDocs) {
-                const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
-                setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                alert("회원 목록 갱신 완료");
-            } else {
-                alert("기능 로딩중...");
-            }
-        } catch(e) { 
-            console.error(e);
-            alert("불러오기 실패: " + e.message); 
-        }
+            const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
+            setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            alert("회원 목록 갱신 완료");
+        } catch(e) { alert("불러오기 실패: " + e.message); }
     };
 
     const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
     const openEditModal = (p) => { setEditingProduct(p); setThumbImage(p.image); setDetailImage(p.detailImage); setIsProductModalOpen(true); };
 
-    // [★모바일 추가] 관리자용 주문 카드 뷰
+    // [모바일 추가] 관리자용 주문 카드 뷰
     const OrderCard = ({ o, u }) => (
         <div className={`bg-white p-4 rounded-xl border shadow-sm mb-3 ${selectedIds.has(o.id) ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
             <div className="flex justify-between items-start mb-2">
@@ -563,7 +625,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     <input type="checkbox" checked={selectedIds.has(o.id)} onChange={() => toggleSelect(o.id)} className="w-5 h-5 rounded accent-blue-600" />
                     <span className="font-mono font-bold text-blue-600 cursor-pointer" onClick={()=>setSelectedUser(u)}>{o.orderNo}</span>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded font-bold ${o.status==='접수대기'?'bg-blue-100 text-blue-600':o.status==='배송완료'?'bg-slate-100':'bg-green-100 text-green-700'}`}>{o.status}</span>
+                <span className={`text-xs px-2 py-1 rounded font-bold ${o.status==='입금대기'?'bg-red-100 text-red-600':o.status==='결제완료'?'bg-blue-100 text-blue-600':'bg-slate-100'}`}>{o.status}</span>
             </div>
             <div className="mb-2" onClick={()=>setSelectedUser(u)}>
                 <div className="font-bold text-slate-800">{u.storeName || o.userName} <span className="text-slate-400 font-normal text-xs">({u.repName})</span></div>
@@ -593,18 +655,18 @@ const AdminPage = ({ onLogout, onToShop }) => {
             </nav>
 
             <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6">
-                {/* [★모바일] 탭 버튼 스크롤 가능하도록 개선 */}
                 <div className="flex gap-2 border-b border-slate-300 pb-1 overflow-x-auto whitespace-nowrap">
-                    {["orders", "users", "products", "banners"].map(t => (
+                    {/* [★수정] 메뉴 탭에 'stats' 추가 */}
+                    {["orders", "users", "products", "banners", "stats"].map(t => (
                         <button key={t} onClick={()=>setTab(t)} className={`px-6 py-3 rounded-t-lg font-bold text-sm uppercase transition-colors whitespace-nowrap ${tab===t ? "bg-white text-slate-900 border border-b-0 border-slate-300 shadow-sm" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}>
-                            {t === 'orders' ? '주문 통합 관리' : t === 'users' ? '회원 관리' : t === 'products' ? '상품 관리' : '배너 관리'}
+                            {t === 'orders' ? '주문 통합 관리' : t === 'users' ? '회원 관리' : t === 'products' ? '상품 관리' : t === 'banners' ? '배너 관리' : '통계 분석'}
                         </button>
                     ))}
                 </div>
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* 대시보드 수정: '입금대기'와 '결제완료' 분리 */}
+                        {/* 대시보드 - 입금대기, 결제완료 분리 */}
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                             {[
                                 { label: "입금대기", count: countStatus("입금대기"), color: "text-red-600", bg: "bg-red-50" },
@@ -620,24 +682,13 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 </div>
                             ))}
                         </div>
+
                         {/* 필터 */}
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center">
-                                <span className="w-20 font-bold text-sm text-slate-600">기간</span>
-                                {/* [★모바일] 버튼 그룹 줄바꿈 방지 */}
-                                <div className="flex gap-1 overflow-x-auto">
-                                    {["오늘","7일","30일","전체"].map(d => ( <button key={d} onClick={()=>handleDateBtn(d)} className={`px-3 py-1.5 border rounded text-xs font-bold whitespace-nowrap ${searchInputs.dateType===d ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 hover:bg-slate-50"}`}>{d}</button> ))}
-                                </div>
-                                <div className="flex gap-2 w-full md:w-auto">
-                                    <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500 w-full md:w-auto" value={searchInputs.startDate} onChange={(e)=>setSearchInputs({...searchInputs, startDate: e.target.value})} />
-                                    <span className="text-slate-400 self-center">~</span>
-                                    <input type="date" className="border rounded px-2 py-1 text-sm text-slate-500 w-full md:w-auto" value={searchInputs.endDate} onChange={(e)=>setSearchInputs({...searchInputs, endDate: e.target.value})} />
-                                </div>
-                            </div>
-                            <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">배송상태</span>
                                 <div className="flex gap-4 flex-wrap">
-                                    {/* 필터 목록 수정: '입금대기' 추가 */}
+                                    {/* 필터 목록 수정 */}
                                     {["전체", "입금대기", "결제완료", "배송준비", "배송중", "배송완료", "주문취소"].map(s => (
                                         <label key={s} className="flex items-center gap-2 cursor-pointer text-sm">
                                             <input type="radio" name="status" checked={searchInputs.status === s} onChange={()=>setSearchInputs({...searchInputs, status: s})} className="accent-blue-600" /> 
@@ -664,9 +715,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3 bg-slate-50/50">
                                 <div className="flex gap-2 items-center flex-wrap">
                                     <span className="font-bold text-sm mr-2">{selectedIds.size}개 선택됨</span>
-                                    <button onClick={()=>handleBatchStatus("결제완료")} className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 flex items-center gap-1">
-                                        <Icon name="Check" className="w-3 h-3"/> 입금확인(결제완료)
-                                    </button>
+                                    
+                                    {/* [★입금확인 버튼] */}
+                                    <button onClick={()=>handleBatchStatus("결제완료")} className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 flex items-center gap-1"><Icon name="Check" className="w-3 h-3"/> 입금확인(결제완료)</button>
+                                    
                                     <button onClick={()=>handleBatchStatus("배송준비")} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-700 flex items-center gap-1"><Icon name="Package" className="w-3 h-3"/> 배송준비</button>
                                     <button onClick={()=>handleBatchStatus("배송중")} className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700 flex items-center gap-1"><Icon name="Truck" className="w-3 h-3"/> 배송중 처리</button>
                                     <button onClick={()=>handleBatchStatus("주문취소")} className="bg-white border text-slate-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-50">취소 처리</button>
@@ -718,7 +770,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                                             onKeyDown={(e)=>{if(e.key==='Enter') e.target.blur()}}
                                                         />
                                                     </td>
-                                                    <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs font-bold ${o.status==='접수대기'?'bg-blue-100 text-blue-700':o.status==='배송준비'?'bg-indigo-100 text-indigo-700':o.status==='배송중'?'bg-green-100 text-green-700':o.status==='주문취소'?'bg-red-100 text-red-700':'bg-slate-100 text-slate-600'}`}>{o.status === '접수대기' ? '결제완료' : o.status}</span></td>
+                                                    <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs font-bold ${o.status==='입금대기'?'bg-red-100 text-red-700':o.status==='결제완료'?'bg-blue-100 text-blue-700':o.status==='배송준비'?'bg-indigo-100 text-indigo-700':o.status==='배송중'?'bg-green-100 text-green-700':o.status==='주문취소'?'bg-red-100 text-red-700':'bg-slate-100 text-slate-600'}`}>{o.status}</span></td>
                                                     <td className="p-3 text-slate-500 text-xs">{new Date(o.date).toLocaleString()}</td>
                                                     <td className="p-3">
                                                         <div className="font-bold">{u.storeName || o.userName}</div>
@@ -740,6 +792,33 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         </div>
                     </div>
                 )}
+                
+                {/* [★추가] 통계 분석 탭 내용 */}
+                {tab === "stats" && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        <div className="bg-white rounded-lg border shadow-sm p-6">
+                            <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><Icon name="BarChart" className="text-indigo-600"/> 최근 7일간 방문자 추이</h3>
+                            <div className="w-full h-[400px] bg-slate-50 rounded-xl p-4 relative">
+                                {/* 차트가 그려질 캔버스 */}
+                                <canvas ref={chartRef}></canvas>
+                            </div>
+                            <div className="mt-4 text-center text-sm text-slate-500">
+                                * 오늘 데이터는 실시간으로 집계되며, 자정을 기준으로 다음 날로 넘어갑니다.
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="bg-white p-6 rounded-lg border shadow-sm">
+                                <h4 className="font-bold text-slate-700 mb-2">총 누적 방문자</h4>
+                                <div className="text-4xl font-bold text-slate-900">{formatPrice(visitorStats.total)} <span className="text-lg text-slate-400">명</span></div>
+                             </div>
+                             <div className="bg-white p-6 rounded-lg border shadow-sm">
+                                <h4 className="font-bold text-slate-700 mb-2">오늘 방문자</h4>
+                                <div className="text-4xl font-bold text-indigo-600">{formatPrice(visitorStats.today)} <span className="text-lg text-slate-400">명</span></div>
+                             </div>
+                        </div>
+                    </div>
+                )}
+
                 {tab === "users" && (
                     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                         <div className="p-4 border-b flex justify-between items-center bg-slate-50">
@@ -747,7 +826,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             <button onClick={handleRefreshUsers} className="bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-900 flex gap-1 items-center"><Icon name="RefreshCw" className="w-3 h-3"/>목록 새로고침</button>
                         </div>
                         
-                        {/* [★모바일] 회원관리 모바일 뷰 */}
                         <div className="md:hidden">
                             {users.map(u => (
                                 <div key={u.id} className="p-4 border-b last:border-0 flex justify-between items-center">
@@ -777,12 +855,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
                 {tab === "products" && (
                     <div className="bg-white rounded-lg shadow-sm border p-4">
                         <div className="flex justify-between mb-4 items-center">
-                            {/* [수정] 제목 옆에 (총 00개) 표시 추가 */}
                             <h3 className="font-bold text-lg">상품 목록 <span className="text-base text-slate-500 font-normal ml-1">({products.length}개)</span></h3>
                             <button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold text-sm">+ 상품 등록</button>
                         </div>
                         
-                        {/* [★모바일] 상품관리 카드 리스트 뷰 */}
                         <div className="md:hidden grid grid-cols-1 gap-3">
                             {products.map(p => (
                                 <div key={p.id} className={`bg-white p-4 rounded-xl border flex gap-3 ${p.isHidden?"opacity-60 bg-slate-100":""}`}>
@@ -822,7 +898,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                             <td className="p-4">
                                                 <div className="font-bold">{p.name}</div>
                                                 <div className="text-xs text-slate-400">{p.category}</div>
-                                                {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">※ 일시품절 처리됨</div>}
+                                                {p.isSoldOut && <div className="text-xs text-red-500 font-bold mt-1">※ 일시품절</div>}
                                             </td>
                                             <td className="p-4">₩{formatPrice(p.price)}</td>
                                             <td className="p-4 font-bold text-blue-600">{p.stock}</td>
@@ -899,14 +975,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
                         <button onClick={()=>setIsProductModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"><Icon name="X"/></button>
                         <h3 className="font-bold text-lg mb-4 border-b pb-2">{editingProduct ? "상품 수정" : "상품 등록"}</h3>
                         
-                        {/* [★수정] AI 기능 및 가격 자동계산, 기본값 적용된 폼 */}
                         <form id="productForm" onSubmit={handleSaveProduct} className="space-y-3 text-sm">
                             <div className="flex items-center gap-2 p-3 bg-red-50 rounded border border-red-100 mb-2">
                                 <input type="checkbox" name="pIsHidden" defaultChecked={editingProduct?.isHidden} id="hiddenCheck" className="w-4 h-4 accent-red-600"/>
                                 <label htmlFor="hiddenCheck" className="text-red-700 font-bold cursor-pointer">쇼핑몰 판매 중지 (숨김 처리)</label>
                             </div>
 
-                            {/* [★수정] 상단 고정 체크박스 UI 추가 */}
                             <div className="flex items-center gap-2 p-3 bg-blue-50 rounded border border-blue-100 mb-2">
                                 <input type="checkbox" name="pIsPinned" defaultChecked={editingProduct?.isPinned} id="pinnedCheck" className="w-4 h-4 accent-blue-600"/>
                                 <label htmlFor="pinnedCheck" className="text-blue-700 font-bold cursor-pointer">📌 상품 목록 최상단 고정</label>
@@ -920,7 +994,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 <input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/>
                             </div>
 
-                            {/* [★AI 버튼 추가] */}
                             <div>
                                 <label className="block mb-1 font-bold">상품명 <span className="text-xs text-indigo-500 font-normal">(입력 후 우측 버튼을 눌러보세요)</span></label>
                                 <div className="flex gap-2">
@@ -976,8 +1049,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 </div>
                             </div>
 
-                            {/* [수정] 최소주문/카톤수량 입력칸 삭제됨 (내부적으로 1로 고정) */}
-
                             <ImageUploader label="대표 이미지" currentImage={thumbImage} onImageSelect={setThumbImage} />
                             <ImageUploader label="상세 이미지" currentImage={detailImage} onImageSelect={setDetailImage} />
                             
@@ -1001,7 +1072,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
 // [4] 로그인 페이지
 // ----------------------------------------------------
 const LoginPage = ({ onAdminLogin }) => {
-    // ... (기존과 동일)
     const [isLoginMode, setIsLoginMode] = useState(true);
     const [isAddrOpen, setIsAddrOpen] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
@@ -1256,6 +1326,36 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         }
     }, []);
 
+    // [★방문자 카운팅 기능]
+    useEffect(() => {
+        const logVisit = async () => {
+            const today = new Date().toISOString().slice(0, 10);
+            const storageKey = `visited_${today}`;
+
+            // 오늘 방문 기록이 없으면 카운트 증가
+            if (!localStorage.getItem(storageKey)) {
+                try {
+                    const statsRef = window.fb.doc(window.db, "stats", today);
+                    const docSnap = await window.fb.getDoc(statsRef);
+
+                    if (docSnap.exists()) {
+                        // 기존 데이터가 있으면 +1
+                        const currentCount = docSnap.data().count || 0;
+                        await window.fb.updateDoc(statsRef, { count: currentCount + 1 });
+                    } else {
+                        // 오늘 첫 방문자라면 문서 생성
+                        await window.fb.setDoc(statsRef, { count: 1 });
+                    }
+                    // 방문 표시 남기기
+                    localStorage.setItem(storageKey, "true");
+                } catch (e) {
+                    console.error("통계 집계 오류", e);
+                }
+            }
+        };
+        if(window.fb) logVisit();
+    }, []);
+
     const goHome = () => { setSelectedCategory("전체"); setSearchTerm(""); setSelectedProduct(null); setShowMyPage(false); window.scrollTo(0, 0); };
     const addToCart = (product, quantity = 1) => {
         setCart(prev => {
@@ -1291,11 +1391,10 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 totalAmount: finalTotalAmount, 
                 date: new Date().toISOString(), 
                 
-                status: "입금대기", // ★ 여기를 "접수대기"에서 "입금대기"로 수정하세요!
+                status: "입금대기", // ★ 초기 상태를 "입금대기"로 설정
                 
                 paymentMethod: "무통장입금", depositor: depositor, bankInfo: BANK_INFO
             });
-            
             alert(`[주문 완료]\n총 결제금액: ${formatPrice(finalTotalAmount)}원 (배송비 포함)\n\n${BANK_INFO.bankName} ${BANK_INFO.accountNumber}\n예금주: ${BANK_INFO.holder}\n\n위 계좌로 입금 부탁드립니다.`);
             setCart([]); 
             setIsCartOpen(false);
@@ -1589,11 +1688,13 @@ const App = () => {
                         setUser({ ...u, ...userData });
                         setIsAdmin(userData.isAdmin === true);
                     } else {
-                        setUser(u); setIsAdmin(false);
+                        setUser(u);
+                        setIsAdmin(false);
                     }
                 } catch (e) { setUser(u); }
             } else {
-                setUser(null); setIsAdmin(false);
+                setUser(null);
+                setIsAdmin(false);
                 localStorage.removeItem("adminViewMode");
             }
             setLoading(false);
