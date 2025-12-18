@@ -1,4 +1,4 @@
-/* logic.js - Full Version (Chart.js, Deposit Logic, Admin Auto-Restore Included) */
+/* logic.js - Full Version (Custom Sort Order Added) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -35,7 +35,8 @@ const Icon = ({ name, className, ...props }) => {
         Search: "🔍", X: "✕", Menu: "☰", RefreshCw: "↻", Loader2: "⌛", Settings: "⚙️",
         ShoppingBag: "🛍️", Store: "🏪", Truck: "🚚", Package: "📦", Boxes: "📚", CreditCard: "💳",
         User: "👤", ArrowLeft: "←", ChevronRight: "〉", Plus: "➕", Minus: "➖", Star: "⭐",
-        Image: "🖼️", Upload: "⬆️", Download: "⬇️", LayoutTemplate: "📄", AlertCircle: "!",
+        Image: "🖼️", Upload: "⬆️", Download: "⬇️", LayoutTemplate: "📄", 
+        AlertCircle: "!",
         Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪", Sparkles: "✨", 
         
         // [★추가된 아이콘]
@@ -89,15 +90,18 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     let width = img.width;
                     let height = img.height;
                     const MAX_WIDTH = 1200; 
+                 
                     if (width > MAX_WIDTH) { 
                         height *= MAX_WIDTH / width; 
                         width = MAX_WIDTH; 
                     }
+                
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
                     ctx.fillStyle = "#FFFFFF";
                     ctx.fillRect(0, 0, width, height);
+    
                     ctx.drawImage(img, 0, 0, width, height);
                     const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
                     resolve(dataUrl);
@@ -263,7 +267,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [users, setUsers] = useState([]);
     const [orders, setOrders] = useState([]);
     const [tab, setTab] = useState("orders");
-    
+
     // [통계 및 차트 관련 State]
     const [visitorStats, setVisitorStats] = useState({ today: 0, total: 0 });
     const [chartData, setChartData] = useState([]);
@@ -273,7 +277,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
     // 배너 State
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
-    
+
     // 배너 불러오기
     useEffect(() => {
         if(window.fb && window.fb.getDoc) {
@@ -355,18 +359,16 @@ const AdminPage = ({ onLogout, onToShop }) => {
             setChartData(result);
         } catch(e) { console.error("차트 데이터 로드 실패", e); }
     };
-    
+
     const getTodayStr = () => formatDate(new Date());
     const [searchInputs, setSearchInputs] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
     const [appliedFilters, setAppliedFilters] = useState({ status: "전체", dateType: "오늘", startDate: getTodayStr(), endDate: getTodayStr(), searchType: "주문자명", keyword: "" });
-
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [selectedUser, setSelectedUser] = useState(null);
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
     const [thumbImage, setThumbImage] = useState("");
     const [detailImage, setDetailImage] = useState("");
-    
     // AI 생성 상태
     const [isGenerating, setIsGenerating] = useState(false);
     
@@ -415,7 +417,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
         });
 
         return () => { unsubProd(); unsubUser(); unsubOrder(); unsubStats(); };
-    }, [tab]); // tab이 바뀔 때 effect 재실행
+    }, [tab]);
+    // tab이 바뀔 때 effect 재실행
 
     const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
 
@@ -465,7 +468,8 @@ const AdminPage = ({ onLogout, onToShop }) => {
         setSelectedIds(newSet);
     };
     const toggleSelectAll = (e) => {
-        if(e.target.checked) setSelectedIds(new Set(filteredOrders.map(o=>o.id))); else setSelectedIds(new Set());
+        if(e.target.checked) setSelectedIds(new Set(filteredOrders.map(o=>o.id)));
+        else setSelectedIds(new Set());
     };
     
     // [일괄 상태 변경] 입금확인 버튼 로직 포함
@@ -478,8 +482,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
             alert("처리되었습니다."); setSelectedIds(new Set());
         } catch(e) { alert("오류: " + e.message); }
     };
+
     const handleUpdateTracking = async (id, courier, tracking) => {
-        try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { courier, trackingNumber: tracking, status: tracking ? "배송중" : "접수대기" }); } catch(e) { console.error(e); }
+        try { await window.fb.updateDoc(window.fb.doc(window.db, "orders", id), { courier, trackingNumber: tracking, status: tracking ? "배송중" : "접수대기" });
+        } catch(e) { console.error(e); }
     };
 
     const handleExcelDownload = () => {
@@ -499,6 +505,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
         window.XLSX.utils.book_append_sheet(wb, ws, "주문목록");
         window.XLSX.writeFile(wb, `주문목록_${new Date().toISOString().slice(0,10)}.xlsx`);
     };
+
     const handleExcelUpload = async (e) => {
         const file = e.target.files[0];
         if(!file) return;
@@ -571,10 +578,13 @@ const AdminPage = ({ onLogout, onToShop }) => {
     };
 
     const handleSaveProduct = async (e) => {
-        e.preventDefault(); const form = e.target;
+        e.preventDefault();
+        const form = e.target;
         const newProd = { 
             name: form.pName.value, 
             category: form.pCategory.value, 
+            // [★수정] 진열 순서(orderIndex) 저장 (입력값 없으면 9999)
+            orderIndex: Number(form.pOrderIndex.value) || 9999,
             price: Number(form.pPrice.value)||0, 
             originPrice: Number(form.pOriginPrice.value)||0, 
             stock: Number(form.pStock.value)||0, 
@@ -589,11 +599,11 @@ const AdminPage = ({ onLogout, onToShop }) => {
             isPinned: form.pIsPinned.checked,
             restockDate: form.pRestockDate.value
         };
-        try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨"); } catch (err) { alert(err.message); }
+        try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨");
+        } catch (err) { alert(err.message); }
     };
     const handleDeleteProduct = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "products_final_v5", id)); };
     const handleDeleteUser = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "users", id)); };
-    
     const handleSaveBanners = async () => {
         try {
             await window.fb.setDoc(window.fb.doc(window.db, "config", "banners"), {
@@ -611,12 +621,12 @@ const AdminPage = ({ onLogout, onToShop }) => {
             const snap = await window.fb.getDocs(window.fb.collection(window.db, "users"));
             setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
             alert("회원 목록 갱신 완료");
-        } catch(e) { alert("불러오기 실패: " + e.message); }
+        } catch(e) { alert("불러오기 실패: " + e.message);
+        }
     };
 
     const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
     const openEditModal = (p) => { setEditingProduct(p); setThumbImage(p.image); setDetailImage(p.detailImage); setIsProductModalOpen(true); };
-
     // [모바일 추가] 관리자용 주문 카드 뷰
     const OrderCard = ({ o, u }) => (
         <div className={`bg-white p-4 rounded-xl border shadow-sm mb-3 ${selectedIds.has(o.id) ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
@@ -643,7 +653,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
             <div className="mt-2 text-right font-bold text-slate-800">{formatPrice(o.totalAmount)}원</div>
         </div>
     );
-
     return (
         <div className="min-h-screen bg-slate-100 pb-20">
             <nav className="bg-slate-900 text-white px-6 py-3 flex justify-between items-center shadow-lg sticky top-0 z-50">
@@ -994,6 +1003,13 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 <input name="pRestockDate" defaultValue={editingProduct?.restockDate} placeholder="예: 12월 15일 입고 예정 (미입력시 '일시품절'로 표시)" className="w-full border p-2 rounded bg-white text-xs"/>
                             </div>
 
+                            {/* [★추가] 진열 순서 입력칸 */}
+                            <div className="p-3 bg-slate-100 rounded border border-slate-200 mb-2">
+                                <label className="block text-sm font-bold mb-1 text-slate-700">진열 순서 (작은 숫자가 1등)</label>
+                                <div className="text-xs text-slate-500 mb-1">※ 예: 브레인롯(1), 티니핑(2) ... 입력 안 하면 맨 뒤로 감</div>
+                                <input name="pOrderIndex" type="number" defaultValue={editingProduct?.orderIndex} placeholder="예: 1" className="w-full border p-2 rounded bg-white focus:ring-2 focus:ring-slate-500 outline-none" />
+                            </div>
+
                             <div>
                                 <label className="block mb-1 font-bold">상품명 <span className="text-xs text-indigo-500 font-normal">(입력 후 우측 버튼을 눌러보세요)</span></label>
                                 <div className="flex gap-2">
@@ -1037,7 +1053,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                             if(origin > 0) {
                                                 const priceInput = document.getElementsByName("pPrice")[0];
                                                 if(priceInput) {
-                                                    priceInput.value = Math.round(origin * 0.55); 
+                                                    priceInput.value = Math.round(origin * 0.55);
                                                 }
                                             }
                                         }}
@@ -1067,7 +1083,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         </div>
     );
 };
-
 // ----------------------------------------------------
 // [4] 로그인 페이지
 // ----------------------------------------------------
@@ -1078,7 +1093,6 @@ const LoginPage = ({ onAdminLogin }) => {
     const addrWrapRef = useRef(null);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '', name: '', mobile: '', email: '', zipcode: '', address: '', addressDetail: '', businessType: '문구/팬시점', storeName: '', repName: '', businessNumber: '', businessCategory: '', businessItem: '', taxEmail: '', recommender: '' });
-
     useEffect(() => {
         if(isAddrOpen && addrWrapRef.current && window.daum) {
             addrWrapRef.current.innerHTML = '';
@@ -1092,17 +1106,14 @@ const LoginPage = ({ onAdminLogin }) => {
             }).embed(addrWrapRef.current);
         }
     }, [isAddrOpen]);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-
         // [수정된 관리자 로그인 로직] - 로그인 성공 시 권한 자동 복구 기능 추가
         if(isLoginMode && formData.username === 'sj' && formData.password === '0914') {
              try {
                 // 1. 일단 로그인 시도 (Authentication 확인)
                 const cred = await window.fb.signInUser(window.auth, "admin@sj.com", "sjmaster0914");
-                
                 // [★핵심] 로그인 성공 시, DB(Firestore)에도 관리자 명부를 강제로 다시 만듭니다.
                 await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), {
                     email: "admin@sj.com", 
@@ -1111,7 +1122,8 @@ const LoginPage = ({ onAdminLogin }) => {
                     isAdmin: true,   // 관리자 권한 부여
                     role: "master", 
                     joinedAt: new Date().toISOString()
-                }, { merge: true }); // 기존 정보가 있어도 덮어쓰기
+                }, { merge: true });
+                // 기존 정보가 있어도 덮어쓰기
 
             } catch(e) {
                 // 2. 계정 자체가 없으면 새로 생성 (Authentication + Firestore 둘 다 생성)
@@ -1157,12 +1169,11 @@ const LoginPage = ({ onAdminLogin }) => {
                 });
             }
         } catch(err) { 
-            alert("오류: " + err.message); 
+            alert("오류: " + err.message);
             setLoading(false); 
         }
     };
     const handleChange = (e) => setFormData(prev=>({...prev, [e.target.name]: e.target.value}));
-
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8 safe-area-pb">
             <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all duration-300 ${isLoginMode?'max-w-md p-8':'max-w-3xl p-8'}`}>
@@ -1229,15 +1240,15 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
     const cartonQty = product.cartonQty || 1;
 
     const [qty, setQty] = useState(minQty);
-    
     const handleQuantityChange = (delta) => {
         // [수정] 1카톤 최대 5박스 제한
         const max = cartonQty * 5;
         const newQuantity = qty + delta;
-        if (delta > 0) { if (newQuantity <= max) setQty(newQuantity); else alert(`최대 발주 수량은 ${max}개(5박스)입니다.`); } 
-        else { if (newQuantity >= minQty) setQty(newQuantity); else alert(`최소 주문 수량은 ${minQty}개입니다.`); }
+        if (delta > 0) { if (newQuantity <= max) setQty(newQuantity);
+        else alert(`최대 발주 수량은 ${max}개(5박스)입니다.`); } 
+        else { if (newQuantity >= minQty) setQty(newQuantity);
+        else alert(`최소 주문 수량은 ${minQty}개입니다.`); }
     };
-
     return (
         <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-right duration-300 min-h-screen flex flex-col pb-[80px] safe-area-pb">
             <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center justify-between">
@@ -1253,7 +1264,8 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
             <div className="flex-1 overflow-y-auto">
                 <div className="max-w-3xl mx-auto">
                     <div className="bg-slate-50 aspect-square w-full flex items-center justify-center mb-6 overflow-hidden">
-                        {product.image.startsWith('data:') || product.image.startsWith('.') || product.image.startsWith('http') ? <img src={product.image} alt={product.name} className="w-full h-full object-contain" /> : <span className="text-[8rem] drop-shadow-2xl">{product.image}</span>}
+                        {product.image.startsWith('data:') || product.image.startsWith('.') || product.image.startsWith('http') ?
+                        <img src={product.image} alt={product.name} className="w-full h-full object-contain" /> : <span className="text-[8rem] drop-shadow-2xl">{product.image}</span>}
                     </div>
                     <div className="px-5 pb-8">
                         <div className="mb-4">
@@ -1315,7 +1327,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showMyPage, setShowMyPage] = useState(false);
     const [banners, setBanners] = useState(DEFAULT_BANNERS);
-
     useEffect(() => {
         if(window.fb) {
             const { doc, onSnapshot } = window.fb;
@@ -1382,7 +1393,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         const productTotal = cart.reduce((a,c)=>a+c.price*c.quantity,0);
         const shippingFee = productTotal >= 50000 ? 0 : 3000;
         const finalTotalAmount = productTotal + shippingFee;
-
         try {
             const uid = window.auth.currentUser ? window.auth.currentUser.uid : "admin_manual";
             await window.fb.addDoc(window.fb.collection(window.db, "orders"), {
@@ -1401,7 +1411,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             setIsOrderModalOpen(false);
         } catch(e) { alert("실패: " + e.message); }
     };
-
     const filteredProducts = products.filter(p => {
         if (p.isHidden) return false;
         const matchCat = selectedCategory === "전체" || p.category === selectedCategory;
@@ -1409,17 +1418,26 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         return matchCat && matchSearch;
     });
 
-    // [★수정: 상단고정 > 판매가능 > 품절 순으로 정렬 (중복 제거됨)]
+    // [★수정: 사용자 지정 순서(orderIndex) 우선 정렬]
     const sortedProducts = [...filteredProducts].sort((a, b) => {
-        // 1. 품절 상태가 같다면 (둘 다 판매중이거나, 둘 다 품절이거나)
-        if (a.isSoldOut === b.isSoldOut) {
-            // 고정(Pinned)된 상품을 위로 올림
-            if (a.isPinned && !b.isPinned) return -1;
-            if (!a.isPinned && b.isPinned) return 1;
-            return 0;
+        // 1. 품절 여부 (품절 상품은 무조건 맨 아래로 내리고 싶다면 이 부분 유지)
+        if (a.isSoldOut !== b.isSoldOut) {
+            return a.isSoldOut ? 1 : -1;
         }
-        // 2. 품절 여부가 다르면 품절인 상품을 아래로
-        return a.isSoldOut ? 1 : -1;
+
+        // 2. 순서 번호 비교 (작은 숫자가 위로)
+        // 값이 없으면 9999로 취급하여 뒤로 보냄
+        const orderA = (a.orderIndex !== undefined && a.orderIndex !== null) ? a.orderIndex : 9999;
+        const orderB = (b.orderIndex !== undefined && b.orderIndex !== null) ? b.orderIndex : 9999;
+
+        if (orderA !== orderB) {
+            return orderA - orderB;
+        }
+
+        // 3. 순서 번호가 같으면 고정핀(Pinned) 확인
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        
+        return 0;
     });
 
     const openProduct = (p) => { window.history.pushState(null,"",""); setSelectedProduct(p); };
@@ -1435,11 +1453,9 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
     }, [selectedProduct, isCartOpen, showMyPage]);
-    
     const handleClose = () => window.history.back();
 
     if (selectedProduct) return <ProductDetail product={selectedProduct} onBack={handleClose} onAddToCart={addToCart} goHome={goHome} />;
-
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-800 safe-area-pb">
             <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100 transition-all duration-300">
@@ -1512,7 +1528,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                         <div className="text-xs bg-black/50 px-2 py-1 rounded">{p.restockDate || "재입고 준비중"}</div>
                                     </div>
                                 )}
-                                
+                               
                                 <div className="aspect-[4/3] bg-slate-100 relative flex items-center justify-center overflow-hidden">
                                     {p.image.startsWith('data:') || p.image.startsWith('http') || p.image.startsWith('.') ? <img src={p.image} alt={p.name} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" /> : <span className="text-6xl transform group-hover:scale-110 transition-transform duration-500">{p.image}</span>}
                                     <div className="absolute top-3 left-3 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">인기</div>
@@ -1587,6 +1603,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                     </div>
                 </div>
             )}
+            
             {isOrderModalOpen && (
                 <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 transition-all animate-in fade-in safe-area-bottom">
                     <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 relative">
@@ -1622,7 +1639,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                             <div className="flex justify-between items-center pt-2 border-t border-dashed mt-2">
                                 <span className="text-slate-800 font-bold">최종 결제금액</span>
                                 <span className="text-xl font-bold text-blue-600">
-                                     ₩{formatPrice(
+                                    ₩{formatPrice(
                                         cart.reduce((a,c)=>a+c.price*c.quantity,0) + 
                                         (cart.reduce((a,c)=>a+c.price*c.quantity,0) >= 50000 ? 0 : 3000)
                                     )}
@@ -1662,7 +1679,6 @@ const App = () => {
         }, 30);
         return () => clearInterval(interval);
     }, []);
-
     useEffect(() => {
         if (!firebaseReady) return;
         const { collection, onSnapshot, getDoc, doc } = window.fb;
@@ -1691,7 +1707,8 @@ const App = () => {
                         setUser(u);
                         setIsAdmin(false);
                     }
-                } catch (e) { setUser(u); }
+                } catch (e) { setUser(u);
+                }
             } else {
                 setUser(null);
                 setIsAdmin(false);
@@ -1702,7 +1719,8 @@ const App = () => {
         return () => { unsub(); authUnsub(); };
     }, [firebaseReady]);
 
-    const handleForceAdmin = () => { setIsAdmin(true); setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); };
+    const handleForceAdmin = () => { setIsAdmin(true);
+    setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); };
     
     const handleToAdmin = () => {
         setAdminViewMode(true);
@@ -1712,7 +1730,6 @@ const App = () => {
         setAdminViewMode(false);
         localStorage.removeItem("adminViewMode");
     };
-    
     const handleLogout = () => { 
         setIsAdmin(false); 
         setAdminViewMode(false); 
@@ -1720,7 +1737,6 @@ const App = () => {
         localStorage.removeItem("adminViewMode"); 
         window.fb.logOut(window.auth); 
     };
-
     if (!firebaseReady || loading) return (
         <div className="h-screen flex flex-col items-center justify-center font-bold text-slate-400 bg-slate-50 gap-4">
              <div className="w-10 h-10 border-4 border-slate-300 border-t-slate-800 rounded-full animate-spin"></div>
