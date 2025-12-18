@@ -1409,17 +1409,25 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         return matchCat && matchSearch;
     });
 
-    // [★수정: 상단고정 > 판매가능 > 품절 순으로 정렬 (중복 제거됨)]
+   // [★수정: 품절 여부 > 브레인롯 우선 > 일반 고정 순으로 정렬]
     const sortedProducts = [...filteredProducts].sort((a, b) => {
-        // 1. 품절 상태가 같다면 (둘 다 판매중이거나, 둘 다 품절이거나)
-        if (a.isSoldOut === b.isSoldOut) {
-            // 고정(Pinned)된 상품을 위로 올림
-            if (a.isPinned && !b.isPinned) return -1;
-            if (!a.isPinned && b.isPinned) return 1;
-            return 0;
+        // 1. 품절 여부가 다르면 품절인 상품을 맨 아래로 (기존 로직 유지)
+        if (a.isSoldOut !== b.isSoldOut) {
+            return a.isSoldOut ? 1 : -1;
         }
-        // 2. 품절 여부가 다르면 품절인 상품을 아래로
-        return a.isSoldOut ? 1 : -1;
+        
+        // 2. [★추가된 규칙] 이름에 '브레인롯'이 들어가면 무조건 최상단 1순위
+        const isBrainrotA = a.name.includes("브레인롯");
+        const isBrainrotB = b.name.includes("브레인롯");
+        
+        if (isBrainrotA && !isBrainrotB) return -1; // a가 브레인롯이면 앞으로
+        if (!isBrainrotA && isBrainrotB) return 1;  // b가 브레인롯이면 앞으로
+
+        // 3. 그 외 일반 고정(Pinned) 상품 처리
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        
+        return 0;
     });
 
     const openProduct = (p) => { window.history.pushState(null,"",""); setSelectedProduct(p); };
