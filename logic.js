@@ -570,24 +570,25 @@ const AdminPage = ({ onLogout, onToShop }) => {
         }
     };
 
-    const newProd = { 
-    name: form.pName.value, 
-    category: form.pCategory.value, 
-    orderIndex: Number(form.pOrderIndex.value) || 9999, // [★추가] 순서 번호 (없으면 9999로 뒤로 보냄)
-    price: Number(form.pPrice.value)||0, 
-    originPrice: Number(form.pOriginPrice.value)||0, 
-    stock: Number(form.pStock.value)||0, 
-    minQty: 1,
-    cartonQty: 1, 
-    image: thumbImage || "📦", 
-    detailImage: detailImage || "", 
-    description: form.pDescription.value, 
-    rating: "5.0",
-    isHidden: form.pIsHidden.checked,
-    isSoldOut: form.pIsSoldOut.checked,
-    isPinned: form.pIsPinned.checked,
-    restockDate: form.pRestockDate.value
-};
+    const handleSaveProduct = async (e) => {
+        e.preventDefault(); const form = e.target;
+        const newProd = { 
+            name: form.pName.value, 
+            category: form.pCategory.value, 
+            price: Number(form.pPrice.value)||0, 
+            originPrice: Number(form.pOriginPrice.value)||0, 
+            stock: Number(form.pStock.value)||0, 
+            minQty: 1,
+            cartonQty: 1, 
+            image: thumbImage || "📦", 
+            detailImage: detailImage || "", 
+            description: form.pDescription.value, 
+            rating: "5.0",
+            isHidden: form.pIsHidden.checked,
+            isSoldOut: form.pIsSoldOut.checked,
+            isPinned: form.pIsPinned.checked,
+            restockDate: form.pRestockDate.value
+        };
         try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨"); } catch (err) { alert(err.message); }
     };
     const handleDeleteProduct = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "products_final_v5", id)); };
@@ -994,18 +995,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
 
                             <div>
-                                {/* [★추가] 진열 순서 입력칸 */}
-                                <div className="p-3 bg-slate-100 rounded border border-slate-200 mb-2">
-                                    <label className="block text-sm font-bold mb-1 text-slate-700">진열 순서 (작은 숫자가 1등)</label>
-                                    <div className="text-xs text-slate-500 mb-1">※ 예: 브레인롯(1), 티니핑(2) ... 입력 안 하면 맨 뒤로 감</div>
-                                    <input 
-                                        name="pOrderIndex" 
-                                        type="number" 
-                                        defaultValue={editingProduct?.orderIndex} 
-                                        placeholder="예: 1" 
-                                        className="w-full border p-2 rounded focus:ring-2 focus:ring-slate-500 outline-none" 
-                                    />
-                                </div>
                                 <label className="block mb-1 font-bold">상품명 <span className="text-xs text-indigo-500 font-normal">(입력 후 우측 버튼을 눌러보세요)</span></label>
                                 <div className="flex gap-2">
                                     <input name="pName" id="pNameInput" defaultValue={editingProduct?.name} className="flex-1 border p-2 rounded" placeholder="예: 뽀로로 젓가락 세트" required />
@@ -1420,26 +1409,17 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         return matchCat && matchSearch;
     });
 
-   // [★수정: 사용자 지정 순서(orderIndex) 우선 정렬]
+    // [★수정: 상단고정 > 판매가능 > 품절 순으로 정렬 (중복 제거됨)]
     const sortedProducts = [...filteredProducts].sort((a, b) => {
-        // 1. 품절 여부 (품절 상품은 무조건 맨 아래로 내리고 싶다면 이 부분 유지)
-        if (a.isSoldOut !== b.isSoldOut) {
-            return a.isSoldOut ? 1 : -1;
+        // 1. 품절 상태가 같다면 (둘 다 판매중이거나, 둘 다 품절이거나)
+        if (a.isSoldOut === b.isSoldOut) {
+            // 고정(Pinned)된 상품을 위로 올림
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            return 0;
         }
-
-        // 2. 순서 번호 비교 (작은 숫자가 위로)
-        // 값이 없으면 9999로 취급하여 뒤로 보냄
-        const orderA = (a.orderIndex !== undefined && a.orderIndex !== null) ? a.orderIndex : 9999;
-        const orderB = (b.orderIndex !== undefined && b.orderIndex !== null) ? b.orderIndex : 9999;
-
-        if (orderA !== orderB) {
-            return orderA - orderB;
-        }
-
-        // 3. 순서 번호가 같으면 최신 등록순(또는 고정핀)으로
-        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-        
-        return 0;
+        // 2. 품절 여부가 다르면 품절인 상품을 아래로
+        return a.isSoldOut ? 1 : -1;
     });
 
     const openProduct = (p) => { window.history.pushState(null,"",""); setSelectedProduct(p); };
