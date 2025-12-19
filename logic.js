@@ -1,4 +1,4 @@
-/* logic.js - Full Version (Custom Sort Order Added) */
+/* logic.js - Full Version (Instant Load & Cache Added) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -38,8 +38,6 @@ const Icon = ({ name, className, ...props }) => {
         Image: "🖼️", Upload: "⬆️", Download: "⬇️", LayoutTemplate: "📄", 
         AlertCircle: "!",
         Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪", Sparkles: "✨", 
-        
-        // [★추가된 아이콘]
         BarChart: "📊", Check: "✅"
     };
 
@@ -230,7 +228,6 @@ const MyPage = ({ user, onClose }) => {
                                 <div key={order.id} className="border rounded-xl p-4 shadow-sm">
                                     <div className="flex justify-between items-center mb-2 border-b pb-2">
                                         <span className="text-xs text-slate-500">{new Date(order.date).toLocaleString()}</span>
-                                        {/* [상태값 표시] 입금대기 / 결제완료 구분 */}
                                         <span className={`text-xs font-bold px-2 py-1 rounded ${order.status==='입금대기'?'bg-red-100 text-red-600':order.status==='결제완료'?'bg-blue-100 text-blue-600':'bg-slate-100 text-slate-600'}`}>{order.status}</span>
                                     </div>
                                     {order.trackingNumber && (
@@ -246,7 +243,6 @@ const MyPage = ({ user, onClose }) => {
                                     </div>
                                     <div className="flex justify-between items-center pt-2 border-t">
                                         <span className="font-bold">총 {formatPrice(order.totalAmount)}원</span>
-                                        {/* 입금대기 상태에서만 주문취소 가능 */}
                                         {order.status === "입금대기" && <button onClick={()=>handleCancelOrder(order.id)} className="text-xs bg-slate-200 px-3 py-1 rounded hover:bg-slate-300">주문취소</button>}
                                     </div>
                                 </div>
@@ -291,22 +287,20 @@ const AdminPage = ({ onLogout, onToShop }) => {
         }
     }, []);
 
-    // [차트 그리기 로직] - stats 탭일 때만 작동
+    // [차트 그리기 로직]
     useEffect(() => {
         if (tab === "stats" && chartRef.current && chartData.length > 0) {
-            // 기존 차트가 있으면 삭제 (중복 생성 방지)
             if (chartInstance.current) chartInstance.current.destroy();
 
             const ctx = chartRef.current.getContext('2d');
-            // Chart.js 인스턴스 생성
             chartInstance.current = new Chart(ctx, {
                 type: 'line', 
                 data: {
-                    labels: chartData.map(d => d.date.slice(5)), // 날짜(월-일)만 표시
+                    labels: chartData.map(d => d.date.slice(5)), 
                     datasets: [{
                         label: '일별 방문자 수',
                         data: chartData.map(d => d.count),
-                        borderColor: 'rgb(79, 70, 229)', // Indigo 600
+                        borderColor: 'rgb(79, 70, 229)', 
                         backgroundColor: 'rgba(79, 70, 229, 0.1)',
                         borderWidth: 2,
                         tension: 0.3,
@@ -336,19 +330,15 @@ const AdminPage = ({ onLogout, onToShop }) => {
         }
     }, [tab, chartData]);
 
-    // 최근 7일 차트 데이터 가져오기
     const fetchChartData = async () => {
         try {
             const days = [];
             const today = new Date();
-            // 오늘 포함 최근 7일 날짜 생성
             for (let i = 6; i >= 0; i--) {
                 const d = new Date();
                 d.setDate(today.getDate() - i);
                 days.push(formatDate(d));
             }
-
-            // DB에서 날짜별 문서 조회
             const promises = days.map(dateStr => window.fb.getDoc(window.fb.doc(window.db, "stats", dateStr)));
             const snapshots = await Promise.all(promises);
             
@@ -369,18 +359,16 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [editingProduct, setEditingProduct] = useState(null);
     const [thumbImage, setThumbImage] = useState("");
     const [detailImage, setDetailImage] = useState("");
-    // AI 생성 상태
     const [isGenerating, setIsGenerating] = useState(false);
     
     const excelInputRef = useRef(null);
 
     useEffect(() => {
         if(!window.fb) return;
-        const { collection, onSnapshot, doc, getDocs } = window.fb;
+        const { collection, onSnapshot, doc } = window.fb;
         const unsubProd = onSnapshot(collection(window.db, "products_final_v5"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         const unsubUser = onSnapshot(collection(window.db, "users"), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
         
-        // [방문자 통계 실시간 구독 - 대시보드 카드용]
         const unsubStats = onSnapshot(collection(window.db, "stats"), (snap) => {
             let total = 0;
             let today = 0;
@@ -393,7 +381,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
             setVisitorStats({ today, total });
         });
         
-        // 탭이 'stats'로 바뀔 때 차트 데이터 갱신
         if (tab === 'stats') fetchChartData();
 
         const unsubOrder = onSnapshot(collection(window.db, "orders"), (snap) => {
@@ -418,7 +405,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
         return () => { unsubProd(); unsubUser(); unsubOrder(); unsubStats(); };
     }, [tab]);
-    // tab이 바뀔 때 effect 재실행
 
     const getUserInfo = (uid) => users.find(u => u.id === uid) || {};
 
@@ -472,7 +458,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         else setSelectedIds(new Set());
     };
     
-    // [일괄 상태 변경] 입금확인 버튼 로직 포함
     const handleBatchStatus = async (status) => {
         if(selectedIds.size === 0) return alert("선택된 주문이 없습니다.");
         if(!confirm(`선택한 ${selectedIds.size}건을 [${status}] 상태로 변경하시겠습니까?`)) return;
@@ -583,7 +568,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
         const newProd = { 
             name: form.pName.value, 
             category: form.pCategory.value, 
-            // [★수정] 진열 순서(orderIndex) 저장 (입력값 없으면 9999)
             orderIndex: Number(form.pOrderIndex.value) || 9999,
             price: Number(form.pPrice.value)||0, 
             originPrice: Number(form.pOriginPrice.value)||0, 
@@ -627,7 +611,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
     const openEditModal = (p) => { setEditingProduct(p); setThumbImage(p.image); setDetailImage(p.detailImage); setIsProductModalOpen(true); };
-    // [모바일 추가] 관리자용 주문 카드 뷰
     const OrderCard = ({ o, u }) => (
         <div className={`bg-white p-4 rounded-xl border shadow-sm mb-3 ${selectedIds.has(o.id) ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
             <div className="flex justify-between items-start mb-2">
@@ -665,7 +648,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
             <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6">
                 <div className="flex gap-2 border-b border-slate-300 pb-1 overflow-x-auto whitespace-nowrap">
-                    {/* [★수정] 메뉴 탭에 'stats' 추가 */}
                     {["orders", "users", "products", "banners", "stats"].map(t => (
                         <button key={t} onClick={()=>setTab(t)} className={`px-6 py-3 rounded-t-lg font-bold text-sm uppercase transition-colors whitespace-nowrap ${tab===t ? "bg-white text-slate-900 border border-b-0 border-slate-300 shadow-sm" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}>
                             {t === 'orders' ? '주문 통합 관리' : t === 'users' ? '회원 관리' : t === 'products' ? '상품 관리' : t === 'banners' ? '배너 관리' : '통계 분석'}
@@ -675,7 +657,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
                 {tab === "orders" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* 대시보드 - 입금대기, 결제완료 분리 */}
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                             {[
                                 { label: "입금대기", count: countStatus("입금대기"), color: "text-red-600", bg: "bg-red-50" },
@@ -692,12 +673,10 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             ))}
                         </div>
 
-                        {/* 필터 */}
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center">
                                 <span className="w-20 font-bold text-sm text-slate-600">배송상태</span>
                                 <div className="flex gap-4 flex-wrap">
-                                    {/* 필터 목록 수정 */}
                                     {["전체", "입금대기", "결제완료", "배송준비", "배송중", "배송완료", "주문취소"].map(s => (
                                         <label key={s} className="flex items-center gap-2 cursor-pointer text-sm">
                                             <input type="radio" name="status" checked={searchInputs.status === s} onChange={()=>setSearchInputs({...searchInputs, status: s})} className="accent-blue-600" /> 
@@ -719,13 +698,11 @@ const AdminPage = ({ onLogout, onToShop }) => {
                             </div>
                         </div>
 
-                        {/* 리스트 */}
                         <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3 bg-slate-50/50">
                                 <div className="flex gap-2 items-center flex-wrap">
                                     <span className="font-bold text-sm mr-2">{selectedIds.size}개 선택됨</span>
                                     
-                                    {/* [★입금확인 버튼] */}
                                     <button onClick={()=>handleBatchStatus("결제완료")} className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 flex items-center gap-1"><Icon name="Check" className="w-3 h-3"/> 입금확인(결제완료)</button>
                                     
                                     <button onClick={()=>handleBatchStatus("배송준비")} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-700 flex items-center gap-1"><Icon name="Package" className="w-3 h-3"/> 배송준비</button>
@@ -739,7 +716,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                                 </div>
                             </div>
                             
-                            {/* [★모바일] 모바일에서는 Card View, 데스크탑에서는 Table View */}
                             <div className="md:hidden p-2 bg-slate-100">
                                 {filteredOrders.length === 0 ? <div className="text-center text-slate-400 py-10">검색된 주문이 없습니다.</div> :
                                 filteredOrders.map(o => <OrderCard key={o.id} o={o} u={getUserInfo(o.userId)} />)}
@@ -802,13 +778,11 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     </div>
                 )}
                 
-                {/* [★추가] 통계 분석 탭 내용 */}
                 {tab === "stats" && (
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <div className="bg-white rounded-lg border shadow-sm p-6">
                             <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><Icon name="BarChart" className="text-indigo-600"/> 최근 7일간 방문자 추이</h3>
                             <div className="w-full h-[400px] bg-slate-50 rounded-xl p-4 relative">
-                                {/* 차트가 그려질 캔버스 */}
                                 <canvas ref={chartRef}></canvas>
                             </div>
                             <div className="mt-4 text-center text-sm text-slate-500">
@@ -940,7 +914,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
                     </div>
                 )}
             </div>
-            {/* 회원 상세 팝업 */}
             {selectedUser && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200 safe-area-bottom">
                     <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 relative overflow-hidden">
@@ -1109,24 +1082,18 @@ const LoginPage = ({ onAdminLogin }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        // [수정된 관리자 로그인 로직] - 로그인 성공 시 권한 자동 복구 기능 추가
         if(isLoginMode && formData.username === 'sj' && formData.password === '0914') {
              try {
-                // 1. 일단 로그인 시도 (Authentication 확인)
                 const cred = await window.fb.signInUser(window.auth, "admin@sj.com", "sjmaster0914");
-                // [★핵심] 로그인 성공 시, DB(Firestore)에도 관리자 명부를 강제로 다시 만듭니다.
                 await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), {
                     email: "admin@sj.com", 
                     storeName: "총괄관리자", 
                     repName: "SJ",
-                    isAdmin: true,   // 관리자 권한 부여
+                    isAdmin: true,
                     role: "master", 
                     joinedAt: new Date().toISOString()
                 }, { merge: true });
-                // 기존 정보가 있어도 덮어쓰기
-
             } catch(e) {
-                // 2. 계정 자체가 없으면 새로 생성 (Authentication + Firestore 둘 다 생성)
                 try {
                     const cred = await window.fb.createUser(window.auth, "admin@sj.com", "sjmaster0914");
                     await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), {
@@ -1138,7 +1105,6 @@ const LoginPage = ({ onAdminLogin }) => {
                     alert("관리자 접속 오류: " + createErr.message);
                 }
             }
-            // 3. 변경 사항 반영을 위해 페이지 새로고침
             window.location.reload();
             return;
         }
@@ -1155,9 +1121,7 @@ const LoginPage = ({ onAdminLogin }) => {
                     setLoading(false);
                     return;
                 }
-
                 if(formData.password !== formData.confirmPassword) { alert("비밀번호가 일치하지 않습니다."); setLoading(false); return; }
-                
                 const cred = await window.fb.createUser(window.auth, formData.email, formData.password);
                 await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), {
                     email: formData.email, displayId: formData.email.split('@')[0], name: formData.name, mobile: formData.mobile,
@@ -1177,7 +1141,6 @@ const LoginPage = ({ onAdminLogin }) => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8 safe-area-pb">
             <div className={`bg-white rounded-2xl shadow-xl w-full mx-auto transition-all duration-300 ${isLoginMode?'max-w-md p-8':'max-w-3xl p-8'}`}>
-                {/* 로그인 상단 로고 */}
                 <div className="text-center mb-8">
                     <img src="https://i.ibb.co/LdPMppLv/image.png" alt="Logo" className="h-16 w-auto object-contain mx-auto mb-4" />
                     <h1 className="text-2xl font-bold text-slate-800">{isLoginMode?"SJ 파트너 로그인":"사업자 회원등록"}</h1>
@@ -1232,14 +1195,13 @@ const LoginPage = ({ onAdminLogin }) => {
 };
 
 // ----------------------------------------------------
-// [5] 상세 페이지 (수정: 비회원 가격 숨김 처리)
+// [5] 상세 페이지
 // ----------------------------------------------------
 const ProductDetail = ({ product, user, onBack, onAddToCart, goHome, onLoginReq }) => {
     const minQty = product.minQty || 1;
     const cartonQty = product.cartonQty || 1;
 
     const [qty, setQty] = useState(minQty);
-    
     const handleQuantityChange = (delta) => {
         const max = cartonQty * 5;
         const newQuantity = qty + delta;
@@ -1270,17 +1232,13 @@ const ProductDetail = ({ product, user, onBack, onAddToCart, goHome, onLoginReq 
                             <h1 className="text-2xl font-bold text-slate-900 leading-tight">{product.name}</h1>
                         </div>
                         
-                        {/* [★수정] 비회원일 경우 공급가 숨김 */}
                         <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100">
                             {user ? (
                                 <span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{formatPrice(product.price)}</span>
                             ) : (
                                 <span className="text-xl sm:text-2xl font-bold text-slate-400">회원전용</span>
                             )}
-                            
-                            {/* 권장가는 누구에게나 보임 */}
                             <span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{formatPrice(product.originPrice)}</span>
-                            
                             {user && (
                                 <span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">
                                     {Math.round((1-product.price/product.originPrice)*100)}% OFF
@@ -1315,13 +1273,11 @@ const ProductDetail = ({ product, user, onBack, onAddToCart, goHome, onLoginReq 
                         </div>
                     ) : (
                         user ? (
-                            /* 회원이면 구매 버튼 표시 */
                             <>
                                 <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1"><button onClick={()=>handleQuantityChange(-1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Minus" className="w-4 h-4"/></button><span className="font-bold w-8 text-center">{qty}</span><button onClick={()=>handleQuantityChange(1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Plus" className="w-4 h-4"/></button></div>
                                 <button onClick={()=>{onAddToCart(product,qty);}} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-slate-900"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
                             </>
                         ) : (
-                            /* 비회원이면 로그인 유도 버튼 표시 */
                             <button onClick={onLoginReq} className="w-full bg-indigo-600 text-white font-bold rounded-xl py-3 flex items-center justify-center gap-2 hover:bg-indigo-700">
                                 🔒 로그인 후 공급가 확인 및 구매 가능
                             </button>
@@ -1334,7 +1290,7 @@ const ProductDetail = ({ product, user, onBack, onAddToCart, goHome, onLoginReq 
 };
 
 // ----------------------------------------------------
-// [6] 쇼핑몰 페이지 (수정: 비회원 UI 대응)
+// [6] 쇼핑몰 페이지 (ShopPage)
 // ----------------------------------------------------
 const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) => {
     const [cart, setCart] = useState([]);
@@ -1357,7 +1313,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
         }
     }, []);
 
-    // [방문자 카운팅]
     useEffect(() => {
         const logVisit = async () => {
             const today = new Date().toISOString().slice(0, 10);
@@ -1462,7 +1417,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
                             </button>
                         )}
                         
-                        {/* [★수정] 회원일 때만 장바구니/마이페이지/로그아웃 보임 */}
                         {user ? (
                             <>
                                 <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all flex-shrink-0">
@@ -1479,7 +1433,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
                                 </button>
                             </>
                         ) : (
-                            /* [★수정] 비회원이면 로그인 버튼 노출 */
                             <button onClick={onLoginReq} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full font-bold text-sm shadow transition-all whitespace-nowrap">
                                 파트너 로그인
                             </button>
@@ -1525,7 +1478,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
                                     <div className="mt-auto">
                                         <div className="flex justify-between items-center mb-1"><span className="text-xs text-slate-400">권장가</span><span className="text-xs text-slate-400 line-through">₩{formatPrice(p.originPrice)}</span></div>
                                         
-                                        {/* [★수정] 상품 리스트 카드에서 공급가 숨김 */}
                                         <div className="flex justify-between items-baseline mb-3">
                                             <span className="text-sm font-bold text-slate-700">공급가</span>
                                             {user ? (
@@ -1635,7 +1587,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
 };
 
 // ----------------------------------------------------
-// [7] 메인 앱 (수정: 로그인 없어도 ShopPage 진입 허용)
+// [7] 메인 앱
 // ----------------------------------------------------
 const App = () => {
     const [user, setUser] = useState(null);
@@ -1644,9 +1596,20 @@ const App = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [firebaseReady, setFirebaseReady] = useState(false);
-    
-    // [★수정] 로그인 모달 상태 추가
     const [showLoginModal, setShowLoginModal] = useState(false);
+
+    // [★수정] 캐시된 데이터 즉시 로드 (0.1초 로딩 구현)
+    useEffect(() => {
+        const cached = localStorage.getItem("sj_products_cache_v2");
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                if (parsed && parsed.length > 0) {
+                    setProducts(parsed);
+                }
+            } catch(e) {}
+        }
+    }, []);
 
     useEffect(() => {
         const savedAdminMode = localStorage.getItem("adminViewMode") === "true";
@@ -1664,14 +1627,16 @@ const App = () => {
     useEffect(() => {
         if (!firebaseReady) return;
         const { collection, onSnapshot, getDoc, doc } = window.fb;
+        
+        // [★수정] 데이터 가져온 뒤 로컬스토리지에 저장 (다음 방문을 위해)
         const unsub = onSnapshot(collection(window.db, "products_final_v5"), (snap) => {
-            setProducts(snap.docs.map(d => {
-                const data = d.data();
-                return { 
-                    id: d.id, ...data, minQty: 1, cartonQty: 1
-                };
+            const newProducts = snap.docs.map(d => ({ 
+                id: d.id, ...d.data(), minQty: 1, cartonQty: 1
             }));
+            setProducts(newProducts);
+            localStorage.setItem("sj_products_cache_v2", JSON.stringify(newProducts));
         });
+
         const authUnsub = window.fb.onAuthStateChanged(window.auth, async (u) => {
             if (u) {
                 try {
@@ -1684,7 +1649,7 @@ const App = () => {
                         setUser(u);
                         setIsAdmin(false);
                     }
-                    setShowLoginModal(false); // 로그인 성공 시 모달 닫기
+                    setShowLoginModal(false); 
                 } catch (e) { setUser(u); }
             } else {
                 setUser(null);
@@ -1702,7 +1667,8 @@ const App = () => {
     const handleToShop = () => { setAdminViewMode(false); localStorage.removeItem("adminViewMode"); };
     const handleLogout = () => { setIsAdmin(false); setAdminViewMode(false); setUser(null); localStorage.removeItem("adminViewMode"); window.fb.logOut(window.auth); };
     
-    if (!firebaseReady || loading) return (
+    // [★수정] 캐시된 상품이 있으면 로딩 화면 건너뛰기
+    if ((!firebaseReady || loading) && products.length === 0) return (
         <div className="h-screen flex flex-col items-center justify-center font-bold text-slate-400 bg-slate-50 gap-4">
              <div className="w-10 h-10 border-4 border-slate-300 border-t-slate-800 rounded-full animate-spin"></div>
              <div>시스템 연결중...</div>
@@ -1711,18 +1677,15 @@ const App = () => {
 
     if (isAdmin && adminViewMode) return <AdminPage onLogout={handleLogout} onToShop={handleToShop} />;
     
-    // [★수정] 로그인 모달이 켜져있으면 로그인 페이지 보여줌 (닫기 버튼 추가 필요할 수 있음)
     if (showLoginModal) {
         return (
             <div className="relative">
-                {/* 로그인 화면 뒤로가기 버튼(임시) */}
                 <button onClick={()=>setShowLoginModal(false)} className="absolute top-4 left-4 z-50 p-2 bg-slate-100 rounded-full"><Icon name="X"/></button>
                 <LoginPage onAdminLogin={handleForceAdmin} />
             </div>
         );
     }
 
-    // [★수정] 기본적으로 ShopPage를 보여주되, user가 null일 수 있음
     return <ShopPage products={products} user={user} onLogout={handleLogout} isAdmin={isAdmin} onToAdmin={handleToAdmin} onLoginReq={()=>setShowLoginModal(true)} />;
 };
 
