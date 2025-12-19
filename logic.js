@@ -1232,16 +1232,15 @@ const LoginPage = ({ onAdminLogin }) => {
 };
 
 // ----------------------------------------------------
-// [5] 상세 페이지
+// [5] 상세 페이지 (수정: 비회원 가격 숨김 처리)
 // ----------------------------------------------------
-const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
-    // [수정: 최소 수량을 5개로 강제 설정]
+const ProductDetail = ({ product, user, onBack, onAddToCart, goHome, onLoginReq }) => {
     const minQty = product.minQty || 1;
     const cartonQty = product.cartonQty || 1;
 
     const [qty, setQty] = useState(minQty);
+    
     const handleQuantityChange = (delta) => {
-        // [수정] 1카톤 최대 5박스 제한
         const max = cartonQty * 5;
         const newQuantity = qty + delta;
         if (delta > 0) { if (newQuantity <= max) setQty(newQuantity);
@@ -1249,16 +1248,14 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
         else { if (newQuantity >= minQty) setQty(newQuantity);
         else alert(`최소 주문 수량은 ${minQty}개입니다.`); }
     };
+
     return (
         <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-right duration-300 min-h-screen flex flex-col pb-[80px] safe-area-pb">
             <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center justify-between">
                 <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="ArrowLeft" className="w-7 h-7 text-slate-800" /></button>
-                
-                {/* 상세페이지 상단 로고 */}
                 <div className="flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
                     <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-9 w-auto object-contain" />
                 </div>
-                
                 <button onClick={goHome} className="p-2 hover:bg-slate-100 rounded-full transition-all"><Icon name="Store" className="w-6 h-6 text-slate-600" /></button>
             </div>
             <div className="flex-1 overflow-y-auto">
@@ -1272,11 +1269,27 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
                             <span className="text-sm text-slate-500 font-bold block mb-1">{product.category}</span>
                             <h1 className="text-2xl font-bold text-slate-900 leading-tight">{product.name}</h1>
                         </div>
-                        <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100"><span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{formatPrice(product.price)}</span><span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{formatPrice(product.originPrice)}</span><span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">{Math.round((1-product.price/product.originPrice)*100)}% OFF</span></div>
+                        
+                        {/* [★수정] 비회원일 경우 공급가 숨김 */}
+                        <div className="flex items-end gap-3 mb-6 pb-6 border-b border-slate-100">
+                            {user ? (
+                                <span className="text-2xl sm:text-3xl font-bold text-slate-900">₩{formatPrice(product.price)}</span>
+                            ) : (
+                                <span className="text-xl sm:text-2xl font-bold text-slate-400">회원전용</span>
+                            )}
+                            
+                            {/* 권장가는 누구에게나 보임 */}
+                            <span className="text-base sm:text-lg text-slate-400 line-through mb-1">₩{formatPrice(product.originPrice)}</span>
+                            
+                            {user && (
+                                <span className="text-xs sm:text-sm text-red-500 font-bold mb-1 ml-auto bg-red-50 px-2 py-1 rounded">
+                                    {Math.round((1-product.price/product.originPrice)*100)}% OFF
+                                </span>
+                            )}
+                        </div>
+
                         <div className="space-y-8">
                             <div><h3 className="text-lg font-bold text-slate-900 mb-3">상품 설명</h3><p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-5 rounded-xl border border-slate-100">{product.description}</p></div>
-                            
-                            {/* [수정] 배송 정보 위치 변경 (설명 바로 아래로 이동) */}
                             <div>
                                 <h3 className="text-lg font-bold text-slate-900 mb-3">배송 정보</h3>
                                 <div className="bg-slate-50 p-5 rounded-xl space-y-3 text-sm text-slate-600 border border-slate-100">
@@ -1288,8 +1301,6 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
                                     <div className="flex gap-3 items-center"><Icon name="Boxes" className="w-5 h-5 text-slate-400" /><span>박스 단위 발주 가능</span></div>
                                 </div>
                             </div>
-
-                            {/* 상세 정보(이미지)는 배송정보 아래로 이동 */}
                             {product.detailImage && <div><h3 className="text-lg font-bold text-slate-900 mb-3">상세 정보</h3><img src={product.detailImage} className="w-full rounded-xl" /></div>}
                         </div>
                     </div>
@@ -1303,10 +1314,18 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
                             <span className="text-xs text-slate-100">{product.restockDate || "빠른 시일 내에 재입고 하겠습니다."}</span>
                         </div>
                     ) : (
-                        <>
-                            <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1"><button onClick={()=>handleQuantityChange(-1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Minus" className="w-4 h-4"/></button><span className="font-bold w-8 text-center">{qty}</span><button onClick={()=>handleQuantityChange(1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Plus" className="w-4 h-4"/></button></div>
-                            <button onClick={()=>{onAddToCart(product,qty);}} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-slate-900"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
-                        </>
+                        user ? (
+                            /* 회원이면 구매 버튼 표시 */
+                            <>
+                                <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1"><button onClick={()=>handleQuantityChange(-1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Minus" className="w-4 h-4"/></button><span className="font-bold w-8 text-center">{qty}</span><button onClick={()=>handleQuantityChange(1)} className="w-9 h-9 bg-white rounded shadow-sm flex items-center justify-center transition-all"><Icon name="Plus" className="w-4 h-4"/></button></div>
+                                <button onClick={()=>{onAddToCart(product,qty);}} className="flex-1 bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-slate-900"><Icon name="ShoppingBag" className="w-4 h-4" /> 담기</button>
+                            </>
+                        ) : (
+                            /* 비회원이면 로그인 유도 버튼 표시 */
+                            <button onClick={onLoginReq} className="w-full bg-indigo-600 text-white font-bold rounded-xl py-3 flex items-center justify-center gap-2 hover:bg-indigo-700">
+                                🔒 로그인 후 공급가 확인 및 구매 가능
+                            </button>
+                        )
                     )}
                 </div>
             </div>
@@ -1315,9 +1334,9 @@ const ProductDetail = ({ product, onBack, onAddToCart, goHome }) => {
 };
 
 // ----------------------------------------------------
-// [6] 쇼핑몰 페이지 (ShopPage)
+// [6] 쇼핑몰 페이지 (수정: 비회원 UI 대응)
 // ----------------------------------------------------
-const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
+const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) => {
     const [cart, setCart] = useState([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -1327,6 +1346,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showMyPage, setShowMyPage] = useState(false);
     const [banners, setBanners] = useState(DEFAULT_BANNERS);
+
     useEffect(() => {
         if(window.fb) {
             const { doc, onSnapshot } = window.fb;
@@ -1337,31 +1357,23 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         }
     }, []);
 
-    // [★방문자 카운팅 기능]
+    // [방문자 카운팅]
     useEffect(() => {
         const logVisit = async () => {
             const today = new Date().toISOString().slice(0, 10);
             const storageKey = `visited_${today}`;
-
-            // 오늘 방문 기록이 없으면 카운트 증가
             if (!localStorage.getItem(storageKey)) {
                 try {
                     const statsRef = window.fb.doc(window.db, "stats", today);
                     const docSnap = await window.fb.getDoc(statsRef);
-
                     if (docSnap.exists()) {
-                        // 기존 데이터가 있으면 +1
                         const currentCount = docSnap.data().count || 0;
                         await window.fb.updateDoc(statsRef, { count: currentCount + 1 });
                     } else {
-                        // 오늘 첫 방문자라면 문서 생성
                         await window.fb.setDoc(statsRef, { count: 1 });
                     }
-                    // 방문 표시 남기기
                     localStorage.setItem(storageKey, "true");
-                } catch (e) {
-                    console.error("통계 집계 오류", e);
-                }
+                } catch (e) { console.error("통계 집계 오류", e); }
             }
         };
         if(window.fb) logVisit();
@@ -1379,17 +1391,14 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
 
     const openOrderModal = () => {
         if(cart.length === 0) return;
-        setDepositor(user.repName || ""); 
+        setDepositor(user?.repName || ""); 
         setIsCartOpen(false);
         setIsOrderModalOpen(true);
     };
 
-    // [수정] 최종 주문 시 배송비 계산 및 저장
     const handleFinalOrder = async (e) => {
         if (!depositor.trim()) return alert("입금자명을 입력해주세요.");
         if(!confirm("주문을 완료하시겠습니까?")) return;
-        
-        // 배송비 계산
         const productTotal = cart.reduce((a,c)=>a+c.price*c.quantity,0);
         const shippingFee = productTotal >= 50000 ? 0 : 3000;
         const finalTotalAmount = productTotal + shippingFee;
@@ -1397,20 +1406,14 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
             const uid = window.auth.currentUser ? window.auth.currentUser.uid : "admin_manual";
             await window.fb.addDoc(window.fb.collection(window.db, "orders"), {
                 userId: uid, userEmail: user.email, userName: user.storeName || "미등록상점",
-                items: cart, 
-                totalAmount: finalTotalAmount, 
-                date: new Date().toISOString(), 
-                
-                status: "입금대기", // ★ 초기 상태를 "입금대기"로 설정
-                
-                paymentMethod: "무통장입금", depositor: depositor, bankInfo: BANK_INFO
+                items: cart, totalAmount: finalTotalAmount, date: new Date().toISOString(), 
+                status: "입금대기", paymentMethod: "무통장입금", depositor: depositor, bankInfo: BANK_INFO
             });
-            alert(`[주문 완료]\n총 결제금액: ${formatPrice(finalTotalAmount)}원 (배송비 포함)\n\n${BANK_INFO.bankName} ${BANK_INFO.accountNumber}\n예금주: ${BANK_INFO.holder}\n\n위 계좌로 입금 부탁드립니다.`);
-            setCart([]); 
-            setIsCartOpen(false);
-            setIsOrderModalOpen(false);
+            alert(`[주문 완료]\n총 결제금액: ${formatPrice(finalTotalAmount)}원\n입금계좌: ${BANK_INFO.accountNumber}`);
+            setCart([]); setIsCartOpen(false); setIsOrderModalOpen(false);
         } catch(e) { alert("실패: " + e.message); }
     };
+
     const filteredProducts = products.filter(p => {
         if (p.isHidden) return false;
         const matchCat = selectedCategory === "전체" || p.category === selectedCategory;
@@ -1418,25 +1421,12 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
         return matchCat && matchSearch;
     });
 
-    // [★수정: 사용자 지정 순서(orderIndex) 우선 정렬]
     const sortedProducts = [...filteredProducts].sort((a, b) => {
-        // 1. 품절 여부 (품절 상품은 무조건 맨 아래로 내리고 싶다면 이 부분 유지)
-        if (a.isSoldOut !== b.isSoldOut) {
-            return a.isSoldOut ? 1 : -1;
-        }
-
-        // 2. 순서 번호 비교 (작은 숫자가 위로)
-        // 값이 없으면 9999로 취급하여 뒤로 보냄
+        if (a.isSoldOut !== b.isSoldOut) return a.isSoldOut ? 1 : -1;
         const orderA = (a.orderIndex !== undefined && a.orderIndex !== null) ? a.orderIndex : 9999;
         const orderB = (b.orderIndex !== undefined && b.orderIndex !== null) ? b.orderIndex : 9999;
-
-        if (orderA !== orderB) {
-            return orderA - orderB;
-        }
-
-        // 3. 순서 번호가 같으면 고정핀(Pinned) 확인
+        if (orderA !== orderB) return orderA - orderB;
         if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-        
         return 0;
     });
 
@@ -1455,12 +1445,12 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
     }, [selectedProduct, isCartOpen, showMyPage]);
     const handleClose = () => window.history.back();
 
-    if (selectedProduct) return <ProductDetail product={selectedProduct} onBack={handleClose} onAddToCart={addToCart} goHome={goHome} />;
+    if (selectedProduct) return <ProductDetail product={selectedProduct} user={user} onBack={handleClose} onAddToCart={addToCart} goHome={goHome} onLoginReq={onLoginReq} />;
+    
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-800 safe-area-pb">
             <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100 transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-4 py-3 sm:py-0 sm:h-16 flex flex-wrap items-center justify-between gap-2">
-                    
                     <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer transition-all hover:opacity-80" onClick={goHome}>
                         <img src="https://i.ibb.co/LdPMppLv/image.png" alt="SJ Innovation" className="h-8 w-auto object-contain" />
                     </div>
@@ -1468,23 +1458,32 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                     <div className="flex items-center gap-3 order-2 sm:order-3 ml-auto sm:ml-0 flex-nowrap flex-shrink-0">
                         {isAdmin && (
                             <button onClick={onToAdmin} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md transition-all flex items-center gap-1 whitespace-nowrap flex-shrink-0">
-                                <Icon name="Settings" className="w-3 h-3"/>
-                                <span className="hidden sm:inline">관리자</span>
+                                <Icon name="Settings" className="w-3 h-3"/><span className="hidden sm:inline">관리자</span>
                             </button>
                         )}
-                        <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all flex-shrink-0">
-                            <span className="text-2xl">🛍️</span>
-                            {cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}
-                        </button>
-                        <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
-                        <button onClick={openMyPage} className="flex items-center gap-2 text-sm font-medium hover:bg-slate-100 p-2 rounded-full transition-all flex-shrink-0">
-                            <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center flex-shrink-0"><Icon name="User" className="w-4 h-4" /></div>
-                            <span className="hidden sm:block whitespace-nowrap">{user.storeName || "내 정보"}</span>
-                        </button>
-                        <button onClick={onLogout} className="bg-slate-200 hover:bg-red-500 hover:text-white px-3 py-1 rounded font-bold text-sm transition-all duration-300 whitespace-nowrap flex-shrink-0 flex items-center gap-1">
-                            <Icon name="LogOut" className="w-4 h-4 sm:hidden"/>
-                            <span className="hidden sm:inline">로그아웃</span>
-                        </button>
+                        
+                        {/* [★수정] 회원일 때만 장바구니/마이페이지/로그아웃 보임 */}
+                        {user ? (
+                            <>
+                                <button onClick={openCart} className="relative p-2 hover:bg-slate-100 rounded-full transition-all flex-shrink-0">
+                                    <span className="text-2xl">🛍️</span>
+                                    {cart.length>0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cart.length}</span>}
+                                </button>
+                                <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
+                                <button onClick={openMyPage} className="flex items-center gap-2 text-sm font-medium hover:bg-slate-100 p-2 rounded-full transition-all flex-shrink-0">
+                                    <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center flex-shrink-0"><Icon name="User" className="w-4 h-4" /></div>
+                                    <span className="hidden sm:block whitespace-nowrap">{user.storeName || "내 정보"}</span>
+                                </button>
+                                <button onClick={onLogout} className="bg-slate-200 hover:bg-red-500 hover:text-white px-3 py-1 rounded font-bold text-sm transition-all duration-300 whitespace-nowrap flex-shrink-0 flex items-center gap-1">
+                                    <Icon name="LogOut" className="w-4 h-4 sm:hidden"/><span className="hidden sm:inline">로그아웃</span>
+                                </button>
+                            </>
+                        ) : (
+                            /* [★수정] 비회원이면 로그인 버튼 노출 */
+                            <button onClick={onLoginReq} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full font-bold text-sm shadow transition-all whitespace-nowrap">
+                                파트너 로그인
+                            </button>
+                        )}
                     </div>
 
                     <div className="w-full sm:flex-1 sm:max-w-lg sm:mx-4 relative order-3 sm:order-2 mt-2 sm:mt-0">
@@ -1494,44 +1493,30 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 py-8 transition-all duration-300">
-                
-                {/* [수정] 상단 배너 - 모바일 꽉 채우기 및 크기 자동 */}
                 {banners.top && (
                     <div className="mb-6 w-full rounded-2xl overflow-hidden shadow-lg">
-                        <img 
-                            src={banners.top} 
-                            alt="Top Banner" 
-                            className="w-full h-auto block" 
-                            fetchPriority="high"
-                            decoding="sync"
-                        />
+                        <img src={banners.top} alt="Top Banner" className="w-full h-auto block" fetchPriority="high" decoding="sync"/>
                     </div>
                 )}
-
                 <div className="flex overflow-x-auto pb-4 gap-2 mb-2 scrollbar-hide sticky top-[110px] sm:static z-30">
                     {CATEGORIES.map(cat => ( <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all duration-300 ${selectedCategory === cat ? "bg-slate-800 text-white" : "bg-white hover:bg-slate-50"}`}>{cat}</button> ))}
                 </div>
-
                 <div className="flex justify-end mb-4 px-1">
                     <span className="text-xs font-bold text-slate-500">총 <span className="text-slate-900">{products.length}</span>개의 상품</span>
                 </div>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-                    {/* [수정: 정렬된 리스트 사용] */}
                     {sortedProducts.map((p, index) => (
                         <React.Fragment key={p.id}>
                             <div onClick={() => openProduct(p)} className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group overflow-hidden flex flex-col relative active:scale-95 sm:active:scale-100">
-                                
                                 {p.isSoldOut && (
                                     <div className="absolute inset-0 z-10 bg-black/50 flex flex-col items-center justify-center text-white backdrop-blur-[1px]">
                                         <div className="font-bold text-xl mb-1">SOLD OUT</div>
                                         <div className="text-xs bg-black/50 px-2 py-1 rounded">{p.restockDate || "재입고 준비중"}</div>
                                     </div>
                                 )}
-                               
                                 <div className="aspect-[4/3] bg-slate-100 relative flex items-center justify-center overflow-hidden">
                                     {p.image.startsWith('data:') || p.image.startsWith('http') || p.image.startsWith('.') ? <img src={p.image} alt={p.name} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" /> : <span className="text-6xl transform group-hover:scale-110 transition-transform duration-500">{p.image}</span>}
-                                    <div className="absolute top-3 left-3 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">인기</div>
                                 </div>
                                 <div className="p-3 sm:p-5 flex flex-col flex-grow">
                                     <div className="text-xs text-slate-400 mb-1 font-medium">{p.category}</div>
@@ -1539,13 +1524,21 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                     <div className="flex items-center gap-1 mb-4"><Icon name="Star" className="w-4 h-4 text-yellow-400 fill-yellow-400" /><span className="text-sm font-bold text-slate-700">{p.rating || "5.0"}</span></div>
                                     <div className="mt-auto">
                                         <div className="flex justify-between items-center mb-1"><span className="text-xs text-slate-400">권장가</span><span className="text-xs text-slate-400 line-through">₩{formatPrice(p.originPrice)}</span></div>
-                                        <div className="flex justify-between items-baseline mb-3"><span className="text-sm font-bold text-slate-700">공급가</span><span className="text-lg sm:text-xl font-bold text-slate-800">₩{formatPrice(p.price)}</span></div>
+                                        
+                                        {/* [★수정] 상품 리스트 카드에서 공급가 숨김 */}
+                                        <div className="flex justify-between items-baseline mb-3">
+                                            <span className="text-sm font-bold text-slate-700">공급가</span>
+                                            {user ? (
+                                                <span className="text-lg sm:text-xl font-bold text-slate-800">₩{formatPrice(p.price)}</span>
+                                            ) : (
+                                                <span className="text-lg sm:text-xl font-bold text-slate-300">회원전용</span>
+                                            )}
+                                        </div>
+
                                         <button className="w-full bg-slate-50 text-slate-700 border border-slate-200 group-hover:bg-slate-800 group-hover:text-white py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"><Icon name="Search" className="w-4 h-4" /> 상세</button>
                                     </div>
                                 </div>
                             </div>
-                            
-                            {/* [수정] 중간 배너 - 상단 배너와 동일한 스타일 적용 (w-full, h-auto) */}
                             {index === 7 && banners.middle && (
                                 <div className="col-span-full my-6 w-full rounded-2xl overflow-hidden shadow-lg">
                                     <img src={banners.middle} alt="Middle Banner" className="w-full h-auto block" />
@@ -1574,8 +1567,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                 </div>
                             ))}
                         </div>
-                        
-                        {/* [수정] 장바구니 하단: 배송비 포함 합계 표시 */}
                         {cart.length > 0 && (
                             <div className="border-t pt-4 space-y-2">
                                 <div className="flex justify-between text-sm">
@@ -1591,10 +1582,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                                 <div className="flex justify-between pt-2 border-t border-dashed items-center mb-4">
                                     <span className="text-slate-900 font-bold">총 결제금액</span>
                                     <span className="font-bold text-xl text-indigo-600">
-                                        ₩{formatPrice(
-                                            cart.reduce((a,c)=>a+c.price*c.quantity,0) + 
-                                            (cart.reduce((a,c)=>a+c.price*c.quantity,0) >= 50000 ? 0 : 3000)
-                                        )}
+                                        ₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0) + (cart.reduce((a,c)=>a+c.price*c.quantity,0) >= 50000 ? 0 : 3000))}
                                     </span>
                                 </div>
                                 <button onClick={openOrderModal} className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg flex justify-center items-center gap-2 transition-all hover:bg-slate-900"><Icon name="Truck" className="w-5 h-5" />발주 신청하기</button>
@@ -1623,8 +1611,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                             <input type="text" className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="예: 김철수 (SJ문구)" value={depositor} onChange={(e)=>setDepositor(e.target.value)} />
                             <p className="text-xs text-slate-400 mt-1">* 실제 입금하시는 분의 성함을 입력해주세요.</p>
                         </div>
-                        
-                        {/* [수정] 주문 모달: 배송비 포함 합계 표시 */}
                         <div className="border-t pt-4 mb-4 space-y-2">
                             <div className="flex justify-between text-sm">
                                 <span className="text-slate-500">상품합계</span>
@@ -1632,21 +1618,13 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-slate-500">배송비</span>
-                                <span>
-                                    {cart.reduce((a,c)=>a+c.price*c.quantity,0) >= 50000 ? "0원 (무료)" : "3,000원"}
-                                </span>
+                                <span>{cart.reduce((a,c)=>a+c.price*c.quantity,0) >= 50000 ? "0원 (무료)" : "3,000원"}</span>
                             </div>
                             <div className="flex justify-between items-center pt-2 border-t border-dashed mt-2">
                                 <span className="text-slate-800 font-bold">최종 결제금액</span>
-                                <span className="text-xl font-bold text-blue-600">
-                                    ₩{formatPrice(
-                                        cart.reduce((a,c)=>a+c.price*c.quantity,0) + 
-                                        (cart.reduce((a,c)=>a+c.price*c.quantity,0) >= 50000 ? 0 : 3000)
-                                    )}
-                                </span>
+                                <span className="text-xl font-bold text-blue-600">₩{formatPrice(cart.reduce((a,c)=>a+c.price*c.quantity,0) + (cart.reduce((a,c)=>a+c.price*c.quantity,0) >= 50000 ? 0 : 3000))}</span>
                             </div>
                         </div>
-
                         <button onClick={handleFinalOrder} className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 shadow-lg">입금 확인 요청 (주문 완료)</button>
                     </div>
                 </div>
@@ -1657,7 +1635,7 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin }) => {
 };
 
 // ----------------------------------------------------
-// [7] 메인 앱
+// [7] 메인 앱 (수정: 로그인 없어도 ShopPage 진입 허용)
 // ----------------------------------------------------
 const App = () => {
     const [user, setUser] = useState(null);
@@ -1666,6 +1644,9 @@ const App = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [firebaseReady, setFirebaseReady] = useState(false);
+    
+    // [★수정] 로그인 모달 상태 추가
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     useEffect(() => {
         const savedAdminMode = localStorage.getItem("adminViewMode") === "true";
@@ -1679,19 +1660,15 @@ const App = () => {
         }, 30);
         return () => clearInterval(interval);
     }, []);
+
     useEffect(() => {
         if (!firebaseReady) return;
         const { collection, onSnapshot, getDoc, doc } = window.fb;
         const unsub = onSnapshot(collection(window.db, "products_final_v5"), (snap) => {
             setProducts(snap.docs.map(d => {
                 const data = d.data();
-                // [수정] DB에 저장된 값이 있더라도, 요청사항에 따라
-                // 모든 기존 제품의 최소주문량과 1카톤 수량을 1개로 강제 설정합니다.
                 return { 
-                    id: d.id, 
-                    ...data,
-                    minQty: 1, // 최소 수량 1개로 제한 해제
-                    cartonQty: 1 // 카톤 수량 1개로 제한 해제
+                    id: d.id, ...data, minQty: 1, cartonQty: 1
                 };
             }));
         });
@@ -1707,8 +1684,8 @@ const App = () => {
                         setUser(u);
                         setIsAdmin(false);
                     }
-                } catch (e) { setUser(u);
-                }
+                    setShowLoginModal(false); // 로그인 성공 시 모달 닫기
+                } catch (e) { setUser(u); }
             } else {
                 setUser(null);
                 setIsAdmin(false);
@@ -1719,33 +1696,34 @@ const App = () => {
         return () => { unsub(); authUnsub(); };
     }, [firebaseReady]);
 
-    const handleForceAdmin = () => { setIsAdmin(true);
-    setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); };
+    const handleForceAdmin = () => { setIsAdmin(true); setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); setShowLoginModal(false); };
     
-    const handleToAdmin = () => {
-        setAdminViewMode(true);
-        localStorage.setItem("adminViewMode", "true");
-    };
-    const handleToShop = () => {
-        setAdminViewMode(false);
-        localStorage.removeItem("adminViewMode");
-    };
-    const handleLogout = () => { 
-        setIsAdmin(false); 
-        setAdminViewMode(false); 
-        setUser(null); 
-        localStorage.removeItem("adminViewMode"); 
-        window.fb.logOut(window.auth); 
-    };
+    const handleToAdmin = () => { setAdminViewMode(true); localStorage.setItem("adminViewMode", "true"); };
+    const handleToShop = () => { setAdminViewMode(false); localStorage.removeItem("adminViewMode"); };
+    const handleLogout = () => { setIsAdmin(false); setAdminViewMode(false); setUser(null); localStorage.removeItem("adminViewMode"); window.fb.logOut(window.auth); };
+    
     if (!firebaseReady || loading) return (
         <div className="h-screen flex flex-col items-center justify-center font-bold text-slate-400 bg-slate-50 gap-4">
              <div className="w-10 h-10 border-4 border-slate-300 border-t-slate-800 rounded-full animate-spin"></div>
              <div>시스템 연결중...</div>
         </div>
     );
+
     if (isAdmin && adminViewMode) return <AdminPage onLogout={handleLogout} onToShop={handleToShop} />;
-    if (user) return <ShopPage products={products} user={user} onLogout={handleLogout} isAdmin={isAdmin} onToAdmin={handleToAdmin} />;
-    return <LoginPage onAdminLogin={handleForceAdmin} />;
+    
+    // [★수정] 로그인 모달이 켜져있으면 로그인 페이지 보여줌 (닫기 버튼 추가 필요할 수 있음)
+    if (showLoginModal) {
+        return (
+            <div className="relative">
+                {/* 로그인 화면 뒤로가기 버튼(임시) */}
+                <button onClick={()=>setShowLoginModal(false)} className="absolute top-4 left-4 z-50 p-2 bg-slate-100 rounded-full"><Icon name="X"/></button>
+                <LoginPage onAdminLogin={handleForceAdmin} />
+            </div>
+        );
+    }
+
+    // [★수정] 기본적으로 ShopPage를 보여주되, user가 null일 수 있음
+    return <ShopPage products={products} user={user} onLogout={handleLogout} isAdmin={isAdmin} onToAdmin={handleToAdmin} onLoginReq={()=>setShowLoginModal(true)} />;
 };
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
