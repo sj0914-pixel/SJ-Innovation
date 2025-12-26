@@ -1,4 +1,4 @@
-/* logic.js - Full Version (Instant Load & Cache Added) */
+/* logic.js - Full Version (Admin Auth Fix & Fail-safe Added) */
 const { useState, useEffect, useRef } = React;
 
 // ----------------------------------------------------
@@ -40,7 +40,6 @@ const Icon = ({ name, className, ...props }) => {
         Box: "□", Edit: "✏️", Trash: "🗑️", LogOut: "🚪", Sparkles: "✨", 
         BarChart: "📊", Check: "✅"
     };
-
     const displayIcon = iconMap[name] || name || "?";
 
     return (
@@ -97,6 +96,7 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
+                
                     ctx.fillStyle = "#FFFFFF";
                     ctx.fillRect(0, 0, width, height);
     
@@ -156,7 +156,8 @@ const ImageUploader = ({ label, onImageSelect, currentImage }) => {
                         <span>업로드 중...</span>
                     </div>
                 ) : (
-                    displayImage && !displayImage.includes("📦") ? ( 
+                    displayImage && !displayImage.includes("📦") ?
+                    ( 
                         <div className="relative w-full h-full">
                             <img src={displayImage} className="absolute inset-0 w-full h-full object-cover bg-slate-50" alt="preview" />
                             <button onClick={(e)=>{e.stopPropagation(); if(confirm("삭제하시겠습니까?")) onImageSelect("");}} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 z-10 shadow-sm flex items-center justify-center w-6 h-6"><Icon name="X" className="w-4 h-4" /></button>
@@ -212,7 +213,8 @@ const MyPage = ({ user, onClose }) => {
                     <button onClick={()=>setTab("orders")} className={`flex-1 py-3 font-bold ${tab==="orders"?"border-b-2 border-slate-800 text-slate-900":"text-slate-400"}`}>주문 내역</button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6">
-                    {tab === "info" ? (
+                    {tab === "info" ?
+                    (
                         <div className="space-y-4 text-sm">
                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">상호명</div><div className="font-bold">{user.storeName}</div></div>
                             <div className="p-3 bg-slate-50 rounded"><div className="text-slate-400 mb-1">대표자</div><div className="font-bold">{user.repName}</div></div>
@@ -263,13 +265,11 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [users, setUsers] = useState([]);
     const [orders, setOrders] = useState([]);
     const [tab, setTab] = useState("orders");
-
     // [통계 및 차트 관련 State]
     const [visitorStats, setVisitorStats] = useState({ today: 0, total: 0 });
     const [chartData, setChartData] = useState([]);
     const chartRef = useRef(null);
     const chartInstance = useRef(null);
-
     // 배너 State
     const [topBanner, setTopBanner] = useState("");
     const [middleBanner, setMiddleBanner] = useState("");
@@ -360,7 +360,6 @@ const AdminPage = ({ onLogout, onToShop }) => {
     const [thumbImage, setThumbImage] = useState("");
     const [detailImage, setDetailImage] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
-    
     const excelInputRef = useRef(null);
 
     useEffect(() => {
@@ -586,6 +585,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
         try { if (editingProduct) await window.fb.updateDoc(window.fb.doc(window.db, "products_final_v5", editingProduct.id), newProd); else await window.fb.addDoc(window.fb.collection(window.db, "products_final_v5"), newProd); setIsProductModalOpen(false); alert("저장됨");
         } catch (err) { alert(err.message); }
     };
+
     const handleDeleteProduct = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "products_final_v5", id)); };
     const handleDeleteUser = async (id) => { if(confirm("삭제?")) await window.fb.deleteDoc(window.fb.doc(window.db, "users", id)); };
     const handleSaveBanners = async () => {
@@ -611,6 +611,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
 
     const openAddModal = () => { setEditingProduct(null); setThumbImage(""); setDetailImage(""); setIsProductModalOpen(true); };
     const openEditModal = (p) => { setEditingProduct(p); setThumbImage(p.image); setDetailImage(p.detailImage); setIsProductModalOpen(true); };
+
     const OrderCard = ({ o, u }) => (
         <div className={`bg-white p-4 rounded-xl border shadow-sm mb-3 ${selectedIds.has(o.id) ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
             <div className="flex justify-between items-start mb-2">
@@ -1056,6 +1057,7 @@ const AdminPage = ({ onLogout, onToShop }) => {
         </div>
     );
 };
+
 // ----------------------------------------------------
 // [4] 로그인 페이지
 // ----------------------------------------------------
@@ -1121,7 +1123,8 @@ const LoginPage = ({ onAdminLogin }) => {
                     setLoading(false);
                     return;
                 }
-                if(formData.password !== formData.confirmPassword) { alert("비밀번호가 일치하지 않습니다."); setLoading(false); return; }
+                if(formData.password !== formData.confirmPassword) { alert("비밀번호가 일치하지 않습니다.");
+                setLoading(false); return; }
                 const cred = await window.fb.createUser(window.auth, formData.email, formData.password);
                 await window.fb.setDoc(window.fb.doc(window.db, "users", cred.user.uid), {
                     email: formData.email, displayId: formData.email.split('@')[0], name: formData.name, mobile: formData.mobile,
@@ -1163,7 +1166,7 @@ const LoginPage = ({ onAdminLogin }) => {
                                     <div><label className="block text-sm font-bold mb-1">비밀번호</label><input name="password" type="password" className="w-full p-2 border rounded" onChange={handleChange} required placeholder="영문, 숫자 포함 8자리 이상" /></div>
                                     <div><label className="block text-sm font-bold mb-1">비밀번호 확인</label><input name="confirmPassword" type="password" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
                                     <div className="md:col-span-2"><label className="block text-sm font-bold mb-1">연락처</label><input name="mobile" className="w-full p-2 border rounded" onChange={handleChange} required /></div>
-                                </div>
+                                 </div>
                                 <div className="mt-4"><label className="block text-sm font-bold mb-1">주소</label><div className="flex gap-2 mb-2"><input value={formData.zipcode} readOnly className="w-24 p-2 border bg-slate-100 rounded" /><button type="button" onClick={()=>setIsAddrOpen(true)} className="bg-slate-600 text-white px-3 rounded text-sm hover:bg-slate-700 transition-colors">주소검색</button></div><input value={formData.address} readOnly className="w-full p-2 border bg-slate-100 rounded mb-2" /><input name="addressDetail" className="w-full p-2 border rounded" placeholder="상세주소" onChange={handleChange} /></div>
                                 <div className="mt-4 pt-4 border-t border-slate-200">
                                     <label className="block text-sm font-bold mb-1 text-indigo-900">추천인</label>
@@ -1210,7 +1213,6 @@ const ProductDetail = ({ product, user, onBack, onAddToCart, goHome, onLoginReq 
         else { if (newQuantity >= minQty) setQty(newQuantity);
         else alert(`최소 주문 수량은 ${minQty}개입니다.`); }
     };
-
     return (
         <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-right duration-300 min-h-screen flex flex-col pb-[80px] safe-area-pb">
             <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 h-14 flex items-center justify-between">
@@ -1302,7 +1304,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showMyPage, setShowMyPage] = useState(false);
     const [banners, setBanners] = useState(DEFAULT_BANNERS);
-
     useEffect(() => {
         if(window.fb) {
             const { doc, onSnapshot } = window.fb;
@@ -1333,7 +1334,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
         };
         if(window.fb) logVisit();
     }, []);
-
     const goHome = () => { setSelectedCategory("전체"); setSearchTerm(""); setSelectedProduct(null); setShowMyPage(false); window.scrollTo(0, 0); };
     const addToCart = (product, quantity = 1) => {
         setCart(prev => {
@@ -1368,14 +1368,12 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
             setCart([]); setIsCartOpen(false); setIsOrderModalOpen(false);
         } catch(e) { alert("실패: " + e.message); }
     };
-
     const filteredProducts = products.filter(p => {
         if (p.isHidden) return false;
         const matchCat = selectedCategory === "전체" || p.category === selectedCategory;
         const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
         return matchCat && matchSearch;
     });
-
     const sortedProducts = [...filteredProducts].sort((a, b) => {
         if (a.isSoldOut !== b.isSoldOut) return a.isSoldOut ? 1 : -1;
         const orderA = (a.orderIndex !== undefined && a.orderIndex !== null) ? a.orderIndex : 9999;
@@ -1388,7 +1386,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
     const openProduct = (p) => { window.history.pushState(null,"",""); setSelectedProduct(p); };
     const openCart = () => { window.history.pushState(null,"",""); setIsCartOpen(true); };
     const openMyPage = () => { window.history.pushState(null,"",""); setShowMyPage(true); };
-    
     useEffect(() => {
         const handlePopState = () => {
             if(selectedProduct) setSelectedProduct(null);
@@ -1401,7 +1398,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
     const handleClose = () => window.history.back();
 
     if (selectedProduct) return <ProductDetail product={selectedProduct} user={user} onBack={handleClose} onAddToCart={addToCart} goHome={goHome} onLoginReq={onLoginReq} />;
-    
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-800 safe-area-pb">
             <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100 transition-all duration-300">
@@ -1477,7 +1473,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
                                     <div className="flex items-center gap-1 mb-4"><Icon name="Star" className="w-4 h-4 text-yellow-400 fill-yellow-400" /><span className="text-sm font-bold text-slate-700">{p.rating || "5.0"}</span></div>
                                     <div className="mt-auto">
                                         <div className="flex justify-between items-center mb-1"><span className="text-xs text-slate-400">권장가</span><span className="text-xs text-slate-400 line-through">₩{formatPrice(p.originPrice)}</span></div>
-                                        
                                         <div className="flex justify-between items-baseline mb-3">
                                             <span className="text-sm font-bold text-slate-700">공급가</span>
                                             {user ? (
@@ -1515,7 +1510,8 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
                                         <h4 className="font-medium line-clamp-1">{item.name}</h4>
                                         <div className="flex justify-between mt-1 text-sm"><span className="bg-slate-100 px-2 rounded">수량: {item.quantity}</span><span className="font-bold">₩{formatPrice(item.price * item.quantity)}</span></div>
                                     </div>
-                                    <button onClick={()=>{const nc=[...cart]; nc.splice(idx,1); setCart(nc);}} className="text-slate-400 hover:text-red-500 transition-colors duration-150 p-2"><Icon name="X" className="w-4 h-4" /></button>
+                                    <button onClick={()=>{const nc=[...cart];
+                                    nc.splice(idx,1); setCart(nc);}} className="text-slate-400 hover:text-red-500 transition-colors duration-150 p-2"><Icon name="X" className="w-4 h-4" /></button>
                                 </div>
                             ))}
                         </div>
@@ -1554,7 +1550,8 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
                             <div className="text-xs text-blue-600 font-bold mb-1">입금하실 계좌</div>
                             <div className="flex items-center gap-2 mb-1">
                                 <span className="font-bold text-lg text-slate-800">{BANK_INFO.bankName} {BANK_INFO.accountNumber}</span>
-                                <button onClick={()=>{navigator.clipboard.writeText(BANK_INFO.accountNumber); alert("계좌번호가 복사되었습니다.");}} className="text-xs bg-white border border-blue-200 px-2 py-1 rounded text-blue-600 hover:bg-blue-100">복사</button>
+                                <button onClick={()=>{navigator.clipboard.writeText(BANK_INFO.accountNumber);
+                                alert("계좌번호가 복사되었습니다.");}} className="text-xs bg-white border border-blue-200 px-2 py-1 rounded text-blue-600 hover:bg-blue-100">복사</button>
                             </div>
                             <div className="text-sm text-slate-600">예금주: {BANK_INFO.holder}</div>
                         </div>
@@ -1585,7 +1582,6 @@ const ShopPage = ({ products, user, onLogout, isAdmin, onToAdmin, onLoginReq }) 
         </div>
     );
 };
-
 // ----------------------------------------------------
 // [7] 메인 앱
 // ----------------------------------------------------
@@ -1597,7 +1593,7 @@ const App = () => {
     const [loading, setLoading] = useState(true);
     const [firebaseReady, setFirebaseReady] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
-
+    
     // [★수정] 캐시된 데이터 즉시 로드 (0.1초 로딩 구현)
     useEffect(() => {
         const cached = localStorage.getItem("sj_products_cache_v2");
@@ -1610,7 +1606,6 @@ const App = () => {
             } catch(e) {}
         }
     }, []);
-
     useEffect(() => {
         const savedAdminMode = localStorage.getItem("adminViewMode") === "true";
         if (savedAdminMode) setAdminViewMode(true);
@@ -1623,7 +1618,6 @@ const App = () => {
         }, 30);
         return () => clearInterval(interval);
     }, []);
-
     useEffect(() => {
         if (!firebaseReady) return;
         const { collection, onSnapshot, getDoc, doc } = window.fb;
@@ -1637,6 +1631,7 @@ const App = () => {
             localStorage.setItem("sj_products_cache_v2", JSON.stringify(newProducts));
         });
 
+        // [★관리자 권한 수정] DB 읽기 실패시에도 이메일 확인하여 강제 권한 부여
         const authUnsub = window.fb.onAuthStateChanged(window.auth, async (u) => {
             if (u) {
                 try {
@@ -1644,13 +1639,19 @@ const App = () => {
                     if (userDoc.exists()) {
                         const userData = userDoc.data();
                         setUser({ ...u, ...userData });
-                        setIsAdmin(userData.isAdmin === true);
+                        // DB 값이 true이거나, 이메일이 관리자 이메일이면 권한 부여
+                        setIsAdmin(userData.isAdmin === true || u.email === "admin@sj.com");
                     } else {
                         setUser(u);
-                        setIsAdmin(false);
+                        // 문서가 없어도 이메일이 맞으면 관리자
+                        setIsAdmin(u.email === "admin@sj.com");
                     }
-                    setShowLoginModal(false); 
-                } catch (e) { setUser(u); }
+                    setShowLoginModal(false);
+                } catch (e) { 
+                    setUser(u);
+                    // 에러가 나도 이메일이 맞으면 관리자
+                    setIsAdmin(u.email === "admin@sj.com");
+                }
             } else {
                 setUser(null);
                 setIsAdmin(false);
@@ -1661,11 +1662,13 @@ const App = () => {
         return () => { unsub(); authUnsub(); };
     }, [firebaseReady]);
 
-    const handleForceAdmin = () => { setIsAdmin(true); setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); setShowLoginModal(false); };
+    const handleForceAdmin = () => { setIsAdmin(true);
+    setUser({ email: 'admin@sj.com', storeName: '관리자(임시)' }); setShowLoginModal(false); };
     
     const handleToAdmin = () => { setAdminViewMode(true); localStorage.setItem("adminViewMode", "true"); };
     const handleToShop = () => { setAdminViewMode(false); localStorage.removeItem("adminViewMode"); };
-    const handleLogout = () => { setIsAdmin(false); setAdminViewMode(false); setUser(null); localStorage.removeItem("adminViewMode"); window.fb.logOut(window.auth); };
+    const handleLogout = () => { setIsAdmin(false); setAdminViewMode(false); setUser(null); localStorage.removeItem("adminViewMode"); window.fb.logOut(window.auth);
+    };
     
     // [★수정] 캐시된 상품이 있으면 로딩 화면 건너뛰기
     if ((!firebaseReady || loading) && products.length === 0) return (
@@ -1674,7 +1677,6 @@ const App = () => {
              <div>시스템 연결중...</div>
         </div>
     );
-
     if (isAdmin && adminViewMode) return <AdminPage onLogout={handleLogout} onToShop={handleToShop} />;
     
     if (showLoginModal) {
